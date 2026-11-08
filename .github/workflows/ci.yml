@@ -1,0 +1,83 @@
+name: CI
+
+# Required checks on main are the two job names below: `hygiene` and `test`.
+# Merging to main does NOT deploy. See release.yml.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1" # weekly full run, to catch dependency drift
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repo hygiene (forbidden files, secret-like strings, commit emails, migrations)
+        env:
+          HYGIENE_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '' }}
+        run: bash scripts/check-hygiene.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Acceptance criteria traceability
+        run: node scripts/ac-coverage.mjs
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Look for app code
+        id: app
+        run: |
+          if [ -f package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No package.json yet, so there is nothing to build or test."
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.app.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.app.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        if: steps.app.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Lint and layer rules
+        if: steps.app.outputs.present == 'true'
+        run: pnpm lint
+      - name: Type check
+        if: steps.app.outputs.present == 'true'
+        run: pnpm typecheck
+      - name: Unit tests
+        if: steps.app.outputs.present == 'true'
+        run: pnpm test:unit
+      - name: Integration tests (SQL Server in a container)
+        if: steps.app.outputs.present == 'true'
+        run: pnpm test:int
+      - name: Build
+        if: steps.app.outputs.present == 'true'
+        run: pnpm build
+      - name: Install browsers
+        if: steps.app.outputs.present == 'true'
+        run: pnpm exec playwright install --with-deps chromium webkit
+      - name: End-to-end tests
+        if: steps.app.outputs.present == 'true'
+        run: pnpm test:e2e

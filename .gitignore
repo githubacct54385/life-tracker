@@ -1,0 +1,42 @@
+# Personal data: never commit (AGENTS.md hard rule 3)
+*.csv
+*.xlsx
+*.xls
+*.xlsm
+export.xml
+export.zip
+export_cda.xml
+apple_health_export/
+*.sqlite
+*.bak
+*.bacpac
+
+# Local settings and secrets
+local.settings.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.vite/
+.swa/
+coverage/
+.turbo/
+
+# Test output
+test-results/
+playwright-report/
+blob-report/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

@@ -1,0 +1,117 @@
+name: Release
+
+# SKELETON. The shape is final (ADR-0004); the app-specific commands are finished in story FND-06,
+# when there is code to build and an Azure environment to deploy to.
+#
+# Manual only. Waits for owner approval on the `production` environment.
+# Order matters: migrations first, then deploy. A failed migration stops everything.
+#
+# Environment secrets needed (set on the `production` environment, never in the repo):
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   (OIDC login, no password)
+#   AZURE_RESOURCE_GROUP, AZURE_SQL_SERVER                     (for the temporary firewall rule)
+#   SQL_ADMIN_CONNECTION                                       (admin login, used only to migrate)
+#   AZURE_STATIC_WEB_APPS_API_TOKEN                            (deploy token)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: read
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: production # requires the owner's approval; limited to the main branch
+    steps:
+      - name: Releases run from main only
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Releases run from main only."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: CI must have passed on this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100")
+          for name in hygiene test; do
+            ok=$(echo "$runs" | jq --arg n "$name" '[.check_runs[] | select(.name == $n and .conclusion == "success")] | length')
+            if [ "$ok" -lt 1 ]; then
+              echo "Required check '$name' has not passed on ${GITHUB_SHA}. Not releasing."
+              exit 1
+            fi
+          done
+
+      - name: There must be an app to release
+        run: |
+          if [ ! -f package.json ]; then
+            echo "No package.json yet. Nothing to release."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Needed only if "allow Azure services" does not let GitHub runners reach the database (ADR-0003, Verify).
+      - name: Open database firewall for this runner
+        id: firewall
+        run: |
+          ip=$(curl -fsS https://checkip.amazonaws.com | tr -d '[:space:]')
+          az sql server firewall-rule create \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --server "${{ secrets.AZURE_SQL_SERVER }}" \
+            --name "release-${GITHUB_RUN_ID}" \
+            --start-ip-address "$ip" --end-ip-address "$ip"
+
+      - name: Apply SQL migrations
+        env:
+          SQL_ADMIN_CONNECTION: ${{ secrets.SQL_ADMIN_CONNECTION }}
+        # scripts/migrate must append the list of applied migrations to $GITHUB_STEP_SUMMARY (AC-FND-06.6).
+        run: pnpm migrate
+
+      - name: Deploy site and API
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: web
+          api_location: api
+          output_location: dist
+          # Adjust for the pnpm workspace when FND-06 is built (for example a prebuilt output).
+
+      - name: Close database firewall
+        if: always() && steps.firewall.outcome == 'success'
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --server "${{ secrets.AZURE_SQL_SERVER }}" \
+            --name "release-${GITHUB_RUN_ID}"
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## Released"
+            echo "Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
