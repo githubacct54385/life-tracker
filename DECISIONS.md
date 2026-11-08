@@ -6,7 +6,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 
 | # | Decision | Status |
 |---|---|---|
-| 0001 | Hosting and database | Accepted, verify free-offer limits |
+| 0001 | Hosting and database | Accepted |
 | 0002 | Data access and migrations | Accepted |
 | 0003 | Database credentials and network | Accepted, verify firewall behavior |
 | 0004 | Source control, pull requests, and manual release | Accepted, verify SWA setup |
@@ -21,6 +21,8 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | 0013 | Public repo, license, and planning documents | Accepted |
 | 0014 | Demo parity | Accepted |
 | 0015 | Product choices from the spec's open questions | Accepted |
+| 0016 | Bank export layout and pending rows | Accepted |
+| 0017 | Navigation and layout | Accepted |
 
 ---
 
@@ -34,7 +36,9 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 - The database auto-pauses and the first request after a pause is slow (cold start of up to about a minute). The client shows a loading state and retries once.
 - If the free allowance runs out, the app is unavailable until the next month. Accept this.
 - The availability check pings the static home page only, never the database, so it does not burn free seconds.
-- **Verify** the current free-offer limits and the exhaustion setting in the Azure portal before relying on this.
+- Checked against Microsoft's documentation in November 2026: each free database gets 100,000 vCore seconds, 32 GB of data, and 32 GB of backup storage per month. Up to 10 free databases per subscription. Auto-pause after 15 idle minutes is fixed. Choosing "bill over usage" can never be switched back to auto-pause, so choose auto-pause at creation. The region of the first free database applies to all free databases in the subscription. An alert on the "Free amount remaining" metric warns before the allowance runs out (AC-OPS-02.5). Still confirm the setting in the portal after creation (AC-OPS-02.4).
+- **Region (November 2026):** everything is in **Central US**. West US 2, East US 2, East US and West Europe were restricted for new SQL servers on this subscription, and Central US is the only Static Web Apps API region that accepts them, so the API and database share a region. The subscription is Pay-As-You-Go (real billing, no spending cap), so the budget alert and the free-allowance alert matter.
+- **Auto-pause delay:** Microsoft's page says free-tier databases pause after 15 idle minutes, but the created database reports a 60-minute delay. Watch the "Free amount remaining" metric over the first weeks. At 60 minutes, each wake-up uses up to about 1,800 vCore seconds of the 100,000 monthly allowance, so roughly 55 wake-ups a month fit.
 
 ## ADR-0002: Data access and migrations
 
@@ -86,6 +90,8 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 
 **Decision.**
 - `ownerGuard` reads only the identity header and the owner setting. There is no environment-based bypass. Tests send synthetic owner, non-owner, and missing identities.
+- **Who counts as the owner (corrected November 2026).** Static Web Apps passes the API an `x-ms-client-principal` header with `identityProvider`, `userDetails` (the GitHub username), `userRoles`, and a `userId`. That `userId` is **not** the GitHub numeric ID: it is an opaque ID that is unique per app and per user, and it changes if the user is removed and re-added. The owner check therefore compares that `userId` to the `OWNER_ID` app setting, and also requires the `owner` role and the `github` provider. The username is never used, because usernames can be renamed and reused. If the owner is ever removed and re-invited, the ID changes, access fails closed, and `OWNER_ID` must be updated. After the first sign-in, the owner reads their `userId` from `/.auth/me` and stores it as `OWNER_ID`. Until it is set, every request is denied.
+- The edge rules in `staticwebapp.config.json` require the `owner` role for every route except the sign-in and demo pages, and block the pre-configured Microsoft sign-in (`/.auth/login/aad` returns 404), because that provider lets any Microsoft account sign in.
 - Local development and Playwright use the SWA CLI auth emulator.
 - Every non-GET request must carry a custom header (and uploads use it too). Requests without it are rejected. This protects cookie-based sessions from cross-site requests.
 - No rate limiting in the API for now. The edge role check plus the 403-spike alert is enough for one user.
@@ -126,7 +132,7 @@ The commit call receives rows from the browser, so it does not trust them: it va
 
 **Why.** Bank rows have no unique ID, and two identical purchases on one day are real (AC-FIN-04.3). Without an occurrence number, either they collapse into one or the unique index rejects the import.
 
-**Known gap.** If a bank changes a description between exports (for example a pending row becomes posted), it will look new. Imports can be undone (FIN-09) to recover.
+**Known gap.** If a bank changes a description between exports it will look new. Pending rows, the most common cause, are skipped on import (ADR-0016). Imports can be undone (FIN-09) to recover.
 
 ## ADR-0011: Income and transfers are category types
 
@@ -154,8 +160,37 @@ The commit call receives rows from the browser, so it does not trust them: it va
 
 **Decision.**
 - Mood and sleep logging stay in *Next*, not the first release.
-- Look: calm fintech. One teal or blue accent, exact shade chosen during SET-02.
+- Look: calm and professional, in forest green (primary #2F6B4F, full palette in wireframes-suite.html). Light, dark, and system themes are offered.
 - Domain: the free Azure URL for now. Revisit before sharing the demo widely.
 - AI-assisted insights: no. The privacy cost is not worth it.
 - Family journal: free text, with tags later. The module itself is *Next*.
-- Real column layout of the primary bank's CSV: still to confirm from a real download (redacted). Tracked in SPEC.md open questions. Only column names and one fake row may ever be shared or committed.
+- Real column layout of the primary bank's export: confirmed from a redacted sample, see ADR-0016. Only column names and fake rows may ever be committed.
+
+## ADR-0016: Bank export layout and pending rows
+
+**Context.** Redacted samples of the primary bank's checking and credit-card downloads (checked November 2026) showed the real layout. The bank's own download is a **CSV with a header row** (DATE, DESCRIPTION, AMOUNT, CHECK #, STATUS), every field in double quotes except that an empty CHECK # may be written as nothing at all (`,,`), dates as text in MM/DD/YYYY, amounts as decimal text with two places, signed (negative is money out, the same for both account types), a STATUS of Posted or Pending, and newest first. Checking and credit card use the same layout. The owner also keeps an Excel copy made by converting that CSV; it gains a merged title row naming the account, stores dates as text and amounts as numbers, and declares a sheet range far past the last data row. One checking row in the CSV sample had only 4 fields instead of 5 (probably a redaction artifact, but a real file could do the same).
+
+**Decision.**
+- The importer accepts **.csv and .xlsx**. The spreadsheet reader already needed for the mileage import (MIL-04) is reused. Limits: 5 MB and 5,000 rows, and a cap on uncompressed size, because an .xlsx is a zip file.
+- Layout detection finds the header row by its column names (case-insensitive), so an optional title row above it (as in the Excel copy) is skipped. **A file with no header row is not supported in the MVP**: no real sample needs it. The configurable column mapping is where it would be added later. Trailing empty rows are ignored.
+- The CSV reader follows standard quoting. Quoted and unquoted empty fields both mean "empty". It tolerates a UTF-8 byte-order mark and Windows line endings. A row with the wrong number of fields is **rejected with its row number** and the rest still import (AC-FIN-02.7). The parser never guesses which column is missing.
+- The title row may suggest which account a file belongs to, but its digits are dropped like any account number (hard rule 5 and AC-FIN-02.5). The same goes for file names: nothing is taken from them.
+- Dates are parsed from text with an explicit format, never guessed. Amounts from CSV text are parsed digit by digit into integer cents with no floating point (thousands separators are tolerated). Amounts from spreadsheet cells, which arrive as a mix of whole numbers and decimals, are rounded to cents.
+- **Pending rows are skipped** and counted in the preview. A pending row can change date and text when it posts, so importing it would create a duplicate later. The cost is that very recent purchases appear a day or two late.
+- The CHECK # column is read but not stored for now. It may help with giving later.
+
+**Status.** Settled. The .xlsx is a conversion of the bank's CSV, and both are supported. Still unknown: whether large amounts ever contain thousands separators or whether other account types (savings, loans) use a different layout. The parser reports an unrecognized layout clearly instead of guessing.
+
+## ADR-0017: Navigation and layout
+
+**Decision.** Decided while reviewing [wireframes-suite.html](wireframes-suite.html).
+- **Destinations:** Home, Money, Giving, Health, Car, Settings. **Giving is its own feature**, not part of Money's transaction handling.
+- **Mobile (under 640 px):** a bottom tab bar with five tabs: Home, Money, Health, Car, More. Giving and Settings are inside More (Giving first). A sixth tab would be cramped.
+- **Tablet (640 to 1023 px):** a left icon rail with labels: Home, Money, Giving, Health, Car, More.
+- **Desktop (1024 px and up):** a left sidebar with all six destinations. The active group expands to show its pages.
+- **Editing a transaction:** a bottom sheet below 1024 px, including on tablet, and a side panel at 1024 px and up (AC-FIN-05.4).
+- **CSV bank import** is desktop only. No "remind me" shortcut on smaller screens.
+- **Quick actions** on the dashboard: add weight, add workout, log odometer everywhere. Upload CSV on desktop only.
+- **Accent:** forest green. **Theme:** light, dark, or system (AC-SET-01.3).
+
+**Why.** It keeps the phone bar at the usual maximum of five tabs while giving Giving its own place where there is room. If Giving turns out to be used often on the phone, promoting it to a sixth tab or swapping it with Car is a small change.

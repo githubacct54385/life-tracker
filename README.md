@@ -13,11 +13,11 @@ A private, single-user web app (installable PWA) for personal finances, health, 
 | [DECISIONS.md](DECISIONS.md) | Why each technical choice was made |
 | [TESTING.md](TESTING.md) | The test pyramid and CI |
 | [OBSERVABILITY.md](OBSERVABILITY.md) | Logging rules |
+| [docs/azure-setup.md](docs/azure-setup.md) | One-time Azure setup, step by step |
 | [BACKLOG.md](BACKLOG.md) | Stories and acceptance criteria |
 | [AGENTS.md](AGENTS.md) | Working rules for contributors and AI coding agents |
 
-Wireframes: [phone](wireframes.html) and [desktop](wireframes-desktop.html).
-
+Wireframes: [the full suite at mobile, tablet, and desktop widths](wireframes-suite.html).
 ## How changes reach production
 
 1. Branch from `main`, named after the story (`fin-03-import-preview`).

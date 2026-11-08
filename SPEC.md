@@ -19,7 +19,7 @@ A private, single-user web app (installable on a phone) for tracking personal fi
 ## 3. Non-goals
 
 - Multi-user support, sign-ups, or sharing. Only the owner can store data.
-- Bank account linking (no Plaid or similar). CSV upload only.
+- Bank account linking (no Plaid or similar). File upload only (CSV or Excel).
 - Storing raw bank files or account numbers.
 - Native iOS app.
 
@@ -41,7 +41,7 @@ A private, single-user web app (installable on a phone) for tracking personal fi
 | Any other GitHub user | Signs in, gets denied, stores nothing |
 
 - GitHub is the only login provider. Passkeys and 2FA are enforced on the GitHub account.
-- Two checks protect the API: the owner role at the hosting edge, and a numeric GitHub user ID check in the API.
+- Two checks protect the API: the `owner` role at the hosting edge, and an owner check in the API against the user ID that Static Web Apps assigns to the owner (ADR-0006). The GitHub username is not used for the check, because usernames can change hands. The hosting platform's pre-configured Microsoft sign-in is blocked, so GitHub is the only way in.
 - Owner identity lives in app settings, not in the repo.
 - There is no test-only bypass in the auth code (ADR-0006).
 
@@ -54,7 +54,7 @@ Priority: **MVP** = first release, **Next** = soon after, **Later** = nice to ha
 | Feature | Priority |
 |---|---|
 | Accounts (checking, credit card, cash), each transaction belongs to one. No account numbers stored. | MVP |
-| Upload a bank CSV in the app, on desktop (parsed on the server, file not stored) | MVP |
+| Upload a bank export (.csv or .xlsx) in the app, on desktop (parsed on the server, file not stored) | MVP |
 | Import preview: show rows and the detected format before saving | MVP |
 | Duplicate detection, so re-uploading overlapping date ranges is safe (including identical same-day purchases) | MVP |
 | Undo an import: remove exactly the transactions of one import batch | MVP |
@@ -74,7 +74,10 @@ Priority: **MVP** = first release, **Next** = soon after, **Later** = nice to ha
 | Optional AI insights | Not planned (ADR-0015) |
 
 Notes:
-- The primary bank's CSV format needs to be confirmed from a real download. It may have no header row. The importer uses configurable column mapping, so other banks can be added.
+- **Confirmed layout (from redacted samples, ADR-0016).** The primary bank's download is a CSV with a header row: DATE, DESCRIPTION, AMOUNT, CHECK #, STATUS. Dates are text in MM/DD/YYYY. Amounts are signed: negative is money out, positive is money in, the same for checking and credit card. STATUS is Posted or Pending. Rows are newest first. Checking and credit card use the same layout. An Excel copy made from that CSV is also supported; it may have a title row above the header (which can contain account digits that are dropped). Files with no header row are not supported in the MVP.
+- **Short rows.** A row with the wrong number of fields is rejected with its row number, and the rest still import.
+- **Pending rows** change when they post (date and sometimes text), so they are skipped on import and picked up by a later upload once Posted.
+- Descriptions carry noise (store numbers like "#1234", processor prefixes like "XX*", trailing city and state), which the merchant cleanup removes. The importer uses configurable column mapping, so other banks can be added.
 - Account numbers are never stored. If a file contains them, they are dropped during import.
 - Imports are two calls: preview saves nothing; commit validates every row it receives (ADR-0010).
 
@@ -201,7 +204,7 @@ Decision: ship 1 and 2 first (an iPhone Reminder every Friday morning linking to
 
 ### 6.11 Viewports
 
-Three breakpoints: **mobile** (under 640 px, the default, bottom tabs), **tablet** (640 to 1023 px, layout to be drawn before FND-04), **desktop** (1024 px and up, left sidebar). CSV bank import is desktop only, because the bank files live on the desktop. See wireframes-desktop.html.
+Three breakpoints: **mobile** (under 640 px, the default, bottom tabs), **tablet** (640 to 1023 px, left icon rail), **desktop** (1024 px and up, left sidebar). CSV bank import is desktop only, because the bank files live on the desktop. See wireframes-suite.html. Giving is its own destination, separate from Money. The phone tab bar keeps five tabs, with Giving and Settings inside More (ADR-0017).
 
 ## 7. Security, privacy, and delivery requirements
 
@@ -233,7 +236,7 @@ Three breakpoints: **mobile** (under 640 px, the default, bottom tabs), **tablet
 ## 8. Look and feel
 
 Direction (ADR-0015): calm, modern, and professional, like a fintech or health dashboard rather than a toy.
-- Clean typography, generous spacing, restrained color palette with one teal or blue accent (exact shade chosen during SET-02).
+- Clean typography, generous spacing, restrained forest-green palette with one accent (primary #2F6B4F, see wireframes-suite.html).
 - Light and dark mode.
 - Clear charts with accessible colors and text alternatives.
 - Consistent card-based layout.
@@ -247,7 +250,7 @@ Direction (ADR-0015): calm, modern, and professional, like a fintech or health d
 5. Health: weight log with trend, workouts list and add, Apple Health import
 6. Settings
 7. Demo-mode banner and entry point
-8. Tablet layout (not drawn yet; needed before FND-04)
+8. Tablet layout (done, in wireframes-suite.html)
 9. Accounts and manual transaction entry
 
 ## 10. Cost (estimate)
@@ -256,12 +259,10 @@ About $0 to $2 per month, plus an optional domain at about $10 to $15 per year (
 
 ## 11. Open questions
 
-1. Confirm the real column layout of the primary bank's CSV (check one export, redact it before sharing anything).
-2. Draw the tablet layout.
-3. Confirm the Azure facts marked *Verify* in DECISIONS.md: free database offer limits, firewall behavior from GitHub runners, and the Static Web Apps setup without its built-in deploy workflow.
-4. Spike: can a phone browser open a large Apple Health export? (ADR-0009)
+1. Confirm the Azure facts marked *Verify* in DECISIONS.md: free database offer limits, firewall behavior from GitHub runners, and the Static Web Apps setup without its built-in deploy workflow.
+2. Spike: can a phone browser open a large Apple Health export? (ADR-0009)
 
-Answered (see DECISIONS.md): mileage columns, week calculation, and history (gaps allowed); reminder approach (iPhone Reminder plus banner); giving methods and structure; family scope; mood and sleep (Next); theme direction (calm fintech, one teal or blue accent); domain (free Azure URL for now); AI insights (no); family journal (free text, tags later); hosting and database; testing strategy; release process; time zone, money, and units.
+Answered (see DECISIONS.md): navigation, wireframes, and accent color (forest green); bank export layout (CSV with header row, and Excel copies), mileage columns, week calculation, and history (gaps allowed); reminder approach (iPhone Reminder plus banner); giving methods and structure; family scope; mood and sleep (Next); theme direction (calm fintech, one teal or blue accent); domain (free Azure URL for now); AI insights (no); family journal (free text, tags later); hosting and database; testing strategy; release process; time zone, money, and units.
 
 ## 12. Suggested phases
 
