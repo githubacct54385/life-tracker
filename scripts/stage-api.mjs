@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { cp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyPublishConfig } from "./stage-api-lib.mjs";
+import { applyPublishConfig, withoutDependency } from "./stage-api-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.resolve(process.argv[2] ?? path.join(root, ".stage/api"));
@@ -29,5 +29,10 @@ await rm(path.join(sharedDir, "src"), { recursive: true, force: true });
 const sharedPkgPath = path.join(sharedDir, "package.json");
 const sharedPkg = applyPublishConfig(JSON.parse(await readFile(sharedPkgPath, "utf8")));
 await writeFile(sharedPkgPath, `${JSON.stringify(sharedPkg, null, 2)}\n`);
+
+// Oryx runs `npm install` on this folder at deploy time. Keep `shared` out of package.json so it cannot be replaced (ADR-0020).
+const apiPkgPath = path.join(out, "package.json");
+const apiPkg = withoutDependency(JSON.parse(await readFile(apiPkgPath, "utf8")), "@life-tracker/shared");
+await writeFile(apiPkgPath, `${JSON.stringify(apiPkg, null, 2)}\n`);
 
 console.log(`Staged API at ${out}`);
