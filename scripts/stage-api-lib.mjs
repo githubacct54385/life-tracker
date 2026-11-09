@@ -1,34 +1,26 @@
 // Pure helpers for scripts/stage-api.mjs, kept separate so they can be unit tested.
+import path from "node:path";
 
 /**
- * Apply a package's `publishConfig` entry points over its development ones.
- * In this repo `shared` points `main` at TypeScript source for Vite, Vitest, and tsc,
- * and `publishConfig` at the compiled output that Node can load. `pnpm deploy` does not
- * apply `publishConfig`, so the staging step does it.
+ * Point imports of `@life-tracker/shared` at a relative path.
+ *
+ * The deployed API does not install `shared` as a package. The Static Web Apps deploy client runs Oryx on the
+ * staged folder (`npm install --production` inside a hidden subfolder, a copy, a plain `npm install`, then
+ * `npm run build` if there is a build script). Every way of keeping `shared` in node_modules through that
+ * sequence failed (ADR-0020), so it ships as plain files inside `dist/` and is imported by relative path.
+ *
+ * `file` and `sharedEntry` are absolute paths inside the staged folder.
  */
-export function applyPublishConfig(pkg) {
-  const publish = pkg.publishConfig ?? {};
-  const next = { ...pkg };
-  for (const field of ["main", "types", "exports"]) {
-    if (publish[field] !== undefined) next[field] = publish[field];
-  }
-  delete next.publishConfig;
-  return next;
+export function rewriteSharedImports(source, file, sharedEntry) {
+  let rel = path.relative(path.dirname(file), sharedEntry).split(path.sep).join("/");
+  if (!rel.startsWith(".")) rel = `./${rel}`;
+  return source.replace(/(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])@life-tracker\/shared\2/g, `$1$2${rel}$2`);
 }
 
-/**
- * Turn the API package.json that `pnpm deploy` wrote into the one that is deployed.
- *
- * The Static Web Apps deploy client runs Oryx on the staged folder: `npm install --production`, a copy into
- * node_modules, a plain `npm install`, and `npm run build` if a build script exists. So:
- * - `scripts` is removed. The code is already compiled, and `tsc` is not available there.
- * - `@life-tracker/shared` is declared as `file:./vendor/shared` (a relative path, the compiled copy).
- *   `pnpm deploy` writes a build-machine absolute path instead, and a plain `npm install` deletes any
- *   package in node_modules that package.json does not list, which would remove `shared`.
- * Pair this with `install-links=true` in .npmrc so npm copies the folder instead of symlinking it.
- */
+/** The deployed package.json: no build script (the code is compiled) and no dependency on `shared`. */
 export function toDeployPackage(pkg) {
-  const next = { ...pkg, dependencies: { ...pkg.dependencies, "@life-tracker/shared": "file:./vendor/shared" } };
+  const next = { ...pkg, dependencies: { ...pkg.dependencies } };
+  delete next.dependencies["@life-tracker/shared"];
   delete next.scripts;
   delete next.devDependencies;
   return next;
