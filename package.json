@@ -9,12 +9,13 @@
   "scripts": {
     "lint": "eslint . && depcruise shared/src api/src web/src --config .dependency-cruiser.js",
     "typecheck": "pnpm -r typecheck",
-    "test:unit": "pnpm -r test:unit",
+    "test:unit": "pnpm -r test:unit && vitest run --root scripts",
     "test:int": "pnpm -r test:int",
     "test:e2e": "pnpm --filter web test:e2e",
     "test": "pnpm test:unit && pnpm test:int && pnpm test:e2e",
     "build": "pnpm -r build",
-    "migrate": "pnpm --filter @life-tracker/api migrate"
+    "migrate": "pnpm --filter @life-tracker/api migrate",
+    "pr-screenshots": "node scripts/pr-screenshots.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -17,6 +17,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@azure/static-web-apps-cli": "^2.1.0",
     "@playwright/test": "^1.65.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
