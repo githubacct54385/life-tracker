@@ -1,0 +1,21 @@
+{
+  "routes": [
+    { "route": "/.auth/login/aad", "statusCode": 404 },
+    { "route": "/.auth/login/github", "allowedRoles": ["anonymous"] },
+    { "route": "/.auth/logout", "allowedRoles": ["anonymous"] },
+    { "route": "/.auth/me", "allowedRoles": ["anonymous"] },
+    { "route": "/access-denied.html", "allowedRoles": ["anonymous"] },
+    { "route": "/demo", "allowedRoles": ["anonymous"] },
+    { "route": "/demo/*", "allowedRoles": ["anonymous"] },
+    { "route": "/api/*", "allowedRoles": ["owner"] },
+    { "route": "/*", "allowedRoles": ["owner"] }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/assets/*", "/*.{css,js,png,svg,ico,webmanifest,json,html}"]
+  },
+  "responseOverrides": {
+    "401": { "redirect": "/.auth/login/github?post_login_redirect_uri=.referrer", "statusCode": 302 },
+    "403": { "rewrite": "/access-denied.html", "statusCode": 403 }
+  }
+}

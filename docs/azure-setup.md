@@ -170,7 +170,7 @@ The ID Static Web Apps gives the API is **not** your GitHub numeric ID. It is a 
 2. Copy `userId` from the JSON and save it as `OWNER_ID` (6c).
 3. If you are ever removed from the `owner` role and invited again, the ID changes and access is denied until you update `OWNER_ID`.
 
-The edge rules that keep everyone else out (the `owner` role on every route, and blocking the pre-configured Microsoft sign-in) are written in `staticwebapp.config.json` during story FND-02.
+The edge rules that keep everyone else out (the `owner` role on every route, and blocking the pre-configured Microsoft sign-in) are in `web/public/staticwebapp.config.json` (FND-02). Static Web Apps only enforces them after a deploy, so confirm them on the first release.
 
 ## 7. Let GitHub log in to Azure without a password (OIDC)
 
