@@ -35,6 +35,7 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 - `main` is protected. **Nobody pushes to it directly, including the owner.** Every change goes through a pull request.
 - Branch names start with the story key, for example `fin-03-import-preview`. Commit messages start with it too, for example `FIN-03: show duplicate rows in preview`.
 - A pull request can merge only when CI is green and its branch is up to date with `main`. Merging is by **squash**, which keeps `main` linear.
+- **Delete a pull request's branch after it merges.** The repository deletes head branches on merge, so merged work does not pile up. If a branch is still there after a merge, delete it by hand.
 - Keep pull requests small, ideally one story or part of one.
 - **Every pull request uses the template in [.github/pull_request_template.md](.github/pull_request_template.md).** Do not delete sections or remove checklist items. Mark an item not applicable with a reason instead of leaving it unticked.
 - **Screenshots are required** for any pull request that changes a page or visible component. Show each changed screen at mobile (360 px), tablet (768 px), and desktop (1280 px), before and after. Use demo mode with synthetic data only. Attach images in the PR description, never as files in the repo.
