@@ -1,6 +1,6 @@
 // Cross-site request protection (ADR-0006). Contains no identity logic.
 import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE } from "@life-tracker/shared";
-import type { GuardResult } from "./ownerGuard";
+import type { GuardResult } from "./ownerGuard.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 

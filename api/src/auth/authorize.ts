@@ -1,6 +1,6 @@
 // The one check every handler calls first. Identity first, then the custom header.
-import { ownerGuard, type GuardResult } from "./ownerGuard";
-import { requestGuard } from "./requestGuard";
+import { ownerGuard, type GuardResult } from "./ownerGuard.js";
+import { requestGuard } from "./requestGuard.js";
 
 export interface GuardedRequest {
   method: string;
