@@ -204,3 +204,16 @@ The commit call receives rows from the browser, so it does not trust them: it va
 **Consequences.** A database bug can first show up in CI. Setting `CI=true` turns the skip into a failure, so CI cannot silently skip. Revisit if a local Docker setup becomes convenient.
 
 Migration code lives in `api/src/db/` (the only non-repository place allowed to import `mssql`), the API's app login is the `db_datareader` + `db_datawriter` user from `docs/azure-setup.md`, and the integration test creates the same kind of login to prove it cannot change the schema.
+
+## ADR-0019: Pull request screenshots are release assets, added by the agent
+
+**Decision.** Screenshots for a pull request are taken, uploaded, and attached by `scripts/pr-screenshots.mjs` (`pnpm pr-screenshots`), with no manual step for the owner.
+- It builds `main` (before) and the branch (after), serves each with the Static Web Apps CLI using a synthetic owner identity, and screenshots each named screen at 360, 768, and 1280 px.
+- Images are uploaded to one prerelease tagged `pr-screenshots`, named `pr-<number>-<screen>-<width>-<before|after>.png`, and the Screenshots table in the pull request is rewritten with links. A screen missing on `main` is marked "new screen".
+- The workflow `.github/workflows/pr-screenshots-cleanup.yml` deletes a pull request's assets (by the `pr-<number>-` prefix) when the pull request merges or closes.
+- AGENTS.md makes the agent responsible for getting a pull request fully ready, so the owner only reviews.
+
+**Why.** GitHub has no supported API for attaching images to a description, and AGENTS.md forbids image files in the repo. Release assets are not files in the repo or its history, `gh` can upload them, and they can be deleted. Rejected: an orphan branch of images (puts image files in the repo), CI artifacts (need a login and do not show inline), browser automation of drag and drop (undocumented and fragile), and an outside image host (sends content to a third party).
+
+**Consequences.** The repo is public, so the images are public. That is acceptable only because they show synthetic demo data, and the script never serves anything else. Running the script creates a release and tag if they do not exist. The `Release` workflow is manual only, so it is not triggered. If the cleanup workflow fails, old images stay until deleted by hand with `gh release delete-asset pr-screenshots <name>`.
+

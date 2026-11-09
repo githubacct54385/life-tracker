@@ -12,7 +12,7 @@
 Required for any change to a page or component the user can see.
 One row per changed screen. Show mobile (360 px), tablet (768 px), and desktop (1280 px).
 Use demo mode with synthetic data only. No real names, amounts, health values, or odometer readings.
-Attach images by drag and drop into this description. Do not commit image files to the repo.
+The agent fills this table with `pnpm pr-screenshots` (ADR-0019). Do not commit image files to the repo.
 Write "No UI change" if this PR has no visible change.
 -->
 

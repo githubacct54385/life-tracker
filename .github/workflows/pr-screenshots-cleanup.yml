@@ -1,0 +1,33 @@
+name: PR screenshots cleanup
+
+# Deletes a pull request's screenshots (release assets named pr-<number>-*) when it merges or closes.
+# See ADR-0019. Touches only assets of the `pr-screenshots` release, never code or other releases.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: delete screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete this pull request's assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! gh release view pr-screenshots >/dev/null 2>&1; then
+            echo "No pr-screenshots release, nothing to delete."
+            exit 0
+          fi
+          gh release view pr-screenshots --json assets -q '.assets[].name' \
+            | grep -E "^pr-${PR_NUMBER}-" \
+            | while read -r name; do
+                echo "Deleting $name"
+                gh release delete-asset pr-screenshots "$name" --yes
+              done || true
