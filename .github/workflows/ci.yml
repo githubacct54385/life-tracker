@@ -23,7 +23,7 @@ jobs:
     name: hygiene
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Repo hygiene (forbidden files, secret-like strings, commit emails, migrations)
@@ -40,7 +40,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Look for app code
         id: app
         run: |
