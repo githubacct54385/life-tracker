@@ -15,3 +15,21 @@ export function applyPublishConfig(pkg) {
   delete next.publishConfig;
   return next;
 }
+
+/**
+ * Remove a dependency from a staged package.json.
+ * `pnpm deploy` writes `shared` as an absolute `file:` path from the build machine. The Static Web Apps
+ * deploy client runs its own `npm install` on the staged folder (Oryx), turns that entry into a symlink, and
+ * then fails copying it over the real folder we staged. `shared` is already in node_modules, compiled,
+ * and has no dependencies of its own, so the entry is dropped.
+ */
+export function withoutDependency(pkg, name) {
+  const next = { ...pkg };
+  for (const field of ["dependencies", "optionalDependencies", "devDependencies"]) {
+    if (next[field] && name in next[field]) {
+      next[field] = { ...next[field] };
+      delete next[field][name];
+    }
+  }
+  return next;
+}
