@@ -66,7 +66,7 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 - Name files `*.int.test.ts` and run them with a separate Vitest project.
 - Data comes from **builders in code** (`aTransaction({ amountCents: 1250 })`), never from files.
 
-**Local note.** SQL Server runs in an x86 container. On Apple Silicon Macs it needs Docker Desktop with emulation, which is slower to start. If that is painful, integration tests can run only in CI plus a quick local subset. Decide when FND-03 starts.
+**Local note (decided in FND-03, ADR-0018).** SQL Server runs in an x86 container, which is slow on Apple Silicon (Docker Desktop with emulation). So **CI is the source of truth for integration tests**. Locally they are optional: one container is started per run (`api/src/db/globalSetup.int.ts`). If no Docker is found on a laptop, database tests are skipped with a visible warning; when the `CI` variable is set they never skip, and a missing Docker fails the job. Logic that does not need a database (migration planning, checksums, batch splitting, layer rules) is covered by unit tests that always run.
 
 ### 3. End-to-end tests (Playwright)
 

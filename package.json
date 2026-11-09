@@ -13,7 +13,8 @@
     "test:int": "pnpm -r test:int",
     "test:e2e": "pnpm --filter web test:e2e",
     "test": "pnpm test:unit && pnpm test:int && pnpm test:e2e",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "migrate": "pnpm --filter @life-tracker/api migrate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

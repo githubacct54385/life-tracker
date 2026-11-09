@@ -87,7 +87,7 @@ jobs:
       - name: Apply SQL migrations
         env:
           SQL_ADMIN_CONNECTION: ${{ secrets.SQL_ADMIN_CONNECTION }}
-        # scripts/migrate must append the list of applied migrations to $GITHUB_STEP_SUMMARY (AC-FND-06.6).
+        # `pnpm migrate` (api/src/db/migrate-cli.ts) appends the list of applied migrations to $GITHUB_STEP_SUMMARY (AC-FND-06.6).
         run: pnpm migrate
 
       - name: Deploy site and API

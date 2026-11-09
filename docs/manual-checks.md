@@ -14,3 +14,4 @@ Format: `- AC-ID: what to do | result notes | last checked: date`
 - AC-OPS-02.2: Restore the database to a point in time into a new database, confirm tables exist, delete the copy. | last checked: not yet
 - AC-OPS-02.4: In the Azure portal, confirm the free-offer setting is "auto-pause until next month", not "continue and bill". | Checked through the Azure CLI: useFreeLimit true, behavior AutoPause. | last checked: 2026-11-08
 - AC-OPS-02.5: In the database's Alerts page, confirm a rule on "Free amount remaining" (under 10,000) sends email to the owner. | Rule and email action created 2026-11-08; delivery not tested yet. | last checked: not yet
+- AC-FND-03.2: Against the real Azure database, connect once as `lt_app` (query editor) and confirm `CREATE TABLE` is denied while a SELECT on an app table works. | The automated test proves this with an equivalent login in a container; this confirms the real server setup. | last checked: not yet
