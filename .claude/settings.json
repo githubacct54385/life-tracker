@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm pr-screenshots:*)",
+      "Bash(node scripts/pr-screenshots.mjs:*)"
+    ]
+  },
+  "model": "sonnet",
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Running `pnpm pr-screenshots` (scripts/pr-screenshots.mjs) in the Life Tracker repo is allowed. It uploads synthetic demo screenshots as assets of the `pr-screenshots` GitHub release and edits the Screenshots table of the named pull request. The owner approved this in ADR-0019. Only that release and that pull request may be touched."
+    ]
+  }
+}
