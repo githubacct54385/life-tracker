@@ -4,6 +4,11 @@ Acceptance criteria that cannot be automated. Each line starts with the criterio
 
 Format: `- AC-ID: what to do | result notes | last checked: date`
 
+- AC-FND-01.3: Confirm secret scanning, push protection, Dependabot (github-actions and npm) and CodeQL (actions and JavaScript/TypeScript) are on. | Checked with the GitHub API. | last checked: 2026-11-09
+- AC-FND-01.4: Confirm the `hygiene` job runs the secret-pattern scan and passes. | Enforced by CI job `hygiene`; green on PR #6. | last checked: 2026-11-09
+- AC-FND-01.5: Confirm branch protection applies to admins and blocks force pushes. | enforce_admins true, force pushes off, linear history on. | last checked: 2026-11-09
+- AC-FND-01.6: Confirm required checks are `hygiene` and `test`, branch must be up to date, squash only. | strict true; merge commits and rebase off. | last checked: 2026-11-09
+- AC-FND-01.7: Confirm `scripts/ac-coverage.mjs` runs in the `hygiene` job. | Runs in CI; green on PR #6. | last checked: 2026-11-09
 - AC-FND-02.6: Install the PWA on an iPhone, sign in with GitHub from the home-screen icon, confirm the app opens signed in and sign-in does not bounce to Safari. | last checked: not yet
 - AC-FND-05.1: Add the app to the iPhone home screen and confirm it opens full screen. | last checked: not yet
 - AC-OPS-02.2: Restore the database to a point in time into a new database, confirm tables exist, delete the copy. | last checked: not yet

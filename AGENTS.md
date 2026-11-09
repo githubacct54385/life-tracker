@@ -36,6 +36,9 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 - Branch names start with the story key, for example `fin-03-import-preview`. Commit messages start with it too, for example `FIN-03: show duplicate rows in preview`.
 - A pull request can merge only when CI is green and its branch is up to date with `main`. Merging is by **squash**, which keeps `main` linear.
 - Keep pull requests small, ideally one story or part of one.
+- **Every pull request uses the template in [.github/pull_request_template.md](.github/pull_request_template.md).** Do not delete sections or remove checklist items. Mark an item not applicable with a reason instead of leaving it unticked.
+- **Screenshots are required** for any pull request that changes a page or visible component. Show each changed screen at mobile (360 px), tablet (768 px), and desktop (1280 px), before and after. Use demo mode with synthetic data only. Attach images in the PR description, never as files in the repo.
+- Good practice (accessibility, console errors, failure paths, rollback) is listed in the template. Tick each item or say why it does not apply.
 - **Merging does not deploy.** Production changes only through the manual **Release** workflow (GitHub Actions, run on `main`). It waits for the owner's approval on the `production` environment, applies pending SQL migrations, then deploys the site and API. See [DECISIONS.md](DECISIONS.md) ADR-0004.
 - Migrations must work with the code that is currently live, because the old code runs briefly after the migration. Add things first (new column, nullable), switch the code, and remove old things in a later release. CI fails on destructive statements unless the file has an explicit `-- allow-destructive` marker.
 - Never edit a migration that has been released. Add a new one.
@@ -123,6 +126,12 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
 - Phases are Linear milestones inside the Life Tracker project. Do not make an issue for a phase.
 - Only MVP work gets issues now. "Next" and "Later" items stay in SPEC.md until they are about to start.
 - Reference the story key in branch names and commit messages (see Git section).
+- **Issue lifecycle.** Updating the issue is part of the work, not an afterthought.
+  - **Before starting:** assign the issue to the owner (`me`), set an estimate, and move it to **In Progress**. If it has no estimate, propose one and set it. Do not start code on an unassigned, unestimated issue.
+  - **While working:** move it to **In Review** when the pull request is open and waiting for CI or review, if that status helps. Otherwise leave it In Progress.
+  - **Before opening a pull request:** once the work is done, tick the Linear issue's acceptance-criteria checkboxes for every criterion that has a passing automated `[AC-...]` test. Leave unticked any criterion covered only by a manual check, and say so in the pull request.
+  - **When complete:** after the pull request is merged and the definition of done is met, move the issue to **Done**. Never mark it Done on an open pull request.
+  - Work on one issue at a time unless the owner says otherwise.
 
 ## Definition of done
 
