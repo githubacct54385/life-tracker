@@ -41,6 +41,7 @@ describe("release workflow", () => {
     const ci = indexOf((s) => s.run?.includes("check-runs") && s.run.includes("GITHUB_SHA"));
     expect(ci).toBeGreaterThan(-1);
     expect(steps[ci].run).toContain("hygiene test");
+    expect(steps[ci].run).toContain("check-runs");
     for (const later of [
       indexOf((s) => s.uses?.startsWith("azure/login")),
       indexOf((s) => s.run?.includes("pnpm migrate")),
@@ -48,6 +49,15 @@ describe("release workflow", () => {
     ]) {
       expect(later).toBeGreaterThan(ci);
     }
+  });
+
+  it("[AC-FND-06.3] waits while CI is still running, stops at once on a failure, and gives up after a limit", () => {
+    const ci = steps.find((s) => s.run?.includes("check-runs"));
+    expect(ci["timeout-minutes"]).toBeGreaterThan(0);
+    expect(ci.run).toContain("sleep");
+    expect(ci.run).toMatch(/fail\) .*exit 1/);
+    expect(ci.run).toContain("Not releasing");
+    expect(ci["continue-on-error"]).toBeUndefined();
   });
 
   it("[AC-FND-06.4] migrations run before the deploy, and neither step may fail silently", () => {
