@@ -8,6 +8,12 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   { languageOptions: { globals: { ...globals.node, ...globals.browser } } },
   {
+    // AC-OPS-01.2: API code logs only through api/src/telemetry/logger.ts. CLI tools and tests may print.
+    files: ["api/src/**/*.ts"],
+    ignores: ["api/src/telemetry/**", "api/src/db/migrate-cli.ts", "api/src/db/globalSetup.int.ts", "**/*.test.ts"],
+    rules: { "no-console": "error" },
+  },
+  {
     // AC-FND-03.3: SQL text may appear only in api/src/repositories, api/src/db and tests.
     // Convention: write SQL keywords in UPPER CASE. Importing mssql elsewhere is also banned by depcruise.
     files: ["**/*.ts", "**/*.tsx"],

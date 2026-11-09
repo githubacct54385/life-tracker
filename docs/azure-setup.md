@@ -108,7 +108,16 @@ The long timeout lets a paused database wake up.
 2. Resource group: `rg-life-tracker`. Name: `appi-life-tracker`. Region: your region. Resource mode: **Workspace-based**. Log Analytics workspace: **Create new**, named `log-life-tracker`. **Create**.
 3. Open the Log Analytics workspace `log-life-tracker`, then **Usage and estimated costs**, then **Daily cap**, set it **On** at **0.1 GB**, **OK**. If something loops and floods logs, ingestion stops instead of billing.
 
+4. In `appi-life-tracker`, open **Usage and estimated costs**, then **Data Cap**, and confirm the daily cap is also on (0.1 GB). Sampling is set in `api/host.json`.
+
 You connect Application Insights to the Static Web App in step 6. The browser-side Application Insights script is **not** used (see OBSERVABILITY.md).
+
+### 5a. Alerts and availability check (AC-OPS-01.5)
+
+Do this after step 6, once the site has a URL.
+
+1. In `appi-life-tracker`, open **Availability**, then **Add Standard test**. URL: the site home page (`/`) only, never an API route. Frequency 15 minutes, one location. Under **Alerts**, send email to the owner.
+2. Open **Alerts**, then **Create alert rule**. Signal: custom log search on `requests | where resultCode == "403"`. Condition: count greater than 5 in 15 minutes. Action: email the owner.
 
 ## 6. Static Web App (no built-in GitHub deployment)
 
@@ -202,6 +211,7 @@ These match the list at the top of `.github/workflows/release.yml`. Put them in 
 - [ ] The database shows a free monthly vCore amount and the **auto-pause** behavior (AC-OPS-02.4).
 - [ ] An alert exists on "Free amount remaining" (AC-OPS-02.5).
 - [ ] The Log Analytics daily cap is on at 0.1 GB (AC-OPS-01.4).
+- [ ] A 403 spike alert and a home-page availability alert exist (AC-OPS-01.5).
 - [ ] The Static Web App uses the **Free** plan and has **no** workflow file added to the repo.
 - [ ] Your portal query-editor connection is closed, and the temporary client-IP firewall rule is removed when you are done.
 - [ ] After a few days, **Cost analysis** shows about $0. If anything is non-zero, find out which resource before moving on.
