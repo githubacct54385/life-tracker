@@ -23,6 +23,9 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | 0015 | Product choices from the spec's open questions | Accepted |
 | 0016 | Bank export layout and pending rows | Accepted |
 | 0017 | Navigation and layout | Accepted |
+| 0018 | Integration tests run in CI; locally they are optional | Accepted |
+| 0019 | Pull request screenshots are release assets | Accepted |
+| 0020 | How the API and `shared` are packaged for deploy | Accepted |
 
 ---
 
@@ -217,3 +220,16 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 
 **Consequences.** The repo is public, so the images are public. That is acceptable only because they show synthetic demo data, and the script never serves anything else. Running the script creates a release and tag if they do not exist. The `Release` workflow is manual only, so it is not triggered. If the cleanup workflow fails, old images stay until deleted by hand with `gh release delete-asset pr-screenshots <name>`.
 
+## ADR-0020: How the API and `shared` are packaged for deploy
+
+**Decision.**
+- `shared` stays plain TypeScript for development: `main` points at `src/index.ts`, so Vite, Vitest, and `tsc -p .` need no build step. It also has `tsconfig.build.json` (NodeNext, with declarations) and a `publishConfig` that points at the compiled `dist/`.
+- `@life-tracker/shared` is a runtime `dependency` of the API, not a dev dependency, because compiled API code imports it.
+- `scripts/stage-api.mjs` builds the deploy folder `.stage/api`: `pnpm deploy --prod` with the hoisted layout (a flat `node_modules` of real folders that survives being zipped), no source or config files, and `shared` switched to its compiled output. `pnpm deploy` does not apply `publishConfig`, so the script does it.
+- `scripts/verify-api-bundle.mjs` loads every compiled module in that folder with plain Node. CI and the Release workflow both run it, so a build that only works under Vitest cannot reach production.
+- The Release workflow deploys prebuilt folders (`web/dist` and `.stage/api`) with `skip_app_build` and `skip_api_build`, so what CI verified is what ships.
+- The migration CLI is not compiled into the API build. It runs from source with `pnpm migrate`.
+
+**Why.** The first handler that imported `shared` crashed under Node, and nothing in CI ran the built output. A prebuilt, verified folder removes the difference between what is tested and what is deployed, and avoids Azure's Oryx build guessing at a pnpm workspace.
+
+**Consequences.** The staged folder is about 70 MB, mostly the `mssql` dependency tree. Watch it against the Static Web Apps API size limit (**Verify** on the first release). If it gets close, bundle the API with a bundler instead.

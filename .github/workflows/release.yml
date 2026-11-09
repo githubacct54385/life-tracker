@@ -1,7 +1,6 @@
 name: Release
 
-# SKELETON. The shape is final (ADR-0004); the app-specific commands are finished in story FND-06,
-# when there is code to build and an Azure environment to deploy to.
+# The only way to production (ADR-0004, FND-06). Merging to main never deploys.
 #
 # Manual only. Waits for owner approval on the `production` environment.
 # Order matters: migrations first, then deploy. A failed migration stops everything.
@@ -51,12 +50,12 @@ jobs:
             fi
           done
 
-      - name: There must be an app to release
+      - name: Start the run summary
         run: |
-          if [ ! -f package.json ]; then
-            echo "No package.json yet. Nothing to release."
-            exit 1
-          fi
+          {
+            echo "## Release"
+            echo "**Commit:** \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
@@ -65,6 +64,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+      # Prebuilt API folder with production dependencies and the compiled `shared` package.
+      # Loading it with plain Node proves the deployed code can start (CI runs the same check).
+      - name: Stage and verify the API
+        run: |
+          node scripts/stage-api.mjs
+          node scripts/verify-api-bundle.mjs
 
       - name: Azure login (OIDC)
         uses: azure/login@v3
@@ -95,10 +101,11 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: upload
-          app_location: web
-          api_location: api
-          output_location: dist
-          # Adjust for the pnpm workspace when FND-06 is built (for example a prebuilt output).
+          # Prebuilt: Azure uploads these folders as they are and runs no build of its own.
+          skip_app_build: true
+          skip_api_build: true
+          app_location: web/dist
+          api_location: .stage/api
 
       - name: Close database firewall
         if: always() && steps.firewall.outcome == 'success'
@@ -110,8 +117,4 @@ jobs:
 
       - name: Summary
         if: success()
-        run: |
-          {
-            echo "## Released"
-            echo "Commit: \`${GITHUB_SHA}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: echo "**Result:** site and API deployed." >> "$GITHUB_STEP_SUMMARY"

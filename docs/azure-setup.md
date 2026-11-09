@@ -185,7 +185,7 @@ Needs the GitHub repo name from step 0.
    - Name: `github-production`. **Add**.
 4. Give the app permission to manage **only the SQL server's firewall**. Open the SQL **server** resource, then **Access control (IAM)**, then **Add role assignment**.
    - Role: **SQL Security Manager**. Assign to: the `life-tracker-release` app. **Review + assign**.
-   - If the Release workflow later fails creating the firewall rule with an authorization error, use **SQL Server Contributor**, scoped to this server only. (Verified when FND-06 is built.)
+   - If the Release workflow later fails creating the firewall rule with an authorization error, use **SQL Server Contributor**, scoped to this server only. (Still to confirm on the first Release run.)
 
 The federated credential only works for runs in the `production` environment of your repo, which requires your approval. There is no password to leak.
 
