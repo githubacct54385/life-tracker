@@ -1,0 +1,27 @@
+{
+  "name": "life-tracker",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint . && depcruise shared/src api/src web/src --config .dependency-cruiser.js",
+    "typecheck": "pnpm -r typecheck",
+    "test:unit": "pnpm -r test:unit",
+    "test:int": "pnpm -r test:int",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "test": "pnpm test:unit && pnpm test:int && pnpm test:e2e",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "dependency-cruiser": "^18.7.2",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}

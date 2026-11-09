@@ -123,6 +123,11 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
 - Phases are Linear milestones inside the Life Tracker project. Do not make an issue for a phase.
 - Only MVP work gets issues now. "Next" and "Later" items stay in SPEC.md until they are about to start.
 - Reference the story key in branch names and commit messages (see Git section).
+- **Issue lifecycle.** Updating the issue is part of the work, not an afterthought.
+  - **Before starting:** assign the issue to the owner (`me`), set an estimate, and move it to **In Progress**. If it has no estimate, propose one and set it. Do not start code on an unassigned, unestimated issue.
+  - **While working:** move it to **In Review** when the pull request is open and waiting for CI or review, if that status helps. Otherwise leave it In Progress.
+  - **When complete:** after the pull request is merged and the definition of done is met, move the issue to **Done**. Never mark it Done on an open pull request.
+  - Work on one issue at a time unless the owner says otherwise.
 
 ## Definition of done
 

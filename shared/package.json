@@ -1,0 +1,16 @@
+{
+  "name": "@life-tracker/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:int": "echo 'no integration tests in shared'",
+    "build": "echo 'shared has no build step'"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.0"
+  }
+}
