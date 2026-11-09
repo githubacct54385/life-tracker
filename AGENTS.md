@@ -42,6 +42,11 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 - **Merging does not deploy.** Production changes only through the manual **Release** workflow (GitHub Actions, run on `main`). It waits for the owner's approval on the `production` environment, applies pending SQL migrations, then deploys the site and API. See [DECISIONS.md](DECISIONS.md) ADR-0004.
 - Migrations must work with the code that is currently live, because the old code runs briefly after the migration. Add things first (new column, nullable), switch the code, and remove old things in a later release. CI fails on destructive statements unless the file has an explicit `-- allow-destructive` marker.
 - Never edit a migration that has been released. Add a new one.
+- **Dependabot pull requests are resolved as soon as they are ready.** Do not leave them waiting while feature work goes on. They conflict with each other, so a queue slows every later change. Check for open Dependabot pull requests at the start of each working session and before starting a new story.
+  - Keep each one current with `@dependabot recreate`, which rebuilds it from `main`. Do not use "Update branch" or merge `main` in by hand. That creates a merge commit under the owner's personal email, which fails the hygiene check.
+  - Merge a Dependabot pull request once CI is green and the branch is clean. Merge one at a time, lowest risk first, and recreate the rest after each merge.
+  - For a major-version bump, read the release notes first. Say in "Release notes" of the pull request if the release path (`release.yml`) changed, because CI does not run that workflow.
+  - If a bump fails CI, fix it in the same session or close it with a reason in the pull request. Do not leave it open.
 
 ## Code structure rules
 
