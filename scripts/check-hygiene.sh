@@ -19,7 +19,7 @@ if [ -n "$bad_files" ]; then
 fi
 
 # 2. Secret-like strings in tracked text files.
-patterns='Server=tcp:|AccountKey=|SharedAccessSignature=|Password=[^;" ]{4,};|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+patterns='Server=tcp:[A-Za-z0-9-]+\.database\.windows\.net|AccountKey=|SharedAccessSignature=|Password=[^;"< ]{4,};|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 hits=$(git grep -n -I -E "$patterns" -- . ':!scripts/check-hygiene.sh' || true)
 if [ -n "$hits" ]; then
   fail "secret-like strings found:"

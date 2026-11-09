@@ -65,7 +65,7 @@ flowchart TD
 
     subgraph fn["API: api/src"]
         handlers["handlers/: HTTP entry points (transactions, import, mileage, giving, health)"]
-        guard["auth/ownerGuard.ts: checks the GitHub user ID, fails closed, no bypass"]
+        guard["auth/ownerGuard.ts: checks the owner's user ID and role from the identity header, fails closed, no bypass"]
         reqguard["auth/requestGuard.ts: requires the custom header on non-GET calls"]
         services["services/: business rules (importService, categorizer, mileageService)"]
         parsers["parsers/: CSV and XLSX readers (primaryBank.ts, columnMapping.ts)"]
@@ -216,7 +216,7 @@ sequenceDiagram
         Edge-->>User: 401 or 403
     else owner role present
         Edge->>API: forwards request with identity header
-        API->>G: compare GitHub user ID to OWNER_ID setting
+        API->>G: compare user ID and role from the identity header to OWNER_ID setting
         alt ID does not match, or setting missing
             G-->>API: deny
             API-->>User: 403, no data

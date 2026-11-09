@@ -28,7 +28,7 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 
 | Area | Examples |
 |---|---|
-| Parsers | Bank CSV with and without a header row, column mapping, malformed rows reported with row numbers, account numbers dropped, mileage XLSX and CSV, Apple Health workout extraction |
+| Parsers | Bank CSV (every field quoted, empty fields quoted or not, a row with a missing field, byte-order mark, Windows line endings, amounts as exact text), bank .xlsx (title row above the header, text dates, mixed whole and decimal amounts, trailing empty rows), a file with no recognizable header is rejected, column mapping, malformed rows reported with row numbers, account numbers and title-row digits dropped, mileage XLSX and CSV, Apple Health workout extraction. All fixtures are built in code with invented values. |
 | Import logic | Fingerprint with occurrence numbers, duplicate marking, preview counts |
 | Categorizer | Rule matching, rule order (first match wins), "apply to similar", merchant-name cleanup |
 | Mileage | Friday interpolation, estimated flags, sanity warnings (ADR-0008) |

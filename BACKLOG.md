@@ -2,7 +2,7 @@
 
 Project name: **Life Tracker**. Use the existing Linear team (key `ALE`). Do not create teams. Milestones (not issues) hold the phases from SPEC.md section 12, so they don't use up the 250-issue allowance.
 
-Nothing has been created in Linear yet. Review this file first.
+**Created in Linear on 2026-11-08:** project Life Tracker, 6 milestones, and 34 issues (ALE-5 to ALE-38, numbered in the order they were created, not the order to work on them). The 4 archived onboarding issues (ALE-1 to ALE-4) also exist, so 38 of the 250 free-plan issues are used. When a criterion changes here, change it in the Linear issue too.
 
 ## Sizing rules
 
@@ -49,7 +49,7 @@ Story keys never change, even when a story moves to a different milestone.
 - FIN: category types (income, expense, transfer), rule order, fingerprint occurrence numbers, commit validation, merchant cleanup.
 - HLT-03: Apple Health parsed in the browser.
 - MIL-02: Friday-to-Thursday weeks with interpolation.
-- FND-02: custom-header request protection and no auth bypass. FND-03: separate admin login, migration journal. FND-04: tablet wireframe dependency.
+- FND-02: custom-header request protection and no auth bypass. FND-03: separate admin login, migration journal. FND-04: tablet icon rail approved, and Giving is its own destination (inside More on phone).
 - Wording made generic (no bank name, no personal details).
 
 ---
@@ -87,11 +87,9 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-FND-03.6: Layer rules (`pages` to `client` to `handlers` to `services` to `repositories` to `db`) are enforced by a dependency check in CI.
 
 ### FND-04: Responsive app shell
-**Story:** As the owner, I want the app to adapt to phone, tablet, and desktop, so that it feels right on whichever device I use.
-**Depends on:** the tablet wireframe being drawn.
-- AC-FND-04.1: Below 640 px wide, navigation is a bottom tab bar (Home, Money, Health, Car, More).
-- AC-FND-04.2: From 640 to 1023 px, navigation follows the tablet layout agreed in the tablet wireframe.
-- AC-FND-04.3: At 1024 px and wider, navigation is a left sidebar.
+**Story:** As the owner, I want the app to adapt to phone, tablet, and desktop, so that it feels right on whichever device I use.- AC-FND-04.1: Below 640 px wide, navigation is a bottom tab bar (Home, Money, Health, Car, More). Giving and Settings are inside More.
+- AC-FND-04.2: From 640 to 1023 px, navigation is a left icon rail (Home, Money, Giving, Health, Car, More).
+- AC-FND-04.3: At 1024 px and wider, navigation is a left sidebar (Home, Money, Giving, Health, Car, Settings).
 - AC-FND-04.4: No horizontal scrolling at 360, 768, and 1280 px widths.
 - AC-FND-04.5: Light and dark themes both work at every breakpoint.
 
@@ -171,6 +169,7 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-OPS-02.2: Database point-in-time restore is enabled and a restore has been tried once. (Manual check.)
 - AC-OPS-02.3: A documented manual export procedure exists in the repo (no data in the repo).
 - AC-OPS-02.4: The database is set to auto-pause until next month when the free allowance is used up, not to continue and bill (ADR-0001). (Manual check.)
+- AC-OPS-02.5: An email alert fires when the free database allowance is low (under 10,000 vCore seconds remaining). (Manual check.)
 
 ## Milestone 3: Finance MVP
 
@@ -193,14 +192,14 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-FIN-08.5: An import asks which account the file belongs to and saves its transactions to that account.
 
 ### FIN-02: CSV upload and parsing
-**Story:** As the owner, on my desktop, I want to upload a bank CSV, so that I can bring in transactions.
+**Story:** As the owner, on my desktop, I want to upload a bank export file, so that I can bring in transactions.
 - AC-FIN-02.1: The upload screen is available at 1024 px and wider.
 - AC-FIN-02.2: Below 1024 px, the Import entry is hidden and a message says to import from a computer.
-- AC-FIN-02.3: Only .csv files up to 5 MB are accepted, and others are rejected with a clear message.
-- AC-FIN-02.4: The primary bank's format is detected, including files with no header row. Column mapping is configurable so other banks can be added.
-- AC-FIN-02.5: Account numbers are dropped and never leave the parser.
+- AC-FIN-02.3: Only .csv and .xlsx files up to 5 MB and 5,000 rows are accepted, and others are rejected with a clear message. Trailing empty rows are ignored.
+- AC-FIN-02.4: The primary bank's layout is detected by its header row (DATE, DESCRIPTION, AMOUNT, CHECK #, STATUS), in a .csv or an .xlsx, with or without a title row above the header. Dates are read as MM/DD/YYYY text, and amounts become integer cents. Column mapping is configurable so other banks can be added. A file with no recognizable header is rejected with a clear message.
+- AC-FIN-02.5: Account numbers are dropped and never leave the parser, including any digits in the file's title row. The title row may only be used to suggest which account the file belongs to.
 - AC-FIN-02.6: The uploaded file is not written to disk or storage.
-- AC-FIN-02.7: A malformed row is reported with its row number and does not stop the rest.
+- AC-FIN-02.7: A malformed row (a bad date or amount, or the wrong number of fields) is reported with its row number and does not stop the rest.
 - AC-FIN-02.8: Each row gets a cleaned merchant name (processor prefixes and trailing reference numbers removed). The original text is kept and is what rules also match against.
 
 ### FIN-03: Import preview
@@ -211,6 +210,7 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-FIN-03.4: Rules are applied to new rows, and unmatched rows show "Needs category".
 - AC-FIN-03.5: A category can be set on a row inside the preview.
 - AC-FIN-03.6: Nothing is saved to the database during preview.
+- AC-FIN-03.7: Rows the bank marks Pending are shown as "Pending", counted, and skipped. They import on a later upload once they are Posted (ADR-0016).
 
 ### FIN-04: Duplicate detection and import commit
 **Story:** As the owner, I want overlapping uploads to be safe, so that I never double-count a transaction.

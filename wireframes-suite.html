@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life Tracker Wireframe Suite</title>
+<style>
+  :root {
+    --g900:#1F3D2E; --g700:#2F6B4F; --g500:#4C9A74; --g300:#9CCBB1; --g100:#E3F1E8;
+    --bg:#F7F6F1; --card:#FFFFFF; --ink:#1E2A24; --muted:#6B7A71; --line:#E1E5DF; --sunk:#E9EBE4; --page:#ECEBE4;
+    --warn:#C9822B; --warnbg:#FBF0DD; --warnink:#7a4b0c; --danger:#B54A3C; --dangerbg:#F7E4E0;
+  }
+  [data-theme="dark"] {
+    --g900:#CFE8DA; --g700:#3E8663; --g500:#4C9A74; --g300:#2F6B4F; --g100:#1F3A2D;
+    --bg:#131916; --card:#1B2420; --ink:#E6EEE9; --muted:#9AA9A0; --line:#2B3630; --sunk:#26302B; --page:#0D110F;
+    --warnbg:#3A2C14; --warnink:#EBCB93; --dangerbg:#3B1F1A;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--page); color:var(--ink); }
+  a { color:var(--g700); }
+
+  /* ---------- page chrome (outside the frames) ---------- */
+  .wrap { max-width:1140px; margin:0 auto; padding:0 24px; }
+  header.page { padding:28px 0 8px; }
+  header.page h1 { margin:0 0 6px; font-size:26px; color:var(--g900); }
+  header.page p { margin:0 0 8px; color:var(--muted); max-width:820px; line-height:1.5; }
+  .toolbar { position:sticky; top:0; z-index:20; background:var(--page); border-bottom:1px solid var(--line); padding:10px 0; margin-bottom:8px; }
+  .toolbar .wrap { display:flex; gap:18px; flex-wrap:wrap; align-items:center; }
+  .toolbar b { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .pillgrp { display:flex; gap:4px; }
+  .pillgrp button { font:inherit; font-size:13px; padding:6px 12px; border-radius:99px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  .pillgrp button.on { background:var(--g700); border-color:var(--g700); color:#fff; }
+  .toc { columns:3 260px; column-gap:24px; font-size:13px; line-height:1.9; margin:6px 0 0; padding:0; list-style:none; }
+  .toc li b { color:var(--g900); }
+  .toc small { color:var(--muted); }
+  .palette { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 0; }
+  .sw { width:84px; font-size:11px; color:var(--muted); }
+  .sw i { display:block; height:36px; border-radius:10px; border:1px solid rgba(0,0,0,.08); margin-bottom:4px; }
+
+  section.screen { padding:26px 0 30px; border-top:2px solid var(--line); margin-top:18px; }
+  section.screen h2 { margin:0 0 4px; font-size:22px; color:var(--g900); }
+  .keys { margin:0 0 8px; }
+  .keys span { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:var(--g100); color:var(--g700); margin:0 4px 4px 0; font-weight:600; }
+  .review { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 18px; font-size:13px; line-height:1.5; margin:8px 0 16px; }
+  .review b { color:var(--g900); }
+  .review ul { margin:4px 0 0; padding-left:18px; }
+  .row { display:flex; flex-wrap:wrap; gap:26px 30px; align-items:flex-start; }
+  .vp { font-size:12px; color:var(--muted); margin:0 0 8px 2px; font-weight:600; }
+  body[data-vp="phone"] .slotwrap:not([data-k="phone"]),
+  body[data-vp="tablet"] .slotwrap:not([data-k="tablet"]),
+  body[data-vp="desktop"] .slotwrap:not([data-k="desktop"]) { display:none; }
+
+  .decisions { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 24px; margin:30px 0 60px; }
+  .decisions h2 { margin-top:0; color:var(--g900); }
+  .decisions li { margin:8px 0; line-height:1.5; }
+
+  /* ---------- frames ---------- */
+  .slot { position:relative; width:calc(var(--w) * var(--s)); height:calc(var(--h) * var(--s)); flex:none; }
+  .slot.phone { margin:8px; }
+  .frame { position:absolute; left:0; top:0; width:var(--w); height:var(--h); transform:scale(var(--s)); transform-origin:0 0;
+           container-type:inline-size; container-name:f; background:var(--bg); color:var(--ink); overflow:hidden;
+           display:flex; flex-direction:column; box-shadow:0 12px 30px rgba(0,0,0,.16); }
+  .slot.phone .frame { border-radius:30px; box-shadow:0 0 0 8px #1c1f1d, 0 14px 34px rgba(0,0,0,.22); }
+  .slot.tablet .frame { border-radius:18px; box-shadow:0 0 0 6px #1c1f1d, 0 14px 34px rgba(0,0,0,.2); }
+  .slot.desktop .frame { border-radius:10px; border:1px solid #b9bdb8; }
+  .sbar { height:30px; display:flex; justify-content:space-between; align-items:center; padding:6px 24px 0; font-size:12px; font-weight:600; flex:none; }
+  .ubar { height:34px; background:var(--sunk); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:7px; padding:0 12px; flex:none; font-size:12px; color:var(--muted); }
+  .ubar i { width:10px; height:10px; border-radius:50%; background:#c9ccc6; }
+  .ubar span { margin-left:14px; background:var(--card); border-radius:7px; padding:4px 14px; flex:0 1 380px; }
+
+  /* ---------- responsive app shell (container queries = the real breakpoints) ---------- */
+  .app { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .col { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; position:relative; }
+  .main { flex:1; min-height:0; overflow:hidden; padding:6px 16px 12px; position:relative; }
+  .tabs { flex:none; height:66px; background:var(--card); border-top:1px solid var(--line); display:flex; justify-content:space-around; align-items:center; padding-bottom:6px; }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; color:var(--muted); }
+  .tab i, .rail i, .side i.ic { width:22px; height:22px; border-radius:7px; border:2px solid var(--g300); display:block; }
+  .tab.on { color:var(--g700); font-weight:700; }
+  .tab.on i, .rail .on i, .side .on i.ic { background:var(--g500); border-color:var(--g500); }
+  .rail, .side { display:none; flex:none; background:var(--card); border-right:1px solid var(--line); flex-direction:column; }
+  .rail { width:84px; align-items:center; padding:16px 0; gap:6px; }
+  .rail div { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:var(--muted); width:68px; padding:8px 0; border-radius:12px; }
+  .rail .on { color:var(--g700); font-weight:700; background:var(--g100); }
+  .side { width:236px; padding:18px 12px; gap:2px; }
+  .side .brand { font-weight:800; color:var(--g900); font-size:17px; padding:2px 10px 14px; display:flex; align-items:center; gap:8px; }
+  .side .brand b { width:26px; height:26px; border-radius:8px; background:var(--g700); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .side .g { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; font-size:14px; color:var(--ink); }
+  .side .g.on { background:var(--g100); color:var(--g900); font-weight:700; }
+  .side .sub { display:block; padding:5px 10px 5px 42px; font-size:13px; color:var(--muted); border-radius:8px; }
+  .side .sub.on { color:var(--g700); font-weight:700; }
+  .side .foot { margin-top:auto; font-size:11px; color:var(--muted); padding:8px 10px; }
+  .bare .main { display:flex; align-items:center; justify-content:center; }
+
+  .top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:4px 0 8px; }
+  .top h2 { margin:0; font-size:21px; color:var(--g900); }
+  .acts { display:flex; gap:8px; align-items:center; }
+  .strip { display:flex; gap:6px; margin:0 0 10px; overflow:hidden; -webkit-mask-image:linear-gradient(90deg,#000 88%,transparent); mask-image:linear-gradient(90deg,#000 88%,transparent); }
+  .strip span { flex:none; font-size:12px; padding:6px 12px; border-radius:99px; background:var(--sunk); color:var(--muted); }
+  .strip span.on { background:var(--g700); color:#fff; font-weight:600; }
+
+  .sub { font-size:12px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px; }
+  .card h4 { margin:0 0 6px; font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .card h3 { margin:0 0 8px; font-size:16px; color:var(--g900); }
+  .big { font-size:26px; font-weight:700; color:var(--g900); line-height:1.1; }
+  .delta { font-size:12px; color:var(--g700); font-weight:600; }
+  .delta.bad { color:var(--danger); }
+  .btn { display:block; text-align:center; background:var(--g700); color:#fff; border-radius:12px; padding:11px; font-size:14px; font-weight:600; }
+  .btn.ghost { background:var(--card); color:var(--g700); border:1.5px solid var(--g500); }
+  .btn.dark { background:#24292f; }
+  .btn.warn { background:var(--warn); }
+  .btn.danger { background:var(--danger); }
+  .btn.sm { padding:7px 12px; font-size:12px; display:inline-block; }
+  .btn.dis { opacity:.45; }
+  .seg { display:flex; background:var(--sunk); border-radius:11px; padding:3px; }
+  .seg div { flex:1; text-align:center; font-size:13px; padding:6px; border-radius:9px; color:var(--muted); }
+  .seg div.on { background:var(--card); color:var(--g900); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .banner { background:var(--warnbg); border:1px solid #EBCB93; border-radius:14px; padding:11px 13px; font-size:13px; }
+  .banner b { display:block; margin-bottom:4px; color:var(--warnink); }
+  .banner.red { background:var(--dangerbg); border-color:#e3b4ab; } .banner.red b { color:var(--danger); }
+  .banner.ok { background:var(--g100); border-color:var(--g300); } .banner.ok b { color:var(--g700); }
+  .ribbon { background:var(--g100); color:var(--g700); font-size:12px; text-align:center; padding:5px; border-radius:8px; border:1px dashed var(--g500); font-weight:600; }
+  .it { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  .it:last-child { border-bottom:0; }
+  .it small { display:block; color:var(--muted); font-size:11px; margin-top:1px; }
+  .it .r { text-align:right; white-space:nowrap; font-weight:600; }
+  .it.est { background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(156,203,177,.18) 6px,rgba(156,203,177,.18) 12px); }
+  .chip { display:inline-block; font-size:10px; padding:2px 7px; border-radius:99px; background:var(--g100); color:var(--g700); margin-left:4px; font-weight:600; white-space:nowrap; }
+  .chip.warn { background:var(--warnbg); color:var(--warnink); }
+  .chip.red { background:var(--dangerbg); color:var(--danger); }
+  .chip.grey { background:var(--sunk); color:var(--muted); }
+  .pos { color:var(--g700); } .neg { color:var(--ink); }
+  .field { border:1.5px solid var(--line); background:var(--card); border-radius:11px; padding:8px 12px; font-size:14px; }
+  .field small { display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:1px; }
+  .field.hot { border-color:var(--g500); }
+  .field.hot span { font-size:30px; font-weight:700; color:var(--g900); }
+  .stack > * + * { margin-top:8px; }
+  .gap10 { display:grid; gap:10px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .bars { display:flex; align-items:flex-end; gap:4px; height:90px; margin-top:6px; }
+  .bars div { flex:1; background:var(--g500); border-radius:4px 4px 0 0; }
+  .bars div.est { background:repeating-linear-gradient(45deg,var(--g300),var(--g300) 3px,var(--card) 3px,var(--card) 6px); border:1px solid var(--g300); }
+  .bars div.top { background:var(--g900); } .bars div.low { background:var(--g300); }
+  .axis { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:3px; }
+  .hbar { margin:8px 0; font-size:12px; }
+  .hbar .lab { display:flex; justify-content:space-between; margin-bottom:3px; }
+  .hbar .trk { height:8px; background:var(--sunk); border-radius:6px; }
+  .hbar .trk i { display:block; height:8px; border-radius:6px; background:var(--g500); }
+  .dots { display:flex; gap:6px; margin-top:8px; } .dots i { width:20px; height:20px; border-radius:50%; background:var(--g500); } .dots i.o { background:var(--sunk); }
+  .steps { display:flex; gap:6px; font-size:11px; color:var(--muted); }
+  .steps div { flex:1; text-align:center; padding:5px 0; border-top:3px solid var(--line); }
+  .steps div.done { border-color:var(--g500); color:var(--g700); font-weight:700; }
+  .drop { border:2px dashed var(--g300); border-radius:16px; padding:26px 14px; text-align:center; background:var(--g100); color:var(--g700); font-size:14px; }
+  .prog { height:10px; background:var(--sunk); border-radius:8px; overflow:hidden; } .prog i { display:block; height:100%; background:var(--g500); }
+  .logo { width:60px; height:60px; border-radius:19px; background:var(--g700); margin:0 auto 12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:28px; font-weight:700; }
+  .center { text-align:center; }
+  .auth { width:100%; max-width:340px; text-align:center; }
+  .auth h2 { margin:6px 0 8px; font-size:22px; color:var(--g900); }
+  .fab { position:absolute; right:16px; bottom:14px; background:var(--g700); color:#fff; padding:11px 16px; border-radius:99px; font-size:13px; font-weight:600; box-shadow:0 6px 14px rgba(47,107,79,.4); z-index:3; }
+  .scrim { position:absolute; inset:0; background:rgba(15,25,20,.42); z-index:4; }
+  .sheet, .dlg { position:absolute; background:var(--card); z-index:5; padding:14px 16px; box-shadow:0 -8px 24px rgba(0,0,0,.18); border:1px solid var(--line); }
+  .sheet { left:0; right:0; bottom:0; border-radius:22px 22px 0 0; }
+  .sheet h3, .dlg h3, .panel h3 { margin:0 0 8px; font-size:16px; color:var(--g900); }
+  .dlg { left:50%; top:50%; transform:translate(-50%,-50%); width:min(420px,88%); border-radius:18px; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+  .ok-line { font-size:12px; color:var(--g700); font-weight:600; margin-top:6px; }
+  .chk { font-size:13px; display:block; margin:8px 0; }
+  .ph { border:2px dashed var(--line); border-radius:16px; padding:36px 18px; text-align:center; color:var(--muted); font-size:14px; line-height:1.5; }
+  .ph b { display:block; color:var(--g900); font-size:16px; margin-bottom:4px; }
+
+  /* generic grid and responsive table */
+  .cols { display:grid; gap:10px; grid-template-columns:repeat(var(--cc),minmax(0,1fr)); align-items:start; --cc:var(--m,1); }
+  .sp-all { grid-column:1/-1; }
+  .tr { display:grid; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; grid-template-columns:var(--tm); }
+  .tr.h { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding-top:2px; }
+  .tr:last-child { border-bottom:0; }
+  .tr .rt { text-align:right; }
+
+  /* visibility helpers */
+  .only-t, .only-d, .up-t, .c-t, .c-d { display:none; }
+  .split { display:block; }
+
+  @container f (min-width:640px) {
+    .app { flex-direction:row; }
+    .tabs, .only-m, .only-m.fx { display:none; }
+    .rail { display:flex; }
+    .main { padding:10px 24px 16px; }
+    .cols { --cc:var(--t,2); }
+    .tr { grid-template-columns:var(--tt,var(--tm)); }
+    .up-t, .only-t, .c-t { display:block; } .up-t.fx, .only-t.fx { display:flex; }
+    .top h2 { font-size:24px; }
+    .fab { display:none; }
+    .dlg { }
+    .sp-t2 { grid-column:span 2; }
+  }
+  @container f (min-width:1024px) {
+    .rail { display:none; }
+    .side { display:flex; }
+    .main { padding:14px 32px 20px; }
+    .cols { --cc:var(--d,3); }
+    .tr { grid-template-columns:var(--td,var(--tt,var(--tm))); }
+    .only-t, .only-t.fx, .lt-d, .lt-d.fx { display:none; }
+    .only-d, .c-d { display:block; } .only-d.fx { display:flex; }
+    .split { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:14px; align-items:start; }
+    .sp-d2 { grid-column:span 2; }
+    .strip.nod { display:none; }
+  }
+  @container f (max-width:639px) {
+    .dlg { left:0; right:0; top:auto; bottom:0; transform:none; width:auto; border-radius:22px 22px 0 0; }
+  }
+</style>
+</head>
+<body data-vp="all">
+
+<div class="toolbar"><div class="wrap">
+  <div class="pillgrp" id="vpbtns"><b style="align-self:center;margin-right:8px">Show</b>
+    <button data-v="all" class="on">All</button><button data-v="phone">Mobile</button><button data-v="tablet">Tablet</button><button data-v="desktop">Desktop</button>
+  </div>
+  <div class="pillgrp" id="thbtns"><b style="align-self:center;margin-right:8px">Theme</b>
+    <button data-t="light" class="on">Light</button><button data-t="dark">Dark</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+<header class="page">
+  <h1>Life Tracker: Wireframe Suite v0.2</h1>
+  <p>Every MVP screen drawn at the three breakpoints from AGENTS.md: <b>mobile</b> (under 640 px, bottom tabs), <b>tablet</b> (640 to 1023 px, icon rail), and <b>desktop</b> (1024 px and wider, left sidebar). All names and numbers are fake.</p>
+  <p>Each frame is the <b>same markup</b> rendered at its real width, so the layout differences you see are the breakpoint rules, not three separate drawings. Frames show the first screenful. Palette and layout are mid-fidelity: judge structure and flow, not final color. Story keys and acceptance criteria are listed on each screen so you can check coverage against BACKLOG.md.</p>
+  <div class="palette">
+    <div class="sw"><i style="background:#1F3D2E"></i>Forest</div><div class="sw"><i style="background:#2F6B4F"></i>Primary</div>
+    <div class="sw"><i style="background:#4C9A74"></i>Accent</div><div class="sw"><i style="background:#9CCBB1"></i>Mint</div>
+    <div class="sw"><i style="background:#E3F1E8"></i>Tint</div><div class="sw"><i style="background:#F7F6F1"></i>Warm bg</div>
+    <div class="sw"><i style="background:#C9822B"></i>Reminder</div><div class="sw"><i style="background:#B54A3C"></i>Alert</div>
+  </div>
+  <h3 style="margin:22px 0 4px;color:var(--g900)">Screens</h3>
+  <ul class="toc" id="toc"></ul>
+</header>
+
+<main id="screens"></main>
+
+<div class="decisions">
+  <h2>Decisions (resolved)</h2>
+  <ol>
+    <li><b>Tablet navigation:</b> a left icon rail (Home, Money, Giving, Health, Car, More).</li>
+    <li><b>Accent color:</b> forest green, as drawn. Tokens are the CSS variables at the top of this file.</li>
+    <li><b>Giving</b> is its own destination, separate from Money. Tablet rail and desktop sidebar show it directly. On phone it is the first item in More, so the tab bar keeps five tabs.</li>
+    <li><b>Transaction editing:</b> bottom sheet below 1024 px (tablet included), side panel at 1024 px and up.</li>
+    <li><b>CSV import</b> is desktop only. Below 1024 px the entry is hidden and the screen says to import from a computer. No reminder shortcut.</li>
+    <li><b>Quick actions:</b> add weight, add workout, log odometer on every size. Upload CSV on desktop only.</li>
+    <li><b>Dark theme:</b> offered (light, dark, or system). Use the toggle at the top to preview.</li>
+  </ol>
+</div>
+</div>
+
+<script>
+/* ===================== helpers ===================== */
+const btn = (t, c = '') => `<div class="btn ${c}">${t}</div>`;
+const chip = (t, c = '') => `<span class="chip ${c}">${t}</span>`;
+const card = (title, body, x = '', style = '') => `<div class="card ${x}" style="${style}">${title ? `<h4>${title}</h4>` : ''}${body}</div>`;
+const item = (a, sub, r, x = '') => `<div class="it ${x}"><div>${a}${sub ? `<small>${sub}</small>` : ''}</div><div class="r">${r || ''}</div></div>`;
+const field = (l, v, x = '') => `<div class="field ${x}"><small>${l}</small><span>${v}</span></div>`;
+const seg = (items, on) => `<div class="seg">${items.map((t, i) => `<div class="${i === on ? 'on' : ''}">${t}</div>`).join('')}</div>`;
+const steps = (names, done) => `<div class="steps">${names.map((n, i) => `<div class="${i <= done ? 'done' : ''}">${n}</div>`).join('')}</div>`;
+const hbar = (l, v, p) => `<div class="hbar"><div class="lab"><span>${l}</span><b>${v}</b></div><div class="trk"><i style="width:${p}%"></i></div></div>`;
+const bars = (arr, cls = {}, h = 90) => `<div class="bars" style="height:${h}px">${arr.map((v, i) => `<div class="${cls[i] || ''}" style="height:${v}%"></div>`).join('')}</div>`;
+const cols = (m, t, d, inner) => `<div class="cols" style="--m:${m};--t:${t};--d:${d}">${inner}</div>`;
+const pageTop = (title, acts = '') => `<div class="top"><h2>${title}</h2><div class="acts">${acts}</div></div>`;
+const tr = (tm, tt, td, cells, h = '') => `<div class="tr ${h}" style="--tm:${tm};--tt:${tt};--td:${td}">${cells.map(c => Array.isArray(c) ? `<span class="${c[1]}">${c[0]}</span>` : `<span>${c}</span>`).join('')}</div>`;
+const svg = (h, inner) => `<svg viewBox="0 0 300 ${h}" style="width:100%;display:block">${inner}</svg>`;
+const poly = (pts, color, w = 2, dash = '') => `<polyline fill="none" stroke="${color}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ''} stroke-linejoin="round" points="${pts}"/>`;
+const desktopOnlyNote = (what) => `<div class="ph"><b>Desktop only</b>${what} is not shown below 1024 px (AC-FIN-02.2).</div>`;
+const fromComputer = () => `<div class="ph"><b>Import from a computer</b>Bank files usually live on your computer. Open Life Tracker there to import transactions. Your other imports (Apple Health, mileage spreadsheet) work here.</div>`;
+
+/* ===================== navigation model ===================== */
+const NAV = {
+  Home: [],
+  Money: ['Transactions', 'Summary', 'Import', 'Import history', 'Accounts', 'Categories & rules'],
+  Giving: ['History', 'Log a gift'],
+  Health: ['Weight', 'Workouts', 'Apple Health import'],
+  Car: ['Mileage', 'Log reading', 'Import spreadsheet'],
+  More: []
+};
+const TABS = ['Home', 'Money', 'Health', 'Car', 'More']; /* phone: five tabs, Giving lives inside More */
+const RAIL = ['Home', 'Money', 'Giving', 'Health', 'Car', 'More']; /* tablet: Giving is its own destination */
+
+function tabbar(n) { const act = n.tab === 'Giving' ? 'More' : n.tab; return `<div class="tabs">${TABS.map(t => `<div class="tab ${act === t ? 'on' : ''}"><i></i>${t}</div>`).join('')}</div>`; }
+function rail(n) { return `<div class="rail">${RAIL.map(t => `<div class="${n.tab === t ? 'on' : ''}"><i></i>${t}</div>`).join('')}</div>`; }
+function sidebar(n) {
+  const groups = ['Home', 'Money', 'Giving', 'Health', 'Car', 'Settings'];
+  const active = n.tab === 'More' ? 'Settings' : n.tab;
+  return `<div class="side"><div class="brand"><b>L</b>Life Tracker</div>${groups.map(g => {
+    const on = g === active;
+    const subs = on && NAV[g] ? NAV[g].map(s => `<span class="sub ${s === n.sub ? 'on' : ''}">${s}</span>`).join('') : '';
+    return `<div class="g ${on && !subs ? 'on' : ''} ${on && subs ? 'on' : ''}"><i class="ic"></i>${g}</div>${subs}`;
+  }).join('')}<div class="foot">Signed in as owner</div></div>`;
+}
+function strip(n, vp) { let s = (NAV[n.tab] || []).filter(x => x !== 'Import'); /* CSV import entry is desktop only (AC-FIN-02.2) */
+  const at = s.indexOf(n.sub); if (vp === 'phone' && at > 1) s = s.slice(at - 1); /* phone strip is scrolled so the active chip is visible */ return s.length ? `<div class="strip nod">${s.map(x => `<span class="${x === n.sub ? 'on' : ''}">${x}</span>`).join('')}</div>` : ''; }
+
+/* ===================== frame builder ===================== */
+const VPS = [
+  { k: 'phone', label: 'Mobile · 360 px', w: 360, h: 740, s: 1 },
+  { k: 'tablet', label: 'Tablet · 768 px', w: 768, h: 1024, s: 0.75 },
+  { k: 'desktop', label: 'Desktop · 1280 px', w: 1280, h: 800, s: 0.8 }
+];
+function frame(s, vp) {
+  const n = s.nav;
+  const chrome = vp.k === 'phone' ? `<div class="sbar"><span>9:41</span><span>●●● ▮</span></div>` :
+                 vp.k === 'desktop' ? `<div class="ubar"><i></i><i></i><i></i><span>app.example/${(s.path || '').toLowerCase()}</span></div>` : '';
+  const shellNav = n ? sidebar(n) + rail(n) : '';
+  const body = typeof s.body === 'function' ? s.body(vp.k) : s.body;
+  return `<div class="slotwrap" data-k="${vp.k}"><div class="vp">${vp.label}</div>
+    <div class="slot ${vp.k}" style="--w:${vp.w}px;--h:${vp.h}px;--s:${vp.s}">
+      <div class="frame">${chrome}<div class="app ${n ? '' : 'bare'}">${shellNav}
+        <div class="col"><div class="main">${n ? pageTop(s.title, s.acts || '') + strip(n, vp.k) : ''}${body}</div>${n ? tabbar(n) : ''}</div></div></div></div></div>`;
+}
+
+/* ===================== reusable bodies ===================== */
+const txRows = [
+  ['Nov 7', 'Coffee Shop', 'Checking', 'Dining', '−$4.85', 'neg'],
+  ['Nov 7', 'Grocery Mart', 'Credit card', 'Groceries', '−$62.10', 'neg'],
+  ['Nov 6', 'City Fuel', 'Credit card', 'Fuel', '−$38.40', 'neg'],
+  ['Nov 6', 'Transfer to savings', 'Checking', '__need__', '−$200.00', 'neg'],
+  ['Nov 5', 'Paycheck', 'Checking', 'Income', '+$1,850.00', 'pos'],
+  ['Nov 4', 'Streaming Service', 'Credit card', 'Subscriptions', '−$11.99', 'neg'],
+  ['Nov 4', 'Hardware Store', 'Credit card', 'Home', '−$23.17', 'neg'],
+  ['Nov 3', 'Pharmacy', 'Checking', 'Health', '−$14.60', 'neg']
+];
+const catCell = c => c === '__need__' ? chip('Needs category', 'warn') : c;
+const editForm = () => `<h3>Edit transaction</h3><div class="stack">
+  ${field('Merchant (cleaned)', 'Coffee Shop')}${field('Original text', 'SQ *COFFEE SHOP 4417 CITY')}
+  ${field('Category', 'Dining ▾')}${field('Note', 'Add a note…')}
+  <label class="chk">☑ Apply to similar (new rule: text contains “COFFEE SHOP”)</label>
+  ${btn('Save')}<div class="ok-line">Rule created. 3 other transactions updated.</div></div>`;
+
+/* ===================== screens ===================== */
+const SCREENS = [];
+const add = s => SCREENS.push(s);
+
+/* ---- Foundation ---- */
+add({ id: 'signin', title: 'Sign in', path: 'signin', group: 'Foundation', keys: ['FND-02', 'DEM-01', 'AC-FND-02.1'],
+  review: ['One login option (GitHub). The demo link needs no sign-in.', 'Phone, tablet, and desktop use the same centered card. Desktop adds a short feature strip.'],
+  nav: null, body: () => `<div class="auth"><div class="logo">L</div><h2>Life Tracker</h2>
+    <p class="sub" style="margin:0 20px 22px">A private space for my money, health, and miles.</p>${btn('Sign in with GitHub', 'dark')}
+    <p class="sub" style="margin:14px 18px">Private app. Only the owner can sign in. Passkey or 2FA is handled by GitHub.</p>
+    ${btn('View the demo (fake data)', 'ghost')}
+    <div class="only-d" style="margin-top:26px"><div class="two" style="grid-template-columns:repeat(4,1fr)">${['Money', 'Health', 'Car', 'Giving'].map(x => `<div class="chip grey" style="margin:0;padding:6px">${x}</div>`).join('')}</div></div></div>` });
+
+add({ id: 'denied', title: 'Access denied', path: 'denied', group: 'Foundation', keys: ['FND-02', 'AC-FND-02.2', 'AC-FND-02.3', 'AC-FND-02.4'],
+  review: ['Any other GitHub account lands here. Nothing is saved and no data is shown.', 'No navigation is shown, so there is nothing to click into.'],
+  nav: null, body: () => `<div class="auth"><div class="logo" style="background:var(--danger)">!</div><h2>Access denied</h2>
+    <p class="sub" style="margin:0 20px 20px">This GitHub account isn’t authorized for this app. Nothing was saved and no data is available.</p>
+    ${btn('Sign out', 'ghost')}<div style="height:10px"></div>${btn('View the demo', 'ghost')}</div>` });
+
+add({ id: 'states', title: 'System states', path: 'states', group: 'Foundation', keys: ['FND-05', 'SET-02', 'AC-FND-05.3', 'AC-FND-05.4', 'AC-SET-02.5'],
+  nav: { tab: 'Home' }, review: ['Offline: a clear message and no private data on screen.', 'Database waking from auto-pause: loading state, one automatic retry, then a plain error with a retry button.', 'Every list and chart has an empty state that says what to do next.'],
+  body: () => cols(1, 2, 2, `
+    ${card('Offline', `<div class="center" style="padding:14px 0"><div class="logo" style="background:var(--muted)">⌁</div><b style="color:var(--g900)">You’re offline</b><p class="sub">Life Tracker needs a connection to show your data. Nothing is stored on this device.</p>${btn('Try again', 'ghost')}</div>`)}
+    ${card('Database waking up', `<div class="center" style="padding:14px 0"><div class="prog" style="margin:6px 20px 12px"><i style="width:55%"></i></div><b style="color:var(--g900)">Waking things up…</b><p class="sub">The database sleeps when idle. This takes up to a minute the first time.</p></div>`)}
+    ${card('Empty state: transactions', `<div class="center" style="padding:14px 0"><b style="color:var(--g900)">No transactions yet</b><p class="sub">Import a bank file on a computer, or add one by hand.</p>${btn('Add a transaction', 'ghost')}</div>`)}
+    ${card('Something went wrong', `<div class="center" style="padding:14px 0"><b style="color:var(--danger)">Couldn’t load this</b><p class="sub">Nothing was changed. Check your connection and try again.</p>${btn('Retry', 'ghost')}</div>`)}`) });
+
+add({ id: 'more', title: 'More', path: 'more', group: 'Foundation', keys: ['FND-04', 'AC-FND-04.1', 'AC-FND-04.2', 'AC-FND-04.3'],
+  nav: { tab: 'More' }, review: ['The “More” tab exists on phone and tablet only. On phone it also holds Giving (the tab bar stays at five tabs). On tablet, Giving is in the rail, so it is not repeated here.', 'On desktop everything is in the sidebar, so the page is not used.'],
+  body: vp => `<div class="lt-d">${card('', `<div class="only-m">${item('Giving', 'Gifts and special contributions', '›')}</div>${item('Settings', 'Theme, time zone, units, sign out', '›')}${item('Categories & rules', 'Money', '›')}${item('Accounts', 'Money', '›')}${item('Import history', 'Undo an import', '›')}${item('Try the demo', 'Fake data, in the browser', '›')}`)}</div>
+    <div class="only-d"><div class="ph"><b>Not used at 1024 px and wider</b>All destinations are in the left sidebar.</div></div>` });
+
+/* ---- Dashboard & demo ---- */
+add({ id: 'dashboard', title: 'Good morning', path: 'home', group: 'Dashboard', keys: ['DSH-01', 'AC-DSH-01.1', 'AC-DSH-01.2', 'AC-DSH-01.3', 'AC-DSH-01.4'],
+  nav: { tab: 'Home' }, review: ['One column on phone. Two columns on tablet. Three on desktop (AC-DSH-01.4).', 'The odometer-due banner appears only when this week’s reading is missing.', 'Quick actions: add weight, add workout, log odometer. “Upload CSV” appears at 1024 px and up only.'],
+  body: () => cols(1, 2, 3, `
+    <div class="banner sp-all"><b>Odometer due (Friday)</b>Log this week’s reading.<div class="btn sm warn" style="margin-top:8px">Log odometer</div></div>
+    ${card('Spending · November', `<div class="big">$2,184</div><div class="delta bad">▲ $142 vs. October</div>${hbar('Groceries', '$612', 70)}${hbar('Dining', '$288', 40)}`)}
+    ${card('Weight', `<div class="big">181.4 lb</div><div class="delta">▼ 0.6 lb over 7 days (trend)</div>${svg(46, poly('0,10 40,14 80,12 120,20 160,18 200,26 240,24 300,32', 'var(--g500)', 2.5))}`)}
+    ${card('Last week’s miles', `<div class="big">212 mi</div><div class="sub">8-week average: 196 mi</div>${bars([40, 55, 50, 62, 48, 70, 58, 66], { 7: '' }, 52)}`)}
+    ${card('Workouts this week', `<div class="big">3 of 4</div><div class="dots"><i></i><i></i><i></i><i class="o"></i></div><div class="sub" style="margin-top:6px">Streak: 5 weeks</div>`)}
+    ${card('Quick actions', `<div class="gap10">${btn('+ Add weight', 'ghost')}${btn('+ Add workout', 'ghost')}${btn('+ Log odometer', 'ghost')}<div class="only-d">${btn('⬆ Upload CSV', 'ghost')}</div></div>`)}`) });
+
+add({ id: 'demo', title: 'Demo', path: 'demo', group: 'Dashboard', keys: ['DEM-01', 'DEM-02', 'AC-DEM-01.1', 'AC-DEM-01.2', 'AC-DEM-02.1', 'AC-DEM-02.2'],
+  nav: { tab: 'Money', sub: 'Import' }, review: ['A “Demo, fake data” ribbon is on every demo screen.', 'The import screen offers a built-in sample file generated in code. Nothing is sent to a server.', 'On phone and tablet the demo shows the same “import from a computer” message as the real app.'],
+  acts: '<span class="chip">DEMO</span>',
+  body: () => `<div class="ribbon" style="margin-bottom:10px">Demo · fake data · stays in your browser</div>
+    <div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 0)}<div style="height:10px"></div>${cols(1, 1, 2, `
+      ${card('Choose a file', `<div class="drop">Drop a CSV here<br><span class="sub">or</span></div><div style="height:8px"></div>${btn('Use the built-in sample file')}<p class="sub">The sample is generated in your browser. No real data.</p>`)}
+      ${card('What happens next', `<ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.7"><li>Preview shows new and duplicate rows</li><li>Fix categories if needed</li><li>Import, then undo any time</li></ol>`)}`)}</div>
+    <div class="lt-d">${fromComputer()}<div style="height:10px"></div>${card('Explore the demo', `${item('Dashboard', '', '›')}${item('Transactions', '', '›')}${item('Car', '', '›')}${item('Health', '', '›')}`)}</div>` });
+
+/* ---- Mileage ---- */
+const weeks = [['Nov 6 → Nov 13', 'In progress', ''], ['Oct 30 → Nov 6', '212 mi', ''], ['Oct 23 → Oct 30', '188 mi', ''], ['Oct 9 → Oct 23', '2 weeks, spread evenly: 205 mi each', 'est'], ['Oct 2 → Oct 9', '174 mi', '']];
+add({ id: 'car', title: 'Car', path: 'car', group: 'Car', keys: ['MIL-02', 'MIL-03', 'AC-MIL-02.1', 'AC-MIL-02.3', 'AC-MIL-03.1', 'AC-MIL-03.2', 'AC-MIL-03.3', 'AC-MIL-03.4'],
+  nav: { tab: 'Car', sub: 'Mileage' }, acts: '<div class="btn sm up-t">+ Log reading</div>',
+  review: ['Weeks run Friday to Thursday. Estimated weeks (a skipped Friday) are hatched and labeled.', 'Chart has a text alternative. Busiest and quietest weeks are marked.', 'Phone uses a floating “+ Log reading” button. Tablet and desktop put it in the header.'],
+  body: () => `${cols(1, 2, 3, `
+    ${card('Miles per week', `${bars([34, 52, 48, 60, 62, 64, 40, 55, 70, 58, 66, 62], { 6: 'est', 7: 'est', 8: 'top', 3: 'low' }, 110)}<div class="axis"><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span></div><p class="sub">Bar chart: miles driven each week. Darkest bar: busiest week. Lightest bar: quietest. Hatched bars: estimated.</p>`, 'sp-t2 sp-d2')}
+    ${card('Totals', `<div class="two"><div><div class="sub">8-week avg</div><b class="big" style="font-size:20px">196 mi</b></div><div><div class="sub">November</div><b class="big" style="font-size:20px">418 mi</b></div><div><div class="sub">This year</div><b class="big" style="font-size:20px">9,870 mi</b></div><div><div class="sub">Busiest / quietest</div><b style="font-size:13px">248 / 118 mi</b></div></div>`)}
+    ${card('Weeks', weeks.map(w => item(w[0], w[1], w[2] ? chip('estimated', 'warn') : '', w[2])).join(''), 'sp-all')}`)}
+    <div class="fab only-m">+ Log reading</div>` });
+
+add({ id: 'logreading', title: 'Log odometer', path: 'car/log', group: 'Car', keys: ['MIL-01', 'AC-MIL-01.1', 'AC-MIL-01.2', 'AC-MIL-01.3', 'AC-MIL-01.4'],
+  nav: { tab: 'Car', sub: 'Log reading' }, review: ['The reading field is focused when the screen opens. Date defaults to today but can be any date (backfill).', 'A lower-than-last reading shows a warning and needs confirmation (shown). A very large jump gets the same treatment.', 'Recent readings can be edited or deleted.'],
+  body: () => cols(1, 2, 2, `<div class="stack">
+      ${field('Odometer reading', '48,402<span style="color:var(--g500)">|</span> mi', 'hot')}${field('Date', 'Fri, Nov 6 ▾')}${field('Note (optional)', '—')}
+      <div class="banner"><b>Lower than your last reading</b>Last reading was 48,550 on Oct 30. Save anyway?<div style="display:flex;gap:8px;margin-top:8px"><span class="btn sm warn">Yes, save</span><span class="btn sm ghost">Change it</span></div></div>
+      ${btn('Save reading', 'dis')}</div>
+    ${card('Recent readings', `${item('Nov 6', 'Estimated week follows', '48,402')}${item('Oct 30', '', '48,550')}${item('Oct 23', '', '48,338')}${item('Oct 9', 'Backfilled', '47,928')}<div class="sub" style="margin-top:6px">Tap a reading to edit or delete.</div>`)}`) });
+
+add({ id: 'importmiles', title: 'Import mileage history', path: 'car/import', group: 'Car', keys: ['MIL-04', 'AC-MIL-04.1', 'AC-MIL-04.2', 'AC-MIL-04.3', 'AC-MIL-04.4', 'AC-MIL-04.5'],
+  nav: { tab: 'Car', sub: 'Import spreadsheet' }, review: ['Works on all viewports. Reads Date and Start Miles, recalculates miles driven, and flags rows where the sheet disagrees.', 'The file is not stored. Re-importing creates no duplicates.'],
+  body: () => `${steps(['1 Choose file', '2 Preview', '3 Done'], 1)}<div style="height:10px"></div>${cols(1, 1, 3, `
+    ${card('Summary', `<div class="two"><div><div class="sub">Rows</div><b class="big" style="font-size:20px">52</b></div><div><div class="sub">Flagged</div><b class="big" style="font-size:20px;color:var(--warn)">2</b></div><div><div class="sub">New</div><b style="font-size:16px">50</b></div><div><div class="sub">Already saved</div><b style="font-size:16px">2</b></div></div><div style="height:10px"></div>${btn('Import 50 rows')}`)}
+    ${card('Preview', `${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Date', ['Start miles', ''], ['Sheet miles', 'c-t'], ['Recalculated', 'c-t'], ''], 'h')}
+      ${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Nov 6', '48,402', ['212', 'c-t'], ['212', 'c-t'], chip('ok')])}
+      ${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Oct 30', '48,190', ['188', 'c-t'], ['188', 'c-t'], chip('ok')])}
+      ${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Oct 16', '47,928', ['190', 'c-t'], ['205', 'c-t'], chip('differs', 'warn')])}
+      ${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Sep 25', '47,610', ['174', 'c-t'], ['181', 'c-t'], chip('differs', 'warn')])}`, 'sp-t2 sp-d2')}`)}` });
+
+/* ---- Finance ---- */
+add({ id: 'transactions', title: 'Transactions', path: 'money/transactions', group: 'Money', keys: ['FIN-05', 'FIN-06', 'AC-FIN-05.1', 'AC-FIN-05.2', 'AC-FIN-05.3', 'AC-FIN-05.4', 'AC-FIN-06.1', 'AC-FIN-06.2', 'AC-FIN-06.3'],
+  nav: { tab: 'Money', sub: 'Transactions' }, acts: '<div class="btn sm ghost">+ Add</div>',
+  review: ['Below 1024 px: a list, and editing opens a bottom sheet. At 1024 px and up: a table with an edit side panel (AC-FIN-05.4).', 'Filters: search, date range, account, category, amount range, and “needs category only”.', 'Editing a category can create a rule and updates other matches, and says how many (AC-FIN-06.2, 06.3).'],
+  body: () => `<div class="stack" style="margin-bottom:8px">${field('Search', '🔍 coffee, grocery…')}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${chip('Nov 1–8', 'grey')}${chip('All accounts', 'grey')}${chip('All categories', 'grey')}${chip('Amount', 'grey')}${chip('Needs category (1)', 'warn')}</div></div>
+    <div class="split"><div>
+      <div class="lt-d card" style="padding:4px 14px">${txRows.slice(0, 6).map(r => item(r[1], `${r[0]} · ${r[2]}`, `<span class="${r[5]}">${r[4]}</span><br>${r[3] === '__need__' ? chip('Needs category', 'warn') : `<span class="sub">${r[3]}</span>`}`)).join('')}</div>
+      <div class="only-d card" style="padding:6px 14px">${tr('', '', '70px 2fr 1.1fr 1.2fr 90px', ['Date', 'Merchant', 'Account', 'Category', ['Amount', 'rt']], 'h')}
+        ${txRows.map((r, i) => tr('', '', '70px 2fr 1.1fr 1.2fr 90px', [r[0], `<b${i === 0 ? ' style="color:var(--g700)"' : ''}>${r[1]}</b>`, r[2], catCell(r[3]), [`<span class="${r[5]}">${r[4]}</span>`, 'rt']])).join('')}
+        <div class="sub" style="padding-top:8px">1–8 of 214 · Next ›</div></div></div>
+      <div class="panel only-d">${editForm()}</div></div>
+    <div class="scrim lt-d"></div><div class="sheet lt-d">${editForm()}</div>` });
+
+add({ id: 'importupload', title: 'Import transactions', path: 'money/import', group: 'Money', keys: ['FIN-02', 'AC-FIN-02.1', 'AC-FIN-02.2', 'AC-FIN-02.3', 'AC-FIN-02.4', 'AC-FIN-02.5', 'AC-FIN-02.6', 'AC-FIN-02.7', 'AC-FIN-02.8', 'AC-FIN-08.5'],
+  nav: { tab: 'Money', sub: 'Import' }, review: ['Step 1 of 3. Desktop only: the entry is hidden below 1024 px and the screen explains “Import from a computer”.', 'You pick the account first. Only .csv or .xlsx up to 5 MB. The file is read, the rows are kept, and the file is thrown away.'],
+  body: () => `<div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 0)}<div style="height:12px"></div>${cols(1, 1, 2, `
+      <div class="stack">${field('Account', 'Everyday Checking ▾')}<div class="drop">⬆ Drop your bank file here<br><span class="sub">or choose a file · .csv or .xlsx, up to 5 MB</span></div></div>
+      ${card('How it works', `<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7"><li>The layout is detected from the header row (a title row above it is fine). Pending rows are skipped.</li><li>Account numbers are dropped and never leave the importer.</li><li>You review everything before anything is saved.</li><li>The file itself is never stored.</li></ul>`)}`)}</div>
+    <div class="lt-d">${fromComputer()}</div>` });
+
+add({ id: 'importpreview', title: 'Import transactions', path: 'money/import/preview', group: 'Money', keys: ['FIN-03', 'AC-FIN-03.1', 'AC-FIN-03.2', 'AC-FIN-03.3', 'AC-FIN-03.4', 'AC-FIN-03.5', 'AC-FIN-03.6'],
+  nav: { tab: 'Money', sub: 'Import' }, review: ['Step 2 of 3, desktop only. Counts for total, new, duplicate, needs-category. Duplicates are greyed and skipped by default.', 'Rows the bank still marks Pending are shown and skipped. They come in on a later upload once posted (AC-FIN-03.7).', 'Nothing is saved until you press Import.'],
+  body: () => `<div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 1)}<div style="height:10px"></div>
+    <div class="two" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">${[['Total', '128', ''], ['New', '120', ''], ['Duplicates', '8', 'var(--muted)'], ['Needs category', '14', 'var(--warn)']].map(c => card(c[0], `<div class="big" style="${c[2] ? 'color:' + c[2] : ''}">${c[1]}</div>`)).join('')}</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><div style="width:360px">${seg(['All', 'New', 'Duplicates', 'Needs category'], 0)}</div><span class="sub">statement.csv · Example Bank layout · Everyday Checking · 5 pending rows skipped</span><span style="margin-left:auto;width:180px">${btn('Import 120 rows')}</span></div>
+    <div class="card" style="padding:6px 14px">${tr('', '', '70px 2fr 1.4fr 90px 100px', ['Date', 'Merchant', 'Category', ['Amount', 'rt'], 'Status'], 'h')}
+      ${[['Nov 7', 'Coffee Shop', 'Dining', '−$4.85', chip('New'), ''], ['Nov 6', 'Transfer to savings', chip('Needs category', 'warn') + ' ▾', '−$200.00', chip('New'), ''], ['Nov 5', 'Paycheck', 'Income', '+$1,850.00', chip('New'), ''], ['Nov 3', 'Pharmacy', 'Health', '−$14.60', chip('Duplicate', 'grey'), 'opacity:.5'], ['Nov 7', 'Grocery Mart', '—', '−$62.10', chip('Pending', 'warn'), 'opacity:.5']].map(r => `<div style="${r[5]}">${tr('', '', '70px 2fr 1.4fr 90px 100px', [r[0], r[1], r[2], [r[3], 'rt'], r[4]])}</div>`).join('')}</div></div>
+    <div class="lt-d">${desktopOnlyNote('The import preview')}</div>` });
+
+add({ id: 'importdone', title: 'Import transactions', path: 'money/import/done', group: 'Money', keys: ['FIN-04', 'AC-FIN-04.1', 'AC-FIN-04.2', 'AC-FIN-04.3', 'AC-FIN-04.4', 'AC-FIN-04.6'],
+  nav: { tab: 'Money', sub: 'Import' }, review: ['Step 3 of 3, desktop only. Says what was imported and skipped, links to the new transactions, and offers undo.', 'Re-uploading the same file imports zero new rows. Two identical same-day purchases are both kept.'],
+  body: () => `<div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 2)}<div style="height:12px"></div><div style="max-width:520px">${card('', `<div class="center" style="padding:10px 0"><div class="logo">✓</div><h3 style="font-size:20px">120 transactions imported</h3><p class="sub">8 duplicates skipped · 14 still need a category</p>${btn('View the new transactions')}<div style="height:8px"></div>${btn('Undo this import', 'ghost')}</div>`)}</div></div>
+    <div class="lt-d">${desktopOnlyNote('The import result')}</div>` });
+
+add({ id: 'importhistory', title: 'Import history', path: 'money/import-history', group: 'Money', keys: ['FIN-09', 'AC-FIN-09.1', 'AC-FIN-09.2', 'AC-FIN-09.3', 'AC-FIN-09.4', 'AC-FIN-09.5'],
+  nav: { tab: 'Money', sub: 'Import history' }, review: ['Works at every width, so a bad import can be undone from the phone.', 'Undo asks first, says how many transactions were edited by hand, and is all or nothing. The dialog is a bottom sheet on phone and a centered dialog on tablet and desktop.'],
+  body: () => `${card('', [['Nov 8', 'Everyday Checking', '120 transactions', ''], ['Oct 12', 'Credit card', '97 transactions', ''], ['Sep 9', 'Everyday Checking', '131 transactions', '']].map(b => item(b[0] + ' · ' + b[1], b[2], '<span class="btn sm ghost">Undo</span>')).join(''))}
+    <div class="scrim"></div><div class="dlg"><h3>Undo this import?</h3><p style="font-size:13px;line-height:1.5;margin:0 0 10px">This deletes the <b>120 transactions</b> from Nov 8 (Everyday Checking). <b>3 of them were edited by hand</b> and those edits will be lost. You can import the same file again afterward.</p><div style="display:flex;gap:8px"><span style="flex:1">${btn('Cancel', 'ghost')}</span><span style="flex:1">${btn('Delete 120', 'danger')}</span></div></div>` });
+
+add({ id: 'summary', title: 'Summary', path: 'money/summary', group: 'Money', keys: ['FIN-07', 'AC-FIN-07.1', 'AC-FIN-07.2', 'AC-FIN-07.3', 'AC-FIN-07.4', 'AC-FIN-07.5'],
+  nav: { tab: 'Money', sub: 'Summary' }, acts: '<span class="sub">‹ &nbsp;<b style="color:var(--ink)">November</b>&nbsp; ›</span>',
+  review: ['“Spent” counts expense categories only. Income and transfers are excluded and the screen says so.', 'Month switcher with previous and next. Charts have text alternatives and do not rely on color alone.'],
+  body: () => cols(1, 2, 3, `
+    ${card('Total spent', `<div class="big">$2,184</div><div class="delta bad">▲ $142 vs. October</div><div style="margin-top:6px">${chip('Income and transfers excluded', 'grey')}</div>`)}
+    ${card('By category', `${hbar('Groceries', '$612', 72)}${hbar('Housing', '$540', 64)}${hbar('Dining', '$288', 34)}${hbar('Fuel', '$214', 26)}${hbar('Other', '$530', 55)}`)}
+    ${card('Spending over time', `${svg(120, poly('0,80 25,70 50,76 75,60 100,66 125,50 150,58 175,40 200,48 225,44 250,32 300,38', 'var(--g500)', 2.5) + poly('0,90 300,90', 'var(--line)', 1))}<div class="axis"><span>Dec</span><span>Mar</span><span>Jun</span><span>Sep</span><span>Nov</span></div><p class="sub">Line chart: monthly spending, last 12 months.</p>`, 'sp-t2 sp-d2')}`) });
+
+add({ id: 'rules', title: 'Categories & rules', path: 'money/rules', group: 'Money', keys: ['FIN-01', 'AC-FIN-01.1', 'AC-FIN-01.2', 'AC-FIN-01.3', 'AC-FIN-01.4', 'AC-FIN-01.5', 'AC-FIN-01.6', 'AC-FIN-01.7'],
+  nav: { tab: 'Money', sub: 'Categories & rules' }, acts: '<div class="btn sm ghost">Re-apply rules</div>',
+  review: ['Each category has a type: expense, income, or transfer. Only expenses count as “spent”.', 'Rules run top to bottom and the first match wins. Drag to reorder.', '“Re-apply rules” categorizes existing uncategorized transactions and reports how many changed.'],
+  body: () => `<div class="banner ok" style="margin-bottom:10px"><b>Rules re-applied</b>14 uncategorized transactions were updated.</div>${cols(1, 1, 2, `
+    ${card('Categories', ['Groceries|expense', 'Dining|expense', 'Fuel|expense', 'Subscriptions|expense', 'Paycheck|income', 'Transfers|transfer'].map(c => { const [n, t] = c.split('|'); return item(n, '', chip(t, t === 'expense' ? '' : t === 'income' ? 'warn' : 'grey') + ' ⋯'); }).join('') + `<div style="height:8px"></div>${btn('+ Add category', 'ghost')}`)}
+    ${card('Rules (first match wins)', [['COFFEE', 'Dining'], ['GROCERY', 'Groceries'], ['CITY FUEL', 'Fuel'], ['STREAMING', 'Subscriptions']].map((r, i) => item(`<span class="sub">≡ ${i + 1}</span> &nbsp;contains <b>${r[0]}</b>`, '', `→ ${r[1]} ⋯`)).join('') + `<div style="height:8px"></div>${btn('+ Add rule', 'ghost')}`)}`)}` });
+
+add({ id: 'accounts', title: 'Accounts', path: 'money/accounts', group: 'Money', keys: ['FIN-08', 'AC-FIN-08.1', 'AC-FIN-08.2', 'AC-FIN-08.3', 'AC-FIN-08.4'],
+  nav: { tab: 'Money', sub: 'Accounts' }, review: ['Accounts have a name and a type only. Account numbers are never stored.', 'Manual entry covers cash and gaps. Manual transactions are labeled and can be edited or deleted.'],
+  body: () => cols(1, 2, 2, `
+    ${card('Accounts', `${item('Everyday Checking', 'Checking · 214 transactions', '⋯')}${item('Travel Card', 'Credit card · 97 transactions', '⋯')}${item('Cash', 'Cash · 12 transactions', '⋯')}<div style="height:8px"></div>${btn('+ Add account', 'ghost')}<p class="sub" style="margin-top:8px">Only a name and type are stored. Never an account number.</p>`)}
+    ${card('Add a transaction', `<div class="stack">${field('Date', 'Nov 8 ▾')}${field('Amount', '−$18.00')}${field('Description', 'Farmers market')}<div class="two">${field('Account', 'Cash ▾')}${field('Category', 'Groceries ▾')}</div>${btn('Save')}<div class="sub">Shown in the list with a “manual” label ${chip('manual', 'grey')}</div></div>`)}`) });
+
+/* ---- Giving ---- */
+add({ id: 'giving', title: 'Giving', path: 'giving', group: 'Giving', keys: ['GIV-03', 'AC-GIV-03.1', 'AC-GIV-03.2', 'AC-GIV-03.3', 'AC-GIV-02.2'],
+  nav: { tab: 'Giving', sub: 'History' }, acts: '<div class="btn sm">+ Log a gift</div>',
+  review: ['Giving is its own destination, separate from Money. The tablet rail and desktop sidebar show it directly. On phone it is the first item in More, so the tab bar stays at five tabs.', 'Regular giving is grouped by the month it is for. A month with no regular gift is marked “no gift”.', 'Special contributions are listed and totaled separately. Year-to-date shows regular, special, and combined.', 'Several gifts in one month show as one total with a count.'],
+  body: () => `${cols(3, 3, 3, ['Regular|$4,400', 'Special|$600', 'Combined|$5,000'].map(x => { const [a, b] = x.split('|'); return card(a, `<div class="big" style="font-size:20px">${b}</div>`); }).join(''))}<div style="height:10px"></div>
+    ${cols(1, 1, 2, `${card('Regular giving by month', [['January', '$400 · 1 gift', ''], ['February', '$400 · 1 gift', ''], ['March', '', 'none'], ['April', '$800 · 2 gifts', ''], ['May', '$400 · 1 gift', ''], ['June', '$400 · 1 gift', '']].map(m => item(m[0], m[1], m[2] ? chip('no gift', 'red') : '›')).join(''))}
+    ${card('Special contributions', `${item('Annual offering', 'Given Mar 24', '$350')}${item('Building fund', 'Given Aug 11', '$250')}<div class="sub" style="margin-top:8px">Totaled separately from regular giving.</div>`)}`)}` });
+
+add({ id: 'loggift', title: 'Log a gift', path: 'giving/new', group: 'Giving', keys: ['GIV-01', 'GIV-02', 'AC-GIV-01.1', 'AC-GIV-01.2', 'AC-GIV-01.3', 'AC-GIV-01.4', 'AC-GIV-02.1'],
+  nav: { tab: 'Giving', sub: 'Log a gift' }, review: ['“Month it is for” can differ from the date given (a January gift made in early February).', 'Choosing Special swaps the “month it is for” field for a name or occasion. Both forms are shown.', 'Payment method: check or online card service. Gifts can be edited and deleted.'],
+  body: () => cols(1, 2, 2, `
+    ${card('Regular gift', `<div class="stack">${seg(['Regular', 'Special'], 0)}${field('Amount', '$400.00')}<div class="two">${field('Date given', 'Feb 3 ▾')}${field('Month it is for', 'January ▾')}</div>${field('Payment method', 'Check ▾')}${field('Note (optional)', '—')}${btn('Save gift')}<div class="sub">Another gift for January? Add it. The month total is the sum.</div></div>`)}
+    ${card('Special contribution (when “Special” is selected)', `<div class="stack">${seg(['Regular', 'Special'], 1)}${field('Amount', '$250.00')}<div class="two">${field('Date given', 'Aug 11 ▾')}${field('Name or occasion', 'Building fund')}</div>${field('Payment method', 'Online card service ▾')}${btn('Save contribution')}</div>`)}`) });
+
+/* ---- Health ---- */
+add({ id: 'weight', title: 'Weight', path: 'health/weight', group: 'Health', keys: ['HLT-01', 'AC-HLT-01.1', 'AC-HLT-01.2', 'AC-HLT-01.3', 'AC-HLT-01.4'],
+  nav: { tab: 'Health', sub: 'Weight' }, acts: '<div class="btn sm up-t">+ Log weight</div>',
+  review: ['Daily values plus a moving-average trend line, so daily noise does not mislead.', 'One entry per day: logging a second one asks to replace the first (shown).', 'Pounds or kilograms, set in Settings.'],
+  body: () => `${cols(1, 2, 3, `
+    ${card('Trend', `<div class="big">181.4 lb</div><div class="delta">▼ 0.6 lb over 7 days</div>${svg(130, [[20,34],[45,56],[70,36],[95,52],[120,50],[145,64],[170,58],[195,74],[220,66],[245,82],[270,74]].map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--g300)"/>`).join('') + poly('20,40 45,43 70,46 95,50 120,54 145,58 170,62 195,66 220,70 245,73 270,76', 'var(--g700)', 2.5))}<div class="axis"><span>Sep</span><span>Oct</span><span>Nov</span></div><p class="sub">Line chart: dots are daily weights, the line is the 7-day average.</p>`, 'sp-t2 sp-d2')}
+    <div class="stack"><div class="banner"><b>Already logged today</b>181.2 lb at 7:10. Replace it with 181.4?<div style="display:flex;gap:8px;margin-top:8px"><span class="btn sm warn">Replace</span><span class="btn sm ghost">Cancel</span></div></div>
+      ${card('Log weight', `<div class="stack">${field('Weight', '181.4 lb', 'hot')}${field('Date', 'Today ▾')}${seg(['lb', 'kg'], 0)}${btn('Save')}</div>`)}</div>
+    ${card('Entries', [['Nov 7', '181.4'], ['Nov 6', '181.9'], ['Nov 5', '181.0'], ['Nov 4', '182.3']].map(e => item(e[0], '', e[1] + ' lb ⋯')).join(''), 'sp-all')}`)}
+    <div class="fab only-m">+ Log weight</div>` });
+
+add({ id: 'workouts', title: 'Workouts', path: 'health/workouts', group: 'Health', keys: ['HLT-02', 'HLT-04', 'AC-HLT-02.3', 'AC-HLT-04.1', 'AC-HLT-04.2', 'AC-HLT-04.3'],
+  nav: { tab: 'Health', sub: 'Workouts' }, acts: '<div class="btn sm">+ Add workout</div>',
+  review: ['Weekly and monthly totals (count and minutes) and a streak of consecutive weeks that met the weekly goal.', 'Each workout shows its source: manual or Apple Watch.'],
+  body: () => cols(1, 2, 3, `
+    ${card('This week', `<div class="big">3 workouts</div><div class="sub">142 minutes</div><div class="dots"><i></i><i></i><i></i><i class="o"></i></div>`)}
+    ${card('This month', `<div class="big">11 workouts</div><div class="sub">486 minutes</div>`)}
+    ${card('Streak', `<div class="big">5 weeks</div><div class="sub">in a row with 3 or more workouts</div>`)}
+    ${card('History', [['Run', 'Nov 7 · 38 min', 'Apple Watch'], ['Strength', 'Nov 6 · 45 min', 'Manual'], ['Walk', 'Nov 5 · 59 min', 'Apple Watch'], ['Cycling', 'Nov 2 · 62 min', 'Apple Watch'], ['Yoga', 'Nov 1 · 30 min', 'Manual']].map(w => item(w[0], w[1], chip(w[2], w[2] === 'Manual' ? 'grey' : ''))).join(''), 'sp-all')}`) });
+
+add({ id: 'addworkout', title: 'Add workout', path: 'health/workouts/new', group: 'Health', keys: ['HLT-02', 'AC-HLT-02.1', 'AC-HLT-02.2'],
+  nav: { tab: 'Health', sub: 'Workouts' }, review: ['Type, date, duration, and an optional note. Existing workouts open the same form with a Delete button.'],
+  body: () => cols(1, 2, 2, `${card('New workout', `<div class="stack"><div style="display:flex;gap:6px;flex-wrap:wrap">${['Run', 'Walk', 'Strength', 'Cycling', 'Yoga', 'Other'].map((t, i) => chip(t, i === 2 ? '' : 'grey')).join('')}</div>${field('Date', 'Today ▾')}${field('Duration', '45 min')}${field('Note (optional)', '—')}${btn('Save workout')}</div>`)}
+    ${card('Editing an existing workout', `<div class="stack">${field('Type', 'Strength ▾')}${field('Duration', '45 min')}${btn('Save changes')}${btn('Delete workout', 'ghost')}<div class="sub">Imported watch workouts can be edited too.</div></div>`)}`) });
+
+add({ id: 'applehealth', title: 'Apple Health import', path: 'health/import', group: 'Health', keys: ['HLT-03', 'AC-HLT-03.1', 'AC-HLT-03.2', 'AC-HLT-03.3', 'AC-HLT-03.4', 'AC-HLT-03.5', 'AC-HLT-03.7'],
+  nav: { tab: 'Health', sub: 'Apple Health import' }, review: ['Works on phone and desktop. The export ZIP is opened in the browser, in a background worker. Only workout rows are sent to the server.', 'Shows progress, a result with duplicates skipped, and a clear message if the export is too big for the device (the risk from ADR-0009).'],
+  body: () => cols(1, 2, 2, `
+    ${card('1 · Choose your export', `<div class="drop">Choose export.zip<br><span class="sub">Health app → profile picture → Export All Health Data</span></div><p class="sub">The file stays on this device. Only workouts are read and sent.</p>`)}
+    ${card('2 · Reading', `<div class="prog"><i style="width:62%"></i></div><p style="font-size:13px;margin:8px 0 0">Reading workouts… 62%<br><span class="sub">The page stays usable while this runs.</span></p>`)}
+    ${card('3 · Done', `<div class="banner ok"><b>86 workouts imported</b>12 duplicates skipped.</div><div style="height:8px"></div>${btn('View workouts', 'ghost')}`)}
+    ${card('If the file is too big', `<div class="banner red"><b>This export is too large for this device</b>Nothing was saved. Try importing from a computer instead.</div>`)}`) });
+
+/* ---- Settings ---- */
+add({ id: 'settings', title: 'Settings', path: 'settings', group: 'Settings', keys: ['SET-01', 'AC-SET-01.1', 'AC-SET-01.2', 'AC-SET-01.3', 'AC-SET-01.4'],
+  nav: { tab: 'More', sub: 'Settings' }, review: ['Theme: light, dark, or system. Time zone and weight unit live here.', 'Categories & rules is reachable from here. Sign out ends the session.', 'Export and delete data are “Next”, so they are shown disabled as a preview only.'],
+  body: () => cols(1, 1, 2, `
+    ${card('Appearance', `${seg(['Light', 'Dark', 'System'], 2)}`)}
+    ${card('Preferences', `<div class="stack">${field('Time zone', 'Region/City ▾')}${field('Weight unit', 'Pounds (lb) ▾')}</div>`)}
+    ${card('Money', `${item('Categories & rules', '', '›')}${item('Accounts', '', '›')}${item('Import history', '', '›')}`)}
+    ${card('Account', `${item('Signed in', 'GitHub · owner', '')}<div style="height:8px"></div>${btn('Sign out', 'ghost')}`)}
+    ${card('Your data (coming later)', `<div class="stack"><div class="btn ghost dis">Export all my data</div><div class="btn ghost dis">Delete all my data</div></div>`, 'sp-t2')}`) });
+
+/* ===================== render ===================== */
+const mount = document.getElementById('screens');
+const toc = document.getElementById('toc');
+let lastGroup = '';
+SCREENS.forEach((s, i) => {
+  toc.insertAdjacentHTML('beforeend', `<li><a href="#${s.id}"><b>${i + 1}. ${s.title}</b></a> <small>${s.group}</small></li>`);
+  mount.insertAdjacentHTML('beforeend', `<section class="screen" id="${s.id}">
+    <h2>${i + 1}. ${s.title}</h2>
+    <div class="keys">${s.keys.map(k => `<span>${k}</span>`).join('')}</div>
+    <div class="review"><b>What to check</b><ul>${s.review.map(r => `<li>${r}</li>`).join('')}</ul></div>
+    <div class="row">${VPS.map(vp => frame(s, vp)).join('')}</div></section>`);
+});
+document.getElementById('vpbtns').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; document.body.dataset.vp = v; [...e.currentTarget.querySelectorAll('button')].forEach(b => b.classList.toggle('on', b === e.target)); });
+document.getElementById('thbtns').addEventListener('click', e => { const t = e.target.dataset.t; if (!t) return; document.documentElement.dataset.theme = t; [...e.currentTarget.querySelectorAll('button')].forEach(b => b.classList.toggle('on', b === e.target)); });
+</script>
+</body>
+</html>

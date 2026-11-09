@@ -11,15 +11,16 @@ A private, single-user web app (installable PWA) for personal finances, health, 
 - [DECISIONS.md](DECISIONS.md): why each technical choice was made (ADRs). Check here before changing a choice.
 - [TESTING.md](TESTING.md): the test pyramid, what goes at which level, CI jobs
 - [OBSERVABILITY.md](OBSERVABILITY.md): logging rules
+- [docs/azure-setup.md](docs/azure-setup.md): one-time Azure resource setup, step by step
 - [BACKLOG.md](BACKLOG.md): stories and acceptance criteria (mirrors Linear)
-- [wireframes.html](wireframes.html) (phone) and [wireframes-desktop.html](wireframes-desktop.html) (desktop)
+- [wireframes-suite.html](wireframes-suite.html): every MVP screen at mobile, tablet, and desktop widths
 
 If these documents conflict with a request, say so and ask. Do not silently pick one.
 
 ## Hard rules
 
 1. **No personal data in the repo.** No real transactions, account numbers, names, birthdates, photos, odometer history, or health values. Not in code, tests, fixtures, comments, or commit messages. Use synthetic data only. Any child in the demo is fictional.
-2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's GitHub user ID in any file. Use GitHub secrets and Azure app settings.
+2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub or Static Web Apps) in any file. Use GitHub secrets and Azure app settings.
 3. **Never commit** `*.csv`, `*.xlsx`, Apple Health exports, or local settings. Test and demo fixtures are generated in code, not stored as data files.
 4. **Fail closed.** If the owner cannot be confirmed, the API returns nothing.
 5. **Do not store uploaded files.** Parse, keep the parsed rows, discard the file.
@@ -59,9 +60,10 @@ Every screen must work at three breakpoints. Mobile is the default and is design
 | Name | Width | Navigation |
 |---|---|---|
 | Mobile | under 640 px | Bottom tab bar |
-| Tablet | 640 to 1023 px | Per the tablet wireframe (to be drawn before FND-04) |
+| Tablet | 640 to 1023 px | Left icon rail (see wireframes-suite.html) |
 | Desktop | 1024 px and wider | Left sidebar |
 
+- Destinations: Home, Money, Giving, Health, Car, Settings. Giving is its own feature. The phone tab bar has five tabs (Home, Money, Health, Car, More), and Giving and Settings are inside More. See ADR-0017.
 - Write mobile styles first, then add wider layouts.
 - No horizontal scrolling at 360, 768, and 1280 px.
 - **CSV bank import is desktop only** (1024 px and wider). Below that, hide the entry point and show "Import from a computer". Other imports (Apple Health, mileage spreadsheet) are allowed on all viewports.
