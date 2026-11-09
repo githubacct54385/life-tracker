@@ -5,6 +5,7 @@
     { "route": "/.auth/logout", "allowedRoles": ["anonymous"] },
     { "route": "/.auth/me", "allowedRoles": ["anonymous"] },
     { "route": "/access-denied.html", "allowedRoles": ["anonymous"] },
+    { "route": "/signed-out.html", "allowedRoles": ["anonymous"] },
     { "route": "/demo", "allowedRoles": ["anonymous"] },
     { "route": "/demo/*", "allowedRoles": ["anonymous"] },
     { "route": "/api/*", "allowedRoles": ["owner"] },

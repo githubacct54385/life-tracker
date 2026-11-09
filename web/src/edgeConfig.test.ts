@@ -35,7 +35,7 @@ describe("edge rules (staticwebapp.config.json)", () => {
 
   it("[AC-FND-02.2] leaves only sign-in, sign-out, the identity read, and the demo open", () => {
     const open = config.routes.filter((r) => r.allowedRoles?.includes("anonymous")).map((r) => r.route).sort();
-    expect(open).toEqual(["/.auth/login/github", "/.auth/logout", "/.auth/me", "/access-denied.html", "/demo", "/demo/*"].sort());
+    expect(open).toEqual(["/.auth/login/github", "/.auth/logout", "/.auth/me", "/access-denied.html", "/demo", "/demo/*", "/signed-out.html"].sort());
   });
 
   it("[AC-FND-02.1] serves the app shell for client routes, but only after the role check", () => {
@@ -48,5 +48,15 @@ describe("edge rules (staticwebapp.config.json)", () => {
     expect(html).toContain("Access denied");
     expect(html).not.toMatch(/<script/i);
     expect(html).toContain("/.auth/logout");
+  });
+
+  it("[AC-FND-02.2] the sign-out link lands on a page that is open to everyone, so it cannot loop back to sign-in", () => {
+    const denied = readFileSync(path.join(publicDir, "access-denied.html"), "utf8");
+    const target = /post_logout_redirect_uri=([^"&]+)/.exec(denied)?.[1];
+    expect(target).toBe("/signed-out.html");
+    expect(routeFor(target as string)?.allowedRoles).toEqual(["anonymous"]);
+    const signedOut = readFileSync(path.join(publicDir, "signed-out.html"), "utf8");
+    expect(signedOut).toContain("/.auth/login/github");
+    expect(signedOut).not.toMatch(/<script/i);
   });
 });
