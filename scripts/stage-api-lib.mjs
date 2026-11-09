@@ -17,19 +17,19 @@ export function applyPublishConfig(pkg) {
 }
 
 /**
- * Remove a dependency from a staged package.json.
- * `pnpm deploy` writes `shared` as an absolute `file:` path from the build machine. The Static Web Apps
- * deploy client runs its own `npm install` on the staged folder (Oryx), turns that entry into a symlink, and
- * then fails copying it over the real folder we staged. `shared` is already in node_modules, compiled,
- * and has no dependencies of its own, so the entry is dropped.
+ * Turn the API package.json that `pnpm deploy` wrote into the one that is deployed.
+ *
+ * The Static Web Apps deploy client runs Oryx on the staged folder: `npm install --production`, a copy into
+ * node_modules, a plain `npm install`, and `npm run build` if a build script exists. So:
+ * - `scripts` is removed. The code is already compiled, and `tsc` is not available there.
+ * - `@life-tracker/shared` is declared as `file:./vendor/shared` (a relative path, the compiled copy).
+ *   `pnpm deploy` writes a build-machine absolute path instead, and a plain `npm install` deletes any
+ *   package in node_modules that package.json does not list, which would remove `shared`.
+ * Pair this with `install-links=true` in .npmrc so npm copies the folder instead of symlinking it.
  */
-export function withoutDependency(pkg, name) {
-  const next = { ...pkg };
-  for (const field of ["dependencies", "optionalDependencies", "devDependencies"]) {
-    if (next[field] && name in next[field]) {
-      next[field] = { ...next[field] };
-      delete next[field][name];
-    }
-  }
+export function toDeployPackage(pkg) {
+  const next = { ...pkg, dependencies: { ...pkg.dependencies, "@life-tracker/shared": "file:./vendor/shared" } };
+  delete next.scripts;
+  delete next.devDependencies;
   return next;
 }

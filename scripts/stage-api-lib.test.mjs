@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPublishConfig, withoutDependency } from "./stage-api-lib.mjs";
+import { applyPublishConfig, toDeployPackage } from "./stage-api-lib.mjs";
 
 describe("applyPublishConfig", () => {
   it("[AC-FND-06.4] replaces source entry points with compiled ones for the deployed package", () => {
@@ -20,10 +20,17 @@ describe("applyPublishConfig", () => {
   });
 });
 
-describe("withoutDependency", () => {
-  it("[AC-FND-06.4] drops a dependency but keeps the others and does not change the input", () => {
-    const pkg = { name: "api", dependencies: { "@life-tracker/shared": "file:///x", mssql: "1.0.0" } };
-    expect(withoutDependency(pkg, "@life-tracker/shared").dependencies).toEqual({ mssql: "1.0.0" });
-    expect(pkg.dependencies["@life-tracker/shared"]).toBe("file:///x");
+describe("toDeployPackage", () => {
+  it("[AC-FND-06.4] has no scripts, so Oryx cannot run a build, and depends on shared by relative path", () => {
+    const pkg = {
+      name: "api",
+      scripts: { build: "tsc -p tsconfig.build.json" },
+      devDependencies: {},
+      dependencies: { "@life-tracker/shared": "@life-tracker/shared@file:///build/machine/shared", mssql: "1.0.0" },
+    };
+    const staged = toDeployPackage(pkg);
+    expect(staged.scripts).toBeUndefined();
+    expect(staged.dependencies).toEqual({ "@life-tracker/shared": "file:./vendor/shared", mssql: "1.0.0" });
+    expect(pkg.scripts).toBeDefined();
   });
 });

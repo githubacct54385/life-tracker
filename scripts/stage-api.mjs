@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { cp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyPublishConfig, withoutDependency } from "./stage-api-lib.mjs";
+import { applyPublishConfig, toDeployPackage } from "./stage-api-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.resolve(process.argv[2] ?? path.join(root, ".stage/api"));
@@ -30,9 +30,12 @@ const sharedPkgPath = path.join(sharedDir, "package.json");
 const sharedPkg = applyPublishConfig(JSON.parse(await readFile(sharedPkgPath, "utf8")));
 await writeFile(sharedPkgPath, `${JSON.stringify(sharedPkg, null, 2)}\n`);
 
-// Oryx runs `npm install` on this folder at deploy time. Keep `shared` out of package.json so it cannot be replaced (ADR-0020).
+// Oryx runs npm on this folder at deploy time (see toDeployPackage). Give it a relative, copied dependency on
+// the compiled `shared`, and no build script, so it cannot remove or break what was staged (ADR-0020).
+await cp(sharedDir, path.join(out, "vendor/shared"), { recursive: true });
 const apiPkgPath = path.join(out, "package.json");
-const apiPkg = withoutDependency(JSON.parse(await readFile(apiPkgPath, "utf8")), "@life-tracker/shared");
+const apiPkg = toDeployPackage(JSON.parse(await readFile(apiPkgPath, "utf8")));
 await writeFile(apiPkgPath, `${JSON.stringify(apiPkg, null, 2)}\n`);
+await writeFile(path.join(out, ".npmrc"), "install-links=true\n");
 
 console.log(`Staged API at ${out}`);
