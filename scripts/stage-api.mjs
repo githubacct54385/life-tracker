@@ -2,13 +2,13 @@
 //
 //   pnpm build && node scripts/stage-api.mjs [outDir]      (default outDir: .stage/api)
 //
-// The folder holds host.json, package.json, the compiled code, and production dependencies only,
-// with `@life-tracker/shared` resolved to its compiled output. Deploy it with skip_api_build.
+// The folder holds host.json, package.json, the compiled code, and production dependencies only.
+// The compiled `shared` package is copied to dist/_shared and imported by relative path (ADR-0020).
 import { execFileSync } from "node:child_process";
-import { cp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyPublishConfig, toDeployPackage } from "./stage-api-lib.mjs";
+import { rewriteSharedImports, toDeployPackage } from "./stage-api-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.resolve(process.argv[2] ?? path.join(root, ".stage/api"));
@@ -22,20 +22,27 @@ for (const name of ["src", "tsconfig.json", "tsconfig.build.json", "vitest.confi
   await rm(path.join(out, name), { recursive: true, force: true });
 }
 
-// Point the staged copy of `shared` at its compiled output.
-const sharedDir = await realpath(path.join(out, "node_modules/@life-tracker/shared"));
-await cp(path.join(root, "shared/dist"), path.join(sharedDir, "dist"), { recursive: true });
-await rm(path.join(sharedDir, "src"), { recursive: true, force: true });
-const sharedPkgPath = path.join(sharedDir, "package.json");
-const sharedPkg = applyPublishConfig(JSON.parse(await readFile(sharedPkgPath, "utf8")));
-await writeFile(sharedPkgPath, `${JSON.stringify(sharedPkg, null, 2)}\n`);
+// `shared` ships as plain compiled files inside dist/, not as a package in node_modules.
+await rm(path.join(out, "node_modules/@life-tracker"), { recursive: true, force: true });
+const sharedEntry = path.join(out, "dist/_shared/index.js");
+await cp(path.join(root, "shared/dist"), path.join(out, "dist/_shared"), { recursive: true });
 
-// Oryx runs npm on this folder at deploy time (see toDeployPackage). Give it a relative, copied dependency on
-// the compiled `shared`, and no build script, so it cannot remove or break what was staged (ADR-0020).
-await cp(sharedDir, path.join(out, "vendor/shared"), { recursive: true });
+async function* walk(dir) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* walk(full);
+    else if (entry.name.endsWith(".js")) yield full;
+  }
+}
+for await (const file of walk(path.join(out, "dist"))) {
+  const before = await readFile(file, "utf8");
+  const after = rewriteSharedImports(before, file, sharedEntry);
+  if (after !== before) await writeFile(file, after);
+}
+
+// Oryx runs npm on this folder at deploy time. With no build script and nothing to resolve, there is nothing to break.
 const apiPkgPath = path.join(out, "package.json");
 const apiPkg = toDeployPackage(JSON.parse(await readFile(apiPkgPath, "utf8")));
 await writeFile(apiPkgPath, `${JSON.stringify(apiPkg, null, 2)}\n`);
-await writeFile(path.join(out, ".npmrc"), "install-links=true\n");
 
 console.log(`Staged API at ${out}`);
