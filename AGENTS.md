@@ -35,6 +35,7 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 - `main` is protected. **Nobody pushes to it directly, including the owner.** Every change goes through a pull request.
 - Branch names start with the story key, for example `fin-03-import-preview`. Commit messages start with it too, for example `FIN-03: show duplicate rows in preview`.
 - A pull request can merge only when CI is green and its branch is up to date with `main`. Merging is by **squash**, which keeps `main` linear.
+- **Delete a pull request's branch after it merges.** The repository deletes head branches on merge, so merged work does not pile up. If a branch is still there after a merge, delete it by hand.
 - Keep pull requests small, ideally one story or part of one.
 - **Every pull request uses the template in [.github/pull_request_template.md](.github/pull_request_template.md).** Do not delete sections or remove checklist items. Mark an item not applicable with a reason instead of leaving it unticked.
 - **Screenshots are required** for any pull request that changes a page or visible component. Show each changed screen at mobile (360 px), tablet (768 px), and desktop (1280 px), before and after. Use demo mode with synthetic data only. Attach images in the PR description, never as files in the repo.
@@ -42,6 +43,11 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 - **Merging does not deploy.** Production changes only through the manual **Release** workflow (GitHub Actions, run on `main`). It waits for the owner's approval on the `production` environment, applies pending SQL migrations, then deploys the site and API. See [DECISIONS.md](DECISIONS.md) ADR-0004.
 - Migrations must work with the code that is currently live, because the old code runs briefly after the migration. Add things first (new column, nullable), switch the code, and remove old things in a later release. CI fails on destructive statements unless the file has an explicit `-- allow-destructive` marker.
 - Never edit a migration that has been released. Add a new one.
+- **Dependabot pull requests are resolved as soon as they are ready.** Do not leave them waiting while feature work goes on. They conflict with each other, so a queue slows every later change. Check for open Dependabot pull requests at the start of each working session and before starting a new story.
+  - Keep each one current with `@dependabot recreate`, which rebuilds it from `main`. Do not use "Update branch" or merge `main` in by hand. That creates a merge commit under the owner's personal email, which fails the hygiene check.
+  - Merge a Dependabot pull request once CI is green and the branch is clean. Merge one at a time, lowest risk first, and recreate the rest after each merge.
+  - For a major-version bump, read the release notes first. Say in "Release notes" of the pull request if the release path (`release.yml`) changed, because CI does not run that workflow.
+  - If a bump fails CI, fix it in the same session or close it with a reason in the pull request. Do not leave it open.
 
 ## Code structure rules
 
