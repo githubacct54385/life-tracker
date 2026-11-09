@@ -40,3 +40,4 @@ blob-report/
 .vscode/*
 !.vscode/extensions.json
 *.log
+.stage/

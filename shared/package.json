@@ -8,9 +8,23 @@
     "typecheck": "tsc -p .",
     "test:unit": "vitest run --passWithNoTests",
     "test:int": "echo 'no integration tests in shared'",
-    "build": "echo 'shared has no build step'"
+    "build": "tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "vitest": "^5.1.0"
-  }
+  },
+  "types": "src/index.ts",
+  "publishConfig": {
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ]
 }

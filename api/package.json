@@ -11,7 +11,6 @@
     "migrate": "tsx src/db/migrate-cli.ts"
   },
   "devDependencies": {
-    "@life-tracker/shared": "workspace:*",
     "@testcontainers/mssqlserver": "^12.2.1",
     "@types/mssql": "^12.3.0",
     "@types/node": "^26.6.6",
@@ -21,6 +20,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "@life-tracker/shared": "workspace:*",
     "mssql": "^12.7.14"
   }
 }
