@@ -98,12 +98,17 @@ jobs:
 
       - name: Deploy site and API
         uses: Azure/static-web-apps-deploy@v1
+        # With no Oryx build, the deploy client cannot detect the API language, and fails with
+        # "Function language info isn't provided". These variables tell it (first Release run, 2026-11-09).
+        env:
+          FUNCTION_LANGUAGE: node
+          FUNCTION_LANGUAGE_VERSION: "22"
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: upload
           # Prebuilt: Azure uploads these folders as they are and runs no build of its own.
+          # (The v1 action has no `skip_api_build` input. Leaving `api_build_command` unset skips the API build.)
           skip_app_build: true
-          skip_api_build: true
           app_location: web/dist
           api_location: .stage/api
 

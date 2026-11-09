@@ -183,6 +183,7 @@ Needs the GitHub repo name from step 0.
    - Organization: your GitHub username. Repository: `life-tracker` (or the name you chose).
    - Entity type: **Environment**. Environment name: `production`.
    - Name: `github-production`. **Add**.
+   - **Important: use the subject GitHub actually sends.** Newer repositories use an *immutable* subject that includes the owner and repository IDs, not the classic `repo:<owner>/<repo>:environment:production`. A mismatch fails the Release login with `AADSTS700213: No matching federated identity record`. Find yours with `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` (use `sub_claim_prefix`), then set the subject to `<sub_claim_prefix>:environment:production`. For this repo that is `repo:githubacct54385@22057365/life-tracker@1450700571:environment:production`. The portal's **GitHub Actions** scenario fills in the classic form, so choose **Other issuer** and type the subject by hand if needed.
 4. Give the app permission to manage **only the SQL server's firewall**. Open the SQL **server** resource, then **Access control (IAM)**, then **Add role assignment**.
    - Role: **SQL Security Manager**. Assign to: the `life-tracker-release` app. **Review + assign**.
    - If the Release workflow later fails creating the firewall rule with an authorization error, use **SQL Server Contributor**, scoped to this server only. (Still to confirm on the first Release run.)

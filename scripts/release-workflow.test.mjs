@@ -68,7 +68,10 @@ describe("release workflow", () => {
   it("[AC-FND-06.4] the deploy uploads prebuilt folders and does not rebuild", () => {
     const deploy = steps.find((s) => s.uses?.startsWith("Azure/static-web-apps-deploy"));
     expect(deploy.with.skip_app_build).toBe(true);
-    expect(deploy.with.skip_api_build).toBe(true);
+    expect(deploy.with.skip_api_build).toBeUndefined(); // not an input of the v1 action
+    expect(deploy.with.api_build_command).toBeUndefined();
+    expect(deploy.env.FUNCTION_LANGUAGE).toBe("node");
+    expect(deploy.env.FUNCTION_LANGUAGE_VERSION).toBe("22");
     expect(deploy.with.app_location).toBe("web/dist");
     expect(deploy.with.api_location).toBe(".stage/api");
   });
