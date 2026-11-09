@@ -7,11 +7,20 @@
     "typecheck": "tsc -p .",
     "test:unit": "vitest run --passWithNoTests",
     "test:int": "vitest run --config vitest.int.config.ts --passWithNoTests",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "migrate": "tsx src/db/migrate-cli.ts"
   },
   "devDependencies": {
     "@life-tracker/shared": "workspace:*",
+    "@testcontainers/mssqlserver": "^12.2.1",
+    "@types/mssql": "^12.3.0",
     "@types/node": "^26.6.6",
+    "fast-check": "^4.10.2",
+    "testcontainers": "^12.2.1",
+    "tsx": "^4.23.15",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "mssql": "^12.7.14"
   }
 }

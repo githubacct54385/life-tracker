@@ -42,7 +42,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 
 ## ADR-0002: Data access and migrations
 
-**Decision.** The API uses the `mssql` package with hand-written, parameterized SQL, only inside `repositories/`. Migrations are numbered `.sql` files (`0001_create_accounts.sql`) in `db/migrations/`, applied by a small script (`scripts/migrate`) that records applied files in a journal table and refuses to run if an already-applied file changed.
+**Decision.** The API uses the `mssql` package with hand-written, parameterized SQL, only inside `repositories/`. Migrations are numbered `.sql` files (`0001_create_accounts.sql`) in `db/migrations/`, applied by a small script (`pnpm migrate`, code in `api/src/db/`) that records applied files in a journal table and refuses to run if an already-applied file changed.
 
 **Why.** It keeps SQL visible and reviewable in a portfolio, and makes the "SQL only in repositories" rule easy to check. A query builder or ORM would add a layer to learn for little gain at this size.
 
@@ -194,3 +194,13 @@ The commit call receives rows from the browser, so it does not trust them: it va
 - **Accent:** forest green. **Theme:** light, dark, or system (AC-SET-01.3).
 
 **Why.** It keeps the phone bar at the usual maximum of five tabs while giving Giving its own place where there is room. If Giving turns out to be used often on the phone, promoting it to a sixth tab or swapping it with Car is a small change.
+
+## ADR-0018: Integration tests run in CI; locally they are optional
+
+**Decision.** Integration tests that need SQL Server run in a Testcontainers container, one container per run. CI always runs them. On a developer machine they run only if Docker is available, and are skipped with a warning if not. The decision logic (which migrations to run, change detection) is a pure module with unit tests, so the important rules are checked on every machine.
+
+**Why.** The SQL Server image is x86 only, so Apple Silicon needs slow emulation, and Docker is not installed on the owner's Mac. Requiring it locally would slow every change for little gain, while CI on `ubuntu-latest` has Docker and runs the full set before any merge.
+
+**Consequences.** A database bug can first show up in CI. Setting `CI=true` turns the skip into a failure, so CI cannot silently skip. Revisit if a local Docker setup becomes convenient.
+
+Migration code lives in `api/src/db/` (the only non-repository place allowed to import `mssql`), the API's app login is the `db_datareader` + `db_datawriter` user from `docs/azure-setup.md`, and the integration test creates the same kind of login to prove it cannot change the schema.

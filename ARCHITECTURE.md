@@ -77,7 +77,7 @@ flowchart TD
 
     subgraph ops["Database tooling (not part of the running app)"]
         migrations["db/migrations/*.sql: numbered, additive"]
-        migrate["scripts/migrate: applies migrations, admin login, journal table"]
+        migrate["pnpm migrate (api/src/db/migrate-cli.ts): applies migrations, admin login, journal table"]
     end
 
     sqldb[("Azure SQL")]
@@ -128,16 +128,16 @@ flowchart TD
 | `parsers/` | Turn a file into clean row objects, drop account numbers | Write to the database |
 | `repositories/` | The only code that talks to SQL | Contain business rules |
 | `telemetry/logger.ts` | One logging door, strips personal data | Log amounts, merchants, or health values |
-| `scripts/migrate` | Apply SQL migrations with the admin login | Run inside the app |
+| `pnpm migrate` (`api/src/db/migrate-cli.ts`, runner in `api/src/db/`) | Apply SQL migrations with the admin login (`SQL_ADMIN_CONNECTION`). `db/` is the only place besides `repositories/` that imports `mssql` | Run inside the app |
 
-A dependency check (dependency-cruiser) enforces these arrows in CI (AC-FND-03.6).
+A dependency check (dependency-cruiser) enforces these arrows in CI (AC-FND-03.6): handlers may not skip to repositories or `db`, services may not import `db`, only `repositories/` may use `db/`, and `db/` imports nothing above it. An ESLint rule rejects SQL text outside `repositories/`, `db/`, and tests (AC-FND-03.3; write SQL keywords in UPPER CASE so the rule can see them).
 
 **Where each test level plugs in** (details in [TESTING.md](TESTING.md))
 
 | Boundary | Test level |
 |---|---|
 | Inside `services/`, `parsers/`, `shared/`, guards, logger, components | Unit (in-memory fakes for repositories) |
-| `repositories/` and `scripts/migrate` against a real SQL Server | Integration |
+| `repositories/` and `pnpm migrate` against a real SQL Server | Integration |
 | `handlers/` called with fake requests against a real SQL Server | Integration |
 | `pages/` against `demoApi`; `client.ts` and `demoApi.ts` against one contract suite | Integration |
 | The built app in a browser through the SWA CLI | End-to-end |
