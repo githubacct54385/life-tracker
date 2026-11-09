@@ -9,6 +9,7 @@ Format: `- AC-ID: what to do | result notes | last checked: date`
 - AC-FND-01.5: Confirm branch protection applies to admins and blocks force pushes. | enforce_admins true, force pushes off, linear history on. | last checked: 2026-11-09
 - AC-FND-01.6: Confirm required checks are `hygiene` and `test`, branch must be up to date, squash only. | strict true; merge commits and rebase off. | last checked: 2026-11-09
 - AC-FND-01.7: Confirm `scripts/ac-coverage.mjs` runs in the `hygiene` job. | Runs in CI; green on PR #6. | last checked: 2026-11-09
+- AC-FND-02.2: On the deployed site, sign in with a GitHub account that has not been invited as `owner` and confirm the access-denied page appears (HTTP 403), with a working sign-out link. | The SWA CLI emulator sends such a user to the sign-in redirect instead of 403, so the e2e tests prove only that the app and data stay out of reach. | last checked: not yet
 - AC-FND-02.6: Install the PWA on an iPhone, sign in with GitHub from the home-screen icon, confirm the app opens signed in and sign-in does not bounce to Safari. | last checked: not yet
 - AC-FND-05.1: Add the app to the iPhone home screen and confirm it opens full screen. | last checked: not yet
 - AC-OPS-02.2: Restore the database to a point in time into a new database, confirm tables exist, delete the copy. | last checked: not yet
