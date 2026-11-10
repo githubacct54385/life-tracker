@@ -1,5 +1,7 @@
 # Azure setup walkthrough
 
+> **Obsolete after the platform migration (ADR-0021, 2026-11-10).** The app is moving to Cloudflare Workers + Neon Postgres. Do not create new Azure resources from this guide. MIG-07 replaces it with `docs/setup.md` and then deletes the Azure resources listed here. Keep it until then so the current deployment can be understood and torn down.
+
 One-time setup of the Azure resources Life Tracker needs. Everything here is meant to cost **$0**. Names below are suggestions; use your own, but keep personal information out of them, because some become public host names.
 
 **Checked against Microsoft's documentation in November 2026. Not run end to end.** Portal screens move around, so if a label differs slightly, look for the closest match and keep the settings that matter (marked **Important**).

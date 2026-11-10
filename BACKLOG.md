@@ -2,14 +2,16 @@
 
 Project name: **Life Tracker**. Use the existing Linear team (key `ALE`). Do not create teams. Milestones (not issues) hold the phases from SPEC.md section 12, so they don't use up the 250-issue allowance.
 
-**Created in Linear on 2026-11-08:** project Life Tracker, 6 milestones, and 34 issues (ALE-5 to ALE-38, numbered in the order they were created, not the order to work on them). The 4 archived onboarding issues (ALE-1 to ALE-4) also exist, so 38 of the 250 free-plan issues are used. When a criterion changes here, change it in the Linear issue too.
+**Created in Linear on 2026-11-08:** project Life Tracker, 6 milestones, and 34 issues (ALE-5 to ALE-38, numbered in the order they were created, not the order to work on them). The 4 archived onboarding issues (ALE-1 to ALE-4) also exist.
+
+**Changed on 2026-11-10 (ADR-0021):** finance and transaction tracking moved to a separate private repository, so FIN-01 to FIN-09 (ALE-19 to ALE-27) are canceled. A new milestone "0. Platform migration" adds MIG-01 to MIG-07 (ALE-39 to ALE-45) for the move to Cloudflare Workers and Neon Postgres. In total 45 of the 250 free-plan issues are used. When a criterion changes here, change it in the Linear issue too.
 
 ## Sizing rules
 
 - One issue is one **vertical slice**: a user-visible capability that works end to end (screen, API, database) and can be demoed. Target 1 to 3 days of work.
 - No sub-issues, because each one counts toward the 250. Use the acceptance criteria list as the checklist.
 - Split an issue if it has more than about 8 acceptance criteria. Merge issues if one cannot be demoed without the other.
-- Only MVP work is in Linear for now: **34 issues**. "Next" and "Later" features stay in SPEC.md and become issues when they are about to start. That leaves a large margin under 250.
+- Only MVP work is in Linear for now: **32 active issues** (see the count at the end). "Next" and "Later" features stay in SPEC.md and become issues when they are about to start. That leaves a large margin under 250.
 
 ## Standing requirements for every story
 
@@ -22,26 +24,35 @@ These apply to all stories and are not repeated as criteria on each one:
 
 ## Acceptance criteria IDs
 
-Format: `AC-<AREA>-<NN>.<n>`, for example `AC-FIN-03.2`.
+Format: `AC-<AREA>-<NN>.<n>`, for example `AC-MIL-03.2`.
 
-- `<AREA>-<NN>` is the story key, and it is the prefix of the Linear issue title (`FIN-03: Import preview`). Using our own key means the ID never depends on Linear's numbering.
+- `<AREA>-<NN>` is the story key, and it is the prefix of the Linear issue title (`MIL-03: Mileage stats and graphs`). Using our own key means the ID never depends on Linear's numbering.
 - IDs are never reused or renumbered. A removed criterion stays in the list as `- AC-X-NN.n (retired): reason`.
 - Tests include the ID in the test name. See AGENTS.md.
 
-Areas: FND foundation, DEM demo, MIL mileage, FIN finance, GIV giving, HLT health, DSH dashboard, SET settings, OPS operations.
+Areas: MIG platform migration, FND foundation, DEM demo, MIL mileage, GIV giving, HLT health, DSH dashboard, SET settings, OPS operations. FIN (finance) is retired: see Milestone 3.
 
 ## Milestones
 
 Story keys never change, even when a story moves to a different milestone.
 
+0. **Platform migration:** MIG-01 to MIG-07 (7 issues). Move from Azure to Cloudflare Workers + Access and Neon Postgres before more feature work (ADR-0021). Order: MIG-01, MIG-02, MIG-03, MIG-04, MIG-05, MIG-06, MIG-07.
 1. **Foundation:** FND-01 to FND-06, SET-03, OPS-01, DEM-01 (9 issues). Logging, security headers, and the demo skeleton are here because their rules apply from the first handler and the first screen. Suggested order: FND-02 and FND-05 first, to settle the iOS PWA sign-in risk early.
-2. **Mileage MVP:** MIL-01 to MIL-04, OPS-02 (5). OPS-02 (budget alert, restore test) comes before any real data is loaded.
-3. **Finance MVP:** FIN-01 to FIN-09 (9). Suggested order: FIN-01, FIN-08, FIN-02, FIN-03, FIN-04, FIN-09, FIN-05, FIN-06, FIN-07.
+2. **Mileage MVP:** MIL-01 to MIL-04, OPS-02 (5). OPS-02 (usage alerts, restore test, export procedure) comes before any real data is loaded.
+3. **(Removed) Finance MVP:** FIN-01 to FIN-09 are retired and canceled in Linear. Finance moved to a separate private repository (ADR-0021).
 4. **Giving MVP:** GIV-01 to GIV-03 (3)
 5. **Health MVP:** HLT-01 to HLT-04 (4). Do the Apple Health memory spike before HLT-03 (ADR-0009).
 6. **Dashboard and polish:** DSH-01, SET-01, SET-02, DEM-02 (4)
 
-## Change log from v0.1
+## Change log
+
+### v0.3 (2026-11-10)
+
+- Finance removed: FIN-01 to FIN-09 retired. Money destination removed from navigation (FND-04). Dashboard, settings, security, and demo stories updated (DSH-01, SET-01, SET-03, DEM-02).
+- New milestone 0 with MIG-01 to MIG-07 for the move to Cloudflare + Neon.
+- FND-03, FND-05, FND-06, OPS-01, OPS-02 reworded for Postgres and Cloudflare. Their Azure-specific criteria are retired and replaced by MIG stories, not renumbered.
+
+### v0.2 (from v0.1)
 
 - FND-01: AC-FND-01.1 retired (push to `main` no longer deploys). Replaced by FND-06. Added criteria for protected `main`.
 - New stories: FND-06 (manual release), FIN-08 (accounts and manual entry), FIN-09 (undo an import).
@@ -53,6 +64,70 @@ Story keys never change, even when a story moves to a different milestone.
 - Wording made generic (no bank name, no personal details).
 
 ---
+
+## Milestone 0: Platform migration
+
+Move from Azure (Static Web Apps, Functions, Azure SQL) to Cloudflare Workers + Access and Neon Postgres, before more feature work. Decision and risks: ADR-0021. Existing FND and OPS criteria that name Azure keep their IDs (tests reference them) and are reworded as each MIG story lands.
+
+### MIG-01: ADR-0021 and repo scope cleanup
+**Story:** As the owner, I want the decision recorded and finance scope removed from the repo, so that docs match the plan before code changes.
+- AC-MIG-01.1: `DECISIONS.md` has ADR-0021 (Cloudflare + Neon), and ADR-0001, 0003, 0006, 0012, 0020 are marked superseded or amended where they name Azure.
+- AC-MIG-01.2: SPEC.md, BACKLOG.md, ARCHITECTURE.md, TESTING.md and AGENTS.md no longer describe transactions, accounts, categories, rules, bank CSV import, or Money. ADR-0010, 0011, 0016 are marked withdrawn.
+- AC-MIG-01.3: ADR-0017 and `wireframes-suite.html` show five destinations (Home, Giving, Health, Car, More/Settings) with no Money.
+- AC-MIG-01.4: A repo scan finds no bank-transaction code, schema, fixtures, or docs (see AC-SET-03.3).
+
+### MIG-02: Neon database, roles, and migrations port
+**Story:** As the developer, I want the schema and data layer on Neon Postgres, so that all SQL still lives in one place.
+- AC-MIG-02.1: A Neon project exists (single region near the Worker) with two roles: an app role that can read and write app tables but not change the schema, and an admin role used only for migrations.
+- AC-MIG-02.2: Existing numbered migrations are ported from T-SQL to Postgres (for example `numeric(12,2)` for money), applied by `pnpm migrate`, and recorded in the journal table. No finance tables are created.
+- AC-MIG-02.3: `mssql` is removed. A Postgres driver is used only inside `db/` and `repositories/` (dependency-cruiser rules still pass).
+- AC-MIG-02.4: Integration tests run against a Postgres Testcontainer in CI (ADR-0018).
+- AC-MIG-02.5: The destructive-migration CI check (AC-FND-06.5) still works on Postgres syntax.
+- AC-MIG-02.6: Connection strings live only in Cloudflare secrets and the GitHub `production` environment. None are in the repo.
+- AC-MIG-02.7: A cold-start query after idle completes in well under 5 seconds (measured once, recorded in `docs/manual-checks.md`). (Manual check.)
+
+### MIG-03: API on Cloudflare Workers
+**Story:** As the developer, I want the API to run as a Cloudflare Worker, so that I can run and deploy it with one tool.
+- AC-MIG-03.1: The Azure Functions handlers are replaced by Worker routes (Hono or equivalent). Layers (handler, service, repository) and dependency-cruiser rules are unchanged.
+- AC-MIG-03.2: The Worker serves the built web app as static assets and routes `/api/*` to the API.
+- AC-MIG-03.3: `requestGuard` (custom header on non-GET) works as before.
+- AC-MIG-03.4: `wrangler dev` runs web and API locally against a local or branch Neon database.
+- AC-MIG-03.5: A health route returns 200 with no data, passes through the logger, and has a test.
+- AC-MIG-03.6: The bundled Worker stays under the plan's size limit, and the CPU-time limit is checked against the heaviest planned request.
+- AC-MIG-03.7: Security headers and a Content Security Policy are set by the Worker (supports SET-03).
+
+### MIG-04: Owner-only login with Cloudflare Access
+**Story:** As the owner, I want GitHub sign-in enforced at the edge and re-checked in the API, so that my private data stays private.
+- AC-MIG-04.1: A Cloudflare Access application protects the whole site (including `/api/*`) using GitHub as identity provider and a policy that allows only the owner.
+- AC-MIG-04.2: `ownerGuard` validates the Access token (signature, audience, expiry) and compares the identity to a configured owner identifier. It denies access if the setting or the token is missing (fail closed, no bypass flag).
+- AC-MIG-04.3: A request with no valid token returns 401 and no data. A valid token for a non-owner returns 403.
+- AC-MIG-04.4: Signing in as another GitHub account shows an access-denied screen (replaces AC-FND-02.2 after migration). (Manual check.)
+- AC-MIG-04.5: `/demo` stays reachable without login (DEM-01) through a scoped Access bypass path that serves only static demo assets and never the API.
+- AC-MIG-04.6: Tests use the same auth path with synthetic signed tokens and a test key set. No production bypass.
+- AC-MIG-04.7: The iPhone home-screen PWA signs in and stays signed in (replaces AC-FND-02.6 after migration). (Manual check.)
+
+### MIG-05: Release pipeline to Cloudflare
+**Story:** As the owner, I want the manual, approval-gated release to deploy to Cloudflare, so that nothing reaches real data without my approval.
+- AC-MIG-05.1: The Release workflow still runs only when started manually on `main`, waits for `production` environment approval before using any secret, and checks CI passed on the exact commit.
+- AC-MIG-05.2: Migrations run first against Neon with the admin role. If one fails, nothing is deployed.
+- AC-MIG-05.3: Deploy uses `wrangler deploy` with a scoped Cloudflare API token held as a `production` environment secret.
+- AC-MIG-05.4: The run summary lists the commit and the migrations applied.
+- AC-MIG-05.5: The workflow test is updated for the new steps and does not assert Azure inputs.
+- AC-MIG-05.6: The first real Release run succeeds end to end and the site loads behind Access. (Manual check.)
+
+### MIG-06: Logging and observability on Cloudflare
+**Story:** As the owner, I want errors and slow calls visible without leaking data, after leaving Application Insights.
+- AC-MIG-06.1: The Application Insights dependency is removed. Request and error logs go to Workers Logs (optionally Sentry free tier).
+- AC-MIG-06.2: All logging still goes through the one allow-listed logger. The test that fails on fake odometer, weight, workout, or gift values in captured logs still passes.
+- AC-MIG-06.3: An email alert fires on a spike of 403 responses (replaces the ADR-0006 alert). (Manual check.)
+- AC-MIG-06.4: `OBSERVABILITY.md` is updated.
+
+### MIG-07: Azure decommission and setup docs
+**Story:** As the owner, I want Azure gone and the new setup documented, so that nothing bills and a fresh setup is repeatable.
+- AC-MIG-07.1: `docs/azure-setup.md` is replaced by `docs/setup.md` covering Cloudflare (Workers, Access, API token) and Neon (project, roles, secrets).
+- AC-MIG-07.2: The Entra federated credential, Static Web App, Function app, SQL server, and Azure budget alert are deleted after the first successful Cloudflare release. (Manual check.)
+- AC-MIG-07.3: No Azure references remain in workflows, package.json, or docs except historical ADR notes.
+- AC-MIG-07.4: The Azure subscription shows no running billable resources. (Manual check.)
 
 ## Milestone 1: Foundation
 
@@ -82,14 +157,15 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-FND-03.1: Schema migrations run from the repo, are repeatable, and are recorded in a journal table.
 - AC-FND-03.2: The API connects with a least-privilege login that can read and write app tables but cannot change the schema. Migrations use a separate admin login.
 - AC-FND-03.3: All SQL is in `repositories/`, and a lint rule fails if SQL appears elsewhere.
-- AC-FND-03.4: Tests run against a throwaway SQL Server container with synthetic data only.
+- AC-FND-03.4: Tests run against a throwaway Postgres container with synthetic data only (SQL Server until MIG-02 lands).
 - AC-FND-03.5: The migration script refuses to run if an already-applied migration file has changed.
 - AC-FND-03.6: Layer rules (`pages` to `client` to `handlers` to `services` to `repositories` to `db`) are enforced by a dependency check in CI.
 
 ### FND-04: Responsive app shell
-**Story:** As the owner, I want the app to adapt to phone, tablet, and desktop, so that it feels right on whichever device I use.- AC-FND-04.1: Below 640 px wide, navigation is a bottom tab bar (Home, Money, Health, Car, More). Giving and Settings are inside More.
-- AC-FND-04.2: From 640 to 1023 px, navigation is a left icon rail (Home, Money, Giving, Health, Car, More).
-- AC-FND-04.3: At 1024 px and wider, navigation is a left sidebar (Home, Money, Giving, Health, Car, Settings).
+**Story:** As the owner, I want the app to adapt to phone, tablet, and desktop, so that it feels right on whichever device I use.
+- AC-FND-04.1: Below 640 px wide, navigation is a bottom tab bar (Home, Giving, Health, Car, More). Settings is inside More.
+- AC-FND-04.2: From 640 to 1023 px, navigation is a left icon rail (Home, Giving, Health, Car, More).
+- AC-FND-04.3: At 1024 px and wider, navigation is a left sidebar (Home, Giving, Health, Car, Settings).
 - AC-FND-04.4: No horizontal scrolling at 360, 768, and 1280 px widths.
 - AC-FND-04.5: Light and dark themes both work at every breakpoint.
 
@@ -98,7 +174,7 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-FND-05.1: The app can be added to the iPhone home screen and opens full screen. (Manual check.)
 - AC-FND-05.2: Only the app shell is cached. API responses are never cached.
 - AC-FND-05.3: When offline, a clear offline message shows and no private data is displayed.
-- AC-FND-05.4: While the database wakes from auto-pause, the app shows a loading state and retries once instead of an error.
+- AC-FND-05.4: While the database wakes from idle, the app shows a loading state and retries once instead of an error.
 
 ### FND-06: Manual release pipeline
 **Story:** As the owner, I want to release to production by hand, with database migrations applied first, so that nothing reaches real data without my approval.
@@ -108,20 +184,20 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-FND-06.4: Pending SQL migrations run before the site and API are deployed. If a migration fails, nothing is deployed.
 - AC-FND-06.5: CI fails on destructive migration statements (drop, rename, narrowing a column) unless the file has an explicit `-- allow-destructive` marker.
 - AC-FND-06.6: The run summary lists the commit released and the migrations applied.
-- AC-FND-06.7: Azure access uses OIDC federation or environment secrets. No credentials are in the repo.
+- AC-FND-06.7: Cloud access uses OIDC federation or environment secrets (a scoped Cloudflare API token and Neon credentials as `production` secrets after MIG-05; Azure OIDC until then). No credentials are in the repo.
 
 ### SET-03: Security headers and upload limits
-**Story:** As the owner, I want the app hardened, so that financial and health data are protected.
+**Story:** As the owner, I want the app hardened, so that health, mileage, and giving data are protected.
 - AC-SET-03.1: HTTPS only, with a Content Security Policy and standard security headers.
-- AC-SET-03.2: All upload endpoints enforce size and type limits on the server.
-- AC-SET-03.3: A scan of the repo finds no CSV, export, or real data files.
+- AC-SET-03.2: All upload endpoints (the mileage spreadsheet import, MIL-04) enforce size and type limits on the server.
+- AC-SET-03.3: A scan of the repo finds no CSV, export, or real data files, and no code or schema for bank transactions.
 
 ### OPS-01: Logging and observability
 **Story:** As the owner, I want errors and slow calls visible, so that I can fix problems without leaking data.
-- AC-OPS-01.1: Application Insights receives request and failure telemetry from the API.
+- AC-OPS-01.1: The hosting platform's log service receives request and failure telemetry from the API (Application Insights until MIG-06, then Workers Logs).
 - AC-OPS-01.2: All logging goes through one logger that accepts only an allow-list of fields.
-- AC-OPS-01.3: A test fails if a fake merchant, amount, weight, or odometer value appears in captured logs.
-- AC-OPS-01.4: Sampling is on and a daily data cap is set.
+- AC-OPS-01.3: A test fails if a fake gift amount, weight, workout, or odometer value appears in captured logs.
+- AC-OPS-01.4: Sampling is on and a daily data cap is set, where the platform offers them.
 - AC-OPS-01.5: Alerts exist for a spike in 403s and for a failed availability check. The availability check requests the static home page only, never the database.
 
 ### DEM-01: Demo mode
@@ -165,92 +241,85 @@ Story keys never change, even when a story moves to a different milestone.
 
 ### OPS-02: Cost and backup safeguards
 **Story:** As the owner, I want cost and data-loss protection before real data goes in, so that nothing surprises me.
-- AC-OPS-02.1: An Azure budget alert is set at about $5.
-- AC-OPS-02.2: Database point-in-time restore is enabled and a restore has been tried once. (Manual check.)
-- AC-OPS-02.3: A documented manual export procedure exists in the repo (no data in the repo).
-- AC-OPS-02.4: The database is set to auto-pause until next month when the free allowance is used up, not to continue and bill (ADR-0001). (Manual check.)
-- AC-OPS-02.5: An email alert fires when the free database allowance is low (under 10,000 vCore seconds remaining). (Manual check.)
+- AC-OPS-02.1: Usage alerts exist on Cloudflare and Neon (a spend notification, and a warning before the free compute hours run out).
+- AC-OPS-02.2: The Neon point-in-time restore window is confirmed for the plan in use, and a restore (branch from a past time) has been tried once. (Manual check.)
+- AC-OPS-02.3: A documented manual export procedure (`pg_dump` to private storage) exists in the repo (no data in the repo).
+- AC-OPS-02.4: Exceeding a free limit stops service instead of billing: the account stays on free plans with no paid add-ons (ADR-0021). (Manual check.)
+- AC-OPS-02.5: An email alert fires when the free Neon compute hours are low. (Manual check.)
 
-## Milestone 3: Finance MVP
+## Milestone 3: Finance MVP (removed)
 
-### FIN-01: Category and rule management
-**Story:** As the owner, I want categories and merchant rules, so that transactions can be sorted automatically.
-- AC-FIN-01.1: Default categories exist, and I can add, rename, and delete categories.
-- AC-FIN-01.2: A rule maps "merchant contains text" to a category. Matching ignores case.
-- AC-FIN-01.3: Rules can be edited and deleted.
-- AC-FIN-01.4: Deleting a category in use asks where to move its transactions.
-- AC-FIN-01.5: Every category has a type: expense, income, or transfer (ADR-0011).
-- AC-FIN-01.6: Rules are checked in order and the first match wins. I can reorder them.
-- AC-FIN-01.7: A "re-apply rules" action categorizes existing uncategorized transactions and reports how many changed.
+Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking moved to a separate private repository so bank data never touches this public-code, internet-hosted app. All FIN criteria are retired. The IDs stay here so they are never reused. The Linear issues (ALE-19 to ALE-27) are canceled.
 
-### FIN-08: Accounts and manual entry
-**Story:** As the owner, I want to keep my accounts separate and add a transaction by hand, so that cash and gaps are covered.
-- AC-FIN-08.1: I can add and rename accounts with a name and a type (checking, credit card, cash). No account numbers are ever stored.
-- AC-FIN-08.2: Every transaction belongs to one account, and the transaction list can filter by account.
-- AC-FIN-08.3: I can add a transaction by hand with date, amount, description, account, and category.
-- AC-FIN-08.4: Manual transactions are labeled "manual" and can be edited and deleted.
-- AC-FIN-08.5: An import asks which account the file belongs to and saves its transactions to that account.
+### FIN-01: Category and rule management (retired)
+- AC-FIN-01.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-01.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-01.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-01.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-01.5 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-01.6 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-01.7 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-02: CSV upload and parsing
-**Story:** As the owner, on my desktop, I want to upload a bank export file, so that I can bring in transactions.
-- AC-FIN-02.1: The upload screen is available at 1024 px and wider.
-- AC-FIN-02.2: Below 1024 px, the Import entry is hidden and a message says to import from a computer.
-- AC-FIN-02.3: Only .csv and .xlsx files up to 5 MB and 5,000 rows are accepted, and others are rejected with a clear message. Trailing empty rows are ignored.
-- AC-FIN-02.4: The primary bank's layout is detected by its header row (DATE, DESCRIPTION, AMOUNT, CHECK #, STATUS), in a .csv or an .xlsx, with or without a title row above the header. Dates are read as MM/DD/YYYY text, and amounts become integer cents. Column mapping is configurable so other banks can be added. A file with no recognizable header is rejected with a clear message.
-- AC-FIN-02.5: Account numbers are dropped and never leave the parser, including any digits in the file's title row. The title row may only be used to suggest which account the file belongs to.
-- AC-FIN-02.6: The uploaded file is not written to disk or storage.
-- AC-FIN-02.7: A malformed row (a bad date or amount, or the wrong number of fields) is reported with its row number and does not stop the rest.
-- AC-FIN-02.8: Each row gets a cleaned merchant name (processor prefixes and trailing reference numbers removed). The original text is kept and is what rules also match against.
+### FIN-08: Accounts and manual entry (retired)
+- AC-FIN-08.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-08.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-08.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-08.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-08.5 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-03: Import preview
-**Story:** As the owner, I want to see what will be saved before saving, so that I can catch mistakes.
-- AC-FIN-03.1: The preview shows counts for total, new, duplicate, and needs-category rows.
-- AC-FIN-03.2: Rows can be filtered by status.
-- AC-FIN-03.3: Duplicate rows are visually distinct and skipped by default.
-- AC-FIN-03.4: Rules are applied to new rows, and unmatched rows show "Needs category".
-- AC-FIN-03.5: A category can be set on a row inside the preview.
-- AC-FIN-03.6: Nothing is saved to the database during preview.
-- AC-FIN-03.7: Rows the bank marks Pending are shown as "Pending", counted, and skipped. They import on a later upload once they are Posted (ADR-0016).
+### FIN-02: CSV upload and parsing (retired)
+- AC-FIN-02.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.5 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.6 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.7 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-02.8 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-04: Duplicate detection and import commit
-**Story:** As the owner, I want overlapping uploads to be safe, so that I never double-count a transaction.
-- AC-FIN-04.1: Re-uploading the same file imports zero new rows.
-- AC-FIN-04.2: A file overlapping an earlier one imports only the rows not already saved.
-- AC-FIN-04.3: Two genuinely identical transactions on one day in the same account are both kept. Each gets an occurrence number in its fingerprint (ADR-0010).
-- AC-FIN-04.4: A database failure during commit saves nothing (all or nothing).
-- AC-FIN-04.5: The database enforces uniqueness of the fingerprint as a backstop if a duplicate slips past the app check.
-- AC-FIN-04.6: After import, a success screen links to the new transactions.
-- AC-FIN-04.7: The commit call validates every row it receives (schema, at most 5,000 rows, known category and account) and recomputes fingerprints itself. It does not trust values from the browser.
+### FIN-03: Import preview (retired)
+- AC-FIN-03.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-03.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-03.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-03.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-03.5 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-03.6 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-03.7 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-09: Undo an import
-**Story:** As the owner, I want to undo a bad import, so that I never fear importing.
-- AC-FIN-09.1: An import history lists each batch with date, account, and row count.
-- AC-FIN-09.2: Undoing a batch deletes exactly that batch's transactions, after a confirmation.
-- AC-FIN-09.3: The confirmation states how many of the batch's transactions were edited by hand since the import.
-- AC-FIN-09.4: Undo is all or nothing.
-- AC-FIN-09.5: After an undo, re-uploading the same file imports those rows again.
+### FIN-04: Duplicate detection and import commit (retired)
+- AC-FIN-04.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-04.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-04.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-04.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-04.5 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-04.6 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-04.7 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-05: Transaction list and search
-**Story:** As the owner, I want to browse and filter transactions, so that I can find what I spent.
-- AC-FIN-05.1: Transactions are listed newest first, with paging.
-- AC-FIN-05.2: I can search by merchant text and filter by date range, category, and amount range.
-- AC-FIN-05.3: A "needs category only" filter exists.
-- AC-FIN-05.4: At 1024 px and wider the list is a table with an edit side panel. Below that it is a list with a bottom sheet.
+### FIN-09: Undo an import (retired)
+- AC-FIN-09.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-09.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-09.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-09.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-09.5 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-06: Edit transaction and teach the app
-**Story:** As the owner, I want fixing one category to fix similar ones, so that I categorize less over time.
-- AC-FIN-06.1: I can change a transaction's category, merchant text, and note.
-- AC-FIN-06.2: "Apply to similar" creates a rule and updates other uncategorized matches.
-- AC-FIN-06.3: The result states how many other transactions were updated.
-- AC-FIN-06.4: Rule creation and updates happen in one database transaction.
+### FIN-05: Transaction list and search (retired)
+- AC-FIN-05.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-05.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-05.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-05.4 (retired): out of scope, finance moved to another repository (ADR-0021).
 
-### FIN-07: Monthly summary and trends
-**Story:** As the owner, I want monthly totals and trends, so that I understand my spending.
-- AC-FIN-07.1: A month view shows total spent, spending by category, and change versus the previous month.
-- AC-FIN-07.2: Moving between months works with previous and next controls.
-- AC-FIN-07.3: A trends chart shows spending over time.
-- AC-FIN-07.4: "Spent" counts only expense-type categories. Income and transfers are excluded.
-- AC-FIN-07.5: Charts use accessible colors and have text alternatives.
+### FIN-06: Edit transaction and teach the app (retired)
+- AC-FIN-06.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-06.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-06.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-06.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+
+### FIN-07: Monthly summary and trends (retired)
+- AC-FIN-07.1 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-07.2 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-07.3 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-07.4 (retired): out of scope, finance moved to another repository (ADR-0021).
+- AC-FIN-07.5 (retired): out of scope, finance moved to another repository (ADR-0021).
 
 ## Milestone 4: Giving MVP
 
@@ -307,15 +376,15 @@ Story keys never change, even when a story moves to a different milestone.
 
 ### DSH-01: Dashboard
 **Story:** As the owner, I want one home screen, so that I can see everything at a glance.
-- AC-DSH-01.1: It shows this month's spending versus last month, latest weight with trend, last week's miles, and workouts this week.
+- AC-DSH-01.1: It shows latest weight with trend, last week's miles, workouts this week, and year-to-date giving.
 - AC-DSH-01.2: An odometer-due banner shows only when this week's reading is missing.
-- AC-DSH-01.3: Quick actions: add weight, add workout, log odometer. "Upload CSV" appears at 1024 px and wider only.
+- AC-DSH-01.3: Quick actions: add weight, add workout, log odometer, add giving.
 - AC-DSH-01.4: The layout uses one column on mobile, and a multi-column grid on tablet and desktop.
 
 ### SET-01: Settings and sign out
 **Story:** As the owner, I want a settings screen, so that I can sign out and manage preferences.
 - AC-SET-01.1: Sign out ends the session.
-- AC-SET-01.2: Categories and rules are reachable from settings.
+- AC-SET-01.2 (retired): Categories and rules were finance-only and are out of scope (ADR-0021).
 - AC-SET-01.3: A theme switch offers light, dark, and system.
 - AC-SET-01.4: The owner time zone and weight unit can be set (ADR-0007).
 
@@ -327,12 +396,12 @@ Story keys never change, even when a story moves to a different milestone.
 - AC-SET-02.4: Lighthouse accessibility score is 90 or higher on the main screens.
 - AC-SET-02.5: Every list and chart has an empty state that says what to do next.
 
-### DEM-02: Demo import walkthrough
-**Story:** As a visitor, I want to see the CSV import flow on a sample file, so that I understand the feature.
+### DEM-02: Demo mileage import walkthrough
+**Story:** As a visitor, I want to see the mileage spreadsheet import flow on a sample file, so that I understand the feature.
 - AC-DEM-02.1: The demo import screen offers a built-in sample file, generated in code.
 - AC-DEM-02.2: The demo walks through upload, preview, and done using the sample.
 - AC-DEM-02.3: Nothing is sent to a server.
 
 ---
 
-**Count: 34 issues** (FND 6, MIL 4, FIN 9, GIV 3, HLT 4, DSH 1, SET 3, DEM 2, OPS 2).
+**Count: 32 active issues** (MIG 7, FND 6, MIL 4, GIV 3, HLT 4, DSH 1, SET 3, DEM 2, OPS 2), plus 9 canceled FIN issues.

@@ -1,6 +1,6 @@
 ## Story
 
-<!-- Story key and name, for example FIN-03: Import preview. Link the Linear issue. -->
+<!-- Story key and name, for example MIL-03: Mileage stats and graphs. Link the Linear issue. -->
 
 ## What changed
 
@@ -22,7 +22,7 @@ Write "No UI change" if this PR has no visible change.
 
 ## Acceptance criteria
 
-<!-- List each AC ID this PR touches, for example AC-FIN-03.2, and where it is proven (test file or manual-checks entry). -->
+<!-- List each AC ID this PR touches, for example AC-MIL-03.2, and where it is proven (test file or manual-checks entry). -->
 
 ## Checklist
 
@@ -30,7 +30,7 @@ Write "No UI change" if this PR has no visible change.
 
 - [ ] Every acceptance criterion touched has a passing `[AC-...]` test, or an entry in `docs/manual-checks.md`
 - [ ] Tests are at the lowest level that can prove each criterion (see TESTING.md)
-- [ ] Checked at mobile, tablet, and desktop widths (CSV import: desktop only)
+- [ ] Checked at mobile, tablet, and desktop widths
 - [ ] New API methods are in both `client.ts` and `demoApi.ts`, and the shared contract test passes
 - [ ] No personal data, secrets, or real-looking fixtures in code, tests, comments, or screenshots
 - [ ] No banned fields in logs or telemetry (all logging goes through `telemetry/logger.ts`)
@@ -48,7 +48,7 @@ Write "No UI change" if this PR has no visible change.
 - [ ] Failure path tested, not only the happy path
 - [ ] Rollback is simple: say how to revert (for example, a feature is additive and can be reverted without a migration)
 - [ ] No new dependency, or the new one is justified in "What changed"
-- [ ] No new paid service or Azure resource (see Cost in AGENTS.md)
+- [ ] No new paid service or cloud resource (see Cost in AGENTS.md)
 
 ## Release notes
 

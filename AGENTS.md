@@ -4,14 +4,14 @@ Instructions for AI coding agents (and humans) working on Life Tracker. Read thi
 
 ## What this is
 
-A private, single-user web app (installable PWA) for personal finances, health, mileage, and giving. The code is public. The data and login are private. Read these before building anything:
+A private, single-user web app (installable PWA) for health, mileage, and giving. **Finance and transaction tracking are not part of this app** (ADR-0021); never add them. The code is public. The data and login are private. Read these before building anything:
 
 - [SPEC.md](SPEC.md): features, priorities, security requirements
 - [ARCHITECTURE.md](ARCHITECTURE.md): layers, dependency rules, sequence diagrams
 - [DECISIONS.md](DECISIONS.md): why each technical choice was made (ADRs). Check here before changing a choice.
 - [TESTING.md](TESTING.md): the test pyramid, what goes at which level, CI jobs
 - [OBSERVABILITY.md](OBSERVABILITY.md): logging rules
-- [docs/azure-setup.md](docs/azure-setup.md): one-time Azure resource setup, step by step
+- [docs/azure-setup.md](docs/azure-setup.md): one-time Azure resource setup. **Obsolete after MIG-07**; the app is moving to Cloudflare + Neon (ADR-0021)
 - [BACKLOG.md](BACKLOG.md): stories and acceptance criteria (mirrors Linear)
 - [wireframes-suite.html](wireframes-suite.html): every MVP screen at mobile, tablet, and desktop widths
 
@@ -19,21 +19,21 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 
 ## Hard rules
 
-1. **No personal data in the repo.** No real transactions, account numbers, names, birthdates, photos, odometer history, or health values. Not in code, tests, fixtures, comments, or commit messages. Use synthetic data only. Any child in the demo is fictional.
-2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub or Static Web Apps) in any file. Use GitHub secrets and Azure app settings.
+1. **No personal data in the repo.** No bank or financial data of any kind, no account numbers, names, birthdates, photos, odometer history, or health values. Not in code, tests, fixtures, comments, or commit messages. Use synthetic data only. Any child in the demo is fictional.
+2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub, Cloudflare Access, or Static Web Apps) in any file. Use GitHub secrets and Cloudflare or Azure app settings.
 3. **Never commit** `*.csv`, `*.xlsx`, Apple Health exports, or local settings. Test and demo fixtures are generated in code, not stored as data files.
 4. **Fail closed.** If the owner cannot be confirmed, the API returns nothing.
-5. **Do not store uploaded files.** Parse, keep the parsed rows, discard the file.
+5. **Do not store uploaded files.** Parse (in the browser where possible), keep the parsed rows, discard the file.
 6. **No private data in logs or telemetry.** All logging goes through `telemetry/logger.ts` and its field allow-list.
 7. **Demo mode never calls the real API.**
 8. Commit with the GitHub noreply email only. `scripts/check-hygiene.sh` checks this in CI.
-9. **No test-only bypass in auth code.** `ownerGuard` never reads an environment flag. Tests supply synthetic identity headers instead.
+9. **No test-only bypass in auth code.** `ownerGuard` never reads an environment flag. Tests supply synthetic identities (headers now, signed Access tokens after MIG-04) instead.
 10. **Never apply migrations from the app.** Only the release workflow (or a developer against a local database) runs them.
 
 ## Git, pull requests, and release
 
 - `main` is protected. **Nobody pushes to it directly, including the owner.** Every change goes through a pull request.
-- Branch names start with the story key, for example `fin-03-import-preview`. Commit messages start with it too, for example `FIN-03: show duplicate rows in preview`.
+- Branch names start with the story key, for example `mil-03-mileage-graphs`. Commit messages start with it too, for example `MIL-03: add rolling average line`.
 - A pull request can merge only when CI is green and its branch is up to date with `main`. Merging is by **squash**, which keeps `main` linear.
 - **Delete a pull request's branch after it merges.** The repository deletes head branches on merge, so merged work does not pile up. If a branch is still there after a merge, delete it by hand.
 - Keep pull requests small, ideally one story or part of one.
@@ -73,24 +73,24 @@ Every screen must work at three breakpoints. Mobile is the default and is design
 | Tablet | 640 to 1023 px | Left icon rail (see wireframes-suite.html) |
 | Desktop | 1024 px and wider | Left sidebar |
 
-- Destinations: Home, Money, Giving, Health, Car, Settings. Giving is its own feature. The phone tab bar has five tabs (Home, Money, Health, Car, More), and Giving and Settings are inside More. See ADR-0017.
+- Destinations: Home, Giving, Health, Car, Settings. The phone tab bar has five tabs (Home, Giving, Health, Car, More), and Settings is inside More. There is no Money destination (ADR-0021). See ADR-0017.
 - Write mobile styles first, then add wider layouts.
 - No horizontal scrolling at 360, 768, and 1280 px.
-- **CSV bank import is desktop only** (1024 px and wider). Below that, hide the entry point and show "Import from a computer". Other imports (Apple Health, mileage spreadsheet) are allowed on all viewports.
+- Imports (Apple Health, mileage spreadsheet) are allowed on all viewports. If an Apple Health export is too large for the device, show "Import from a computer" (AC-HLT-03.7).
 - Layout tests check all three widths. Only layout tests run the full width matrix.
 
 ## Testing
 
-Follow [TESTING.md](TESTING.md). In short: a pyramid with many unit tests, fewer integration tests, and few end-to-end tests. Prove each acceptance criterion at the lowest level that can prove it. Write the failing test first for pure logic (parsers, mileage, categorizer, totals).
+Follow [TESTING.md](TESTING.md). In short: a pyramid with many unit tests, fewer integration tests, and few end-to-end tests. Prove each acceptance criterion at the lowest level that can prove it. Write the failing test first for pure logic (parsers, mileage, totals).
 
 ## Acceptance criteria and test traceability
 
 Every user story in BACKLOG.md and Linear has acceptance criteria (AC) with a unique ID.
 
-**ID format:** `AC-<AREA>-<NN>.<n>`, for example `AC-FIN-03.2`.
+**ID format:** `AC-<AREA>-<NN>.<n>`, for example `AC-MIL-03.2`.
 
-- Area codes: FND, DEM, MIL, FIN, GIV, HLT, DSH, SET, OPS.
-- `<AREA>-<NN>` is the story key. It is also the prefix of the Linear issue title, for example `FIN-03: Import preview`.
+- Area codes: MIG, FND, DEM, MIL, GIV, HLT, DSH, SET, OPS. (FIN is retired.)
+- `<AREA>-<NN>` is the story key. It is also the prefix of the Linear issue title, for example `MIL-03: Mileage stats and graphs`.
 - IDs are permanent. Never reuse or renumber one. Mark removed criteria `(retired)`, in the form `- AC-FND-01.1 (retired): reason`.
 - When you add a criterion, take the next free number for that story and add it to both BACKLOG.md and the Linear issue.
 
@@ -98,13 +98,13 @@ Every user story in BACKLOG.md and Linear has acceptance criteria (AC) with a un
 
 ```ts
 // Unit or integration test (Vitest)
-it('[AC-FIN-04.1] re-uploading the same file imports zero new rows', async () => { /* ... */ });
+it('[AC-MIL-04.4] re-importing the same file creates no duplicates', async () => { /* ... */ });
 
 // A test covering more than one criterion lists them all
-it('[AC-FIN-02.3][AC-FIN-02.7] rejects bad files and reports the row number', () => { /* ... */ });
+it('[AC-MIL-04.1][AC-MIL-04.3] rejects bad files and flags changed rows', () => { /* ... */ });
 
 // End-to-end (Playwright): put the ID in the title and also tag it
-test('[AC-FIN-02.2] phone hides CSV import', { tag: '@AC-FIN-02.2' }, async ({ page }) => { /* ... */ });
+test('[AC-FND-04.1] phone shows the bottom tab bar', { tag: '@AC-FND-04.1' }, async ({ page }) => { /* ... */ });
 ```
 
 Rules:
@@ -143,7 +143,7 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
 ## Definition of done
 
 1. All acceptance criteria met, each with a passing `[AC-...]` test or a manual-check entry.
-2. Works at mobile, tablet, and desktop widths (CSV import: desktop only).
+2. Works at mobile, tablet, and desktop widths.
 3. Lint, type check, and all test levels pass in CI. The change merged through a pull request.
 4. No personal data, secrets, or banned log fields (see Hard rules).
 5. New API methods exist in both `client.ts` and `demoApi.ts`.
@@ -157,13 +157,13 @@ Decided in [DECISIONS.md](DECISIONS.md):
 
 - pnpm workspaces: `web`, `api`, `shared`.
 - Web: React, TypeScript, Vite, PWA, React Router, TanStack Query, Recharts, Tailwind.
-- API: Azure Functions (Node, TypeScript) as the managed API of Azure Static Web Apps.
-- Database: Azure SQL (serverless, free offer). Hand-written parameterized SQL through the `mssql` package. Numbered `.sql` migrations.
+- API and hosting (target, ADR-0021): a Cloudflare Worker (Hono, TypeScript) serving the web app and `/api/*`, behind Cloudflare Access. **Today the code still targets Azure Functions and Static Web Apps until MIG-03 and MIG-04 land.**
+- Database (target): Neon Postgres, hand-written parameterized SQL through a Postgres driver, numbered `.sql` migrations. **Today: Azure SQL and `mssql` until MIG-02 lands.**
 - Validation: zod, shared by client and API.
-- Tests: Vitest, Testing Library, fast-check, Testcontainers (SQL Server), Playwright with the SWA CLI.
-- Telemetry: Application Insights.
+- Tests: Vitest, Testing Library, fast-check, Testcontainers (Postgres after MIG-02), Playwright with a local server (`wrangler dev` after MIG-03).
+- Telemetry: Workers Logs after MIG-06 (Application Insights until then).
 - Source, CI, release, and login: GitHub (Actions, protected `main`, `production` environment).
 
 ## Cost
 
-Target $0 to $2 per month. Do not add paid services, always-on compute, or extra Azure resources without asking.
+Target $0 per month. Do not add paid services, always-on compute, or extra cloud resources without asking.
