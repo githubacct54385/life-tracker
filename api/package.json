@@ -25,6 +25,7 @@
   "dependencies": {
     "@life-tracker/shared": "workspace:*",
     "hono": "^4.13.17",
+    "jose": "^6.2.17",
     "pg": "^8.23.1"
   }
 }

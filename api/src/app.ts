@@ -1,6 +1,8 @@
 // The API as a Hono app. Pure Request in, Response out: no Cloudflare imports, so it runs under plain Node in tests.
 // Order of work for every /api request: log it, check the custom header, then route to a handler (ARCHITECTURE.md).
 import { Hono } from "hono";
+import { authenticate, remoteKeys, type KeySource } from "./auth/accessGuard.js";
+import type { AccessSettings } from "./auth/accessConfig.js";
 import { requestGuard } from "./auth/requestGuard.js";
 import { healthRoutes } from "./handlers/healthHandler.js";
 import { errorTypeOf, type Logger } from "./telemetry/logger.js";
@@ -8,6 +10,8 @@ import { errorTypeOf, type Logger } from "./telemetry/logger.js";
 export interface AppDeps {
   logger: Logger;
   checkDatabase: () => Promise<boolean>;
+  /** Where to get Access's public keys. Defaults to the published ones; tests pass their own. */
+  keys?: KeySource;
 }
 
 /** Route pattern as a log label: "/api/health" -> "api/health". Never the real URL, which could carry data. */
@@ -16,8 +20,8 @@ function routeLabel(routePath: string, matched: boolean): string {
   return routePath.replace(/^\//, "").replace(/:/g, "_").toLowerCase() || "unmatched";
 }
 
-export function createApp(deps: AppDeps): Hono {
-  const app = new Hono().basePath("/api");
+export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
+  const app = new Hono<{ Bindings: AccessSettings }>().basePath("/api");
 
   app.use("*", async (c, next) => {
     const started = Date.now();
@@ -30,6 +34,14 @@ export function createApp(deps: AppDeps): Hono {
       statusCode: c.res.status,
       durationMs: Math.max(0, Date.now() - started),
     });
+  });
+
+  // AC-MIG-04.2/04.3: identity first, for every route and every method, before anything else can answer.
+  // An unknown path gets the same 401 as a known one, so a caller who is not the owner learns nothing.
+  app.use("*", async (c, next) => {
+    const result = await authenticate(c.req.raw.headers, c.env ?? {}, deps.keys ?? remoteKeys);
+    if (!result.ok) return c.json({ error: result.status === 401 ? "unauthorized" : "forbidden" }, result.status);
+    await next();
   });
 
   // AC-MIG-03.3: the same check as before, on every method. Safe methods pass; anything else needs the custom header.

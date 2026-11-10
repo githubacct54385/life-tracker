@@ -43,4 +43,13 @@ describe("platform", () => {
     expect(config.vars).toBeUndefined(); // no values in the file; secrets live in .dev.vars and Cloudflare
     expect(/postgres(ql)?:\/\//i.test(text)).toBe(false);
   });
+
+  it("[AC-MIG-04.6] no production source imports the test token signer or reads the environment in the auth code", () => {
+    const files = sourceFiles(path.join(apiRoot, "src")).filter((file) => !file.includes(`${path.sep}testing${path.sep}`));
+    const importers = files.filter((file) => /testing\/accessTokens/.test(readFileSync(file, "utf8")));
+    expect(importers).toEqual([]);
+    const authFiles = files.filter((file) => file.includes(`${path.sep}auth${path.sep}`));
+    const readers = authFiles.filter((file) => /process\.env|import\.meta\.env|NODE_ENV/.test(readFileSync(file, "utf8")));
+    expect(readers).toEqual([]);
+  });
 });

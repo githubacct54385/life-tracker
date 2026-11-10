@@ -1,12 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens";
 import { ALLOWED_LOG_FIELDS, createLogger } from "./telemetry/logger";
 import { createWorker, isApiPath, type Env } from "./worker";
+
+let issuer: Awaited<ReturnType<typeof createTestIssuer>>;
+let ownerToken: string;
+beforeAll(async () => {
+  issuer = await createTestIssuer();
+  ownerToken = await issuer.sign(TEST_SETTINGS.OWNER_EMAIL);
+});
 
 function setup(checkDatabase: () => Promise<boolean> = async () => true) {
   const lines: { level: string; entry: Record<string, unknown> }[] = [];
   const logger = createLogger((level, line) => lines.push({ level, entry: JSON.parse(line) }));
   const assetCalls: string[] = [];
   const env: Env = {
+    ...TEST_SETTINGS,
     ASSETS: {
       fetch: async (request) => {
         assetCalls.push(new URL(request.url).pathname);
@@ -14,9 +23,14 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true) {
       },
     },
   };
-  const worker = createWorker({ logger, checkDatabase });
-  const call = (path: string, init?: RequestInit) => worker.fetch(new Request(`https://app.example.test${path}`, init), env);
-  return { call, lines, assetCalls };
+  const worker = createWorker({ logger, checkDatabase, keys: issuer.keys });
+  // Signed in as the owner unless a test says otherwise: the same header Cloudflare Access adds at the edge.
+  const call = (path: string, init: RequestInit = {}, token: string | null = ownerToken) => {
+    const headers = new Headers(init.headers);
+    if (token !== null) headers.set("cf-access-jwt-assertion", token);
+    return worker.fetch(new Request(`https://app.example.test${path}`, { ...init, headers }), env);
+  };
+  return { call, lines, assetCalls, env, worker };
 }
 
 describe("routing", () => {
@@ -125,5 +139,64 @@ describe("security headers on the Worker", () => {
     }
     expect((await call("/api/health")).headers.get("cache-control")).toBe("no-store");
     expect((await call("/")).headers.get("cache-control")).toBeNull();
+  });
+});
+
+describe("owner guard on the Worker", () => {
+  it("[AC-MIG-04.3] a request with no token gets 401 and no data, on every API path and method", async () => {
+    const { call, lines } = setup();
+    for (const [path, method] of [["/api/health", "GET"], ["/api/health/db", "GET"], ["/api/nope", "GET"], ["/api/health", "POST"], ["/api/health", "DELETE"]] as const) {
+      const res = await call(path, { method }, null);
+      expect(res.status).toBe(401);
+      expect(await res.json()).toEqual({ error: "unauthorized" });
+    }
+    expect(lines.every((l) => l.entry.statusCode === 401)).toBe(true);
+  });
+
+  it("[AC-MIG-04.3] a request with a bad token gets 401 and no data", async () => {
+    const { call } = setup();
+    const other = await createTestIssuer(); // a different key, so the signature does not verify
+    for (const token of ["garbage", await other.sign(TEST_SETTINGS.OWNER_EMAIL), await issuer.sign(TEST_SETTINGS.OWNER_EMAIL, { aud: "another-app" }), await issuer.sign(TEST_SETTINGS.OWNER_EMAIL, { expiresInSeconds: -5 })]) {
+      expect((await call("/api/health", {}, token)).status).toBe(401);
+    }
+  });
+
+  it("[AC-MIG-04.3] a valid token for someone who is not the owner gets 403 and no data", async () => {
+    const { call } = setup();
+    const res = await call("/api/health", {}, await issuer.sign("someone-else@example.test"));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "forbidden" });
+    expect((await call("/api/health", {}, await issuer.sign(null))).status).toBe(403);
+  });
+
+  it("[AC-MIG-04.2] with the settings missing, even the owner's token is refused", async () => {
+    const { worker, env } = setup();
+    const req = new Request("https://app.example.test/api/health", { headers: { "cf-access-jwt-assertion": ownerToken } });
+    for (const key of ["ACCESS_TEAM_DOMAIN", "ACCESS_AUD", "OWNER_EMAIL"] as const) {
+      const res = await worker.fetch(req.clone(), { ...env, [key]: undefined });
+      expect(res.status).toBe(403);
+    }
+  });
+
+  it("[AC-MIG-04.3] checks identity before the custom header, so a stranger learns nothing about it", async () => {
+    const { call } = setup();
+    expect((await call("/api/health", { method: "POST" }, null)).status).toBe(401);
+    expect((await call("/api/health", { method: "POST" })).status).toBe(403); // owner, but no custom header
+  });
+
+  it("[AC-MIG-04.3] the failure responses carry no token, email or setting value", async () => {
+    const { call, lines } = setup();
+    const res = await call("/api/health", {}, await issuer.sign("someone-else@example.test"));
+    const text = JSON.stringify([await res.text(), lines]);
+    for (const secret of [TEST_SETTINGS.OWNER_EMAIL, "someone-else", TEST_SETTINGS.ACCESS_AUD, "eyJ"]) expect(text).not.toContain(secret);
+  });
+
+  it("[AC-MIG-04.5] paths outside /api, such as the demo, are not answered by the API", async () => {
+    const { call, assetCalls } = setup();
+    const res = await call("/demo/index.html", {}, null);
+    expect(res.status).toBe(200);
+    expect(assetCalls).toEqual(["/demo/index.html"]);
+    expect((await call("/demo/api/health", {}, null)).status).toBe(200); // still a static file request, never the API
+    expect(assetCalls).toContain("/demo/api/health");
   });
 });

@@ -27,7 +27,7 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 6. **No private data in logs or telemetry.** All logging goes through `telemetry/logger.ts` and its field allow-list.
 7. **Demo mode never calls the real API.**
 8. Commit with the GitHub noreply email only. `scripts/check-hygiene.sh` checks this in CI.
-9. **No test-only bypass in auth code.** `ownerGuard` never reads an environment flag. Tests supply synthetic identities (headers now, signed Access tokens after MIG-04) instead.
+9. **No test-only bypass in auth code.** `ownerGuard` never reads an environment flag. Tests sign synthetic Cloudflare Access tokens with a throwaway key and pass that key in (`api/src/testing/accessTokens.ts`, `web/e2e/support/accessKeys.mjs`).
 10. **Never apply migrations from the app.** Only the release workflow (or a developer against a local database) runs them.
 
 ## Git, pull requests, and release
@@ -166,7 +166,7 @@ Decided in [DECISIONS.md](DECISIONS.md):
 
 - pnpm workspaces: `web`, `api`, `shared`.
 - Web: React, TypeScript, Vite, PWA, React Router, TanStack Query, Recharts, Tailwind.
-- API and hosting (target, ADR-0021): a Cloudflare Worker (Hono, TypeScript) serving the web app and `/api/*`, behind Cloudflare Access. **Today the code still targets Azure Functions and Static Web Apps until MIG-03 and MIG-04 land.**
+- API and hosting (target, ADR-0021): a Cloudflare Worker (Hono, TypeScript) serving the web app and `/api/*`, behind Cloudflare Access. Login is Cloudflare Access with the owner re-checked in the API (MIG-04).
 - Database: Neon Postgres, hand-written parameterized SQL through the `pg` package, numbered `.sql` migrations (`DATABASE_URL` for the app role, `DATABASE_ADMIN_URL` for migrations). Setup: [db/setup/README.md](db/setup/README.md).
 - Validation: zod, shared by client and API.
 - Tests: Vitest, Testing Library, fast-check, Testcontainers (Postgres), Playwright with a local server (`wrangler dev` after MIG-03).

@@ -1,33 +1,14 @@
-// Decides whether a request comes from the owner (ADR-0006, hard rules 4 and 9).
-// A pure function of two inputs: the identity header and the OWNER_ID setting.
-// It reads no environment variable and has no test-only path. Tests pass synthetic headers.
+// Decides whether a request comes from the owner (ADR-0006 as amended by ADR-0021, hard rules 4 and 9).
+// Input: the Cloudflare Access token, the settings, and a source of public keys. It reads no environment
+// variable and has no test-only path: tests sign tokens with their own key and pass that key in.
 import { createHash, timingSafeEqual } from "node:crypto";
-import { OWNER_PROVIDER, OWNER_ROLE } from "@life-tracker/shared";
+import { jwtVerify, type JWTVerifyGetKey } from "jose";
+import { issuerFor, type AccessConfig } from "./accessConfig.js";
 
 export type GuardResult = { ok: true } | { ok: false; status: 401 | 403 };
 
 const deny401: GuardResult = { ok: false, status: 401 };
 const deny403: GuardResult = { ok: false, status: 403 };
-
-interface Principal {
-  identityProvider: unknown;
-  userId: string;
-  userRoles: unknown;
-}
-
-/** Reads the header Static Web Apps adds. Returns undefined for anything that is not a signed-in user. */
-function readPrincipal(header: string | undefined): Principal | undefined {
-  if (!header) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(Buffer.from(header, "base64").toString("utf8"));
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
-    const p = parsed as Record<string, unknown>;
-    if (typeof p.userId !== "string" || p.userId === "") return undefined; // anonymous callers have no user ID
-    return { identityProvider: p.identityProvider, userId: p.userId, userRoles: p.userRoles };
-  } catch {
-    return undefined;
-  }
-}
 
 function sameText(a: string, b: string): boolean {
   const digest = (s: string) => createHash("sha256").update(s).digest();
@@ -35,18 +16,33 @@ function sameText(a: string, b: string): boolean {
 }
 
 /**
- * 401: nobody is signed in. 403: someone is, but is not the owner, or no owner is configured.
- * The user name is never used, only the opaque user ID (usernames can be renamed and reused).
+ * 401: no valid Access token (missing, forged, expired, wrong audience or issuer). Nothing else is revealed.
+ * 403: a valid token for someone who is not the owner, or no owner is configured.
  */
-export function ownerGuard(principalHeader: string | undefined, ownerId: string | undefined): GuardResult {
-  const principal = readPrincipal(principalHeader);
-  if (!principal) return deny401;
+export async function ownerGuard(
+  token: string | undefined,
+  config: AccessConfig | undefined,
+  keys: JWTVerifyGetKey,
+  now: Date = new Date(),
+): Promise<GuardResult> {
+  if (!token) return deny401;
+  if (!config) return deny403; // fail closed: no settings, nobody gets in
 
-  const configured = ownerId?.trim();
-  if (!configured) return deny403; // fail closed: no owner setting, nobody gets in
+  let email: unknown;
+  try {
+    const { payload } = await jwtVerify(token, keys, {
+      algorithms: ["RS256"],
+      issuer: issuerFor(config.teamDomain),
+      audience: config.audience,
+      currentDate: now,
+      requiredClaims: ["exp"],
+    });
+    email = payload["email"];
+  } catch {
+    return deny401;
+  }
 
-  const roles = Array.isArray(principal.userRoles) ? principal.userRoles : [];
-  const isOwner =
-    principal.identityProvider === OWNER_PROVIDER && roles.includes(OWNER_ROLE) && sameText(principal.userId, configured);
-  return isOwner ? { ok: true } : deny403;
+  // Service tokens and other non-user identities carry no email and are not the owner.
+  if (typeof email !== "string" || email === "") return deny403;
+  return sameText(email.toLowerCase(), config.ownerEmail.toLowerCase()) ? { ok: true } : deny403;
 }
