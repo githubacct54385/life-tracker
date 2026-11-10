@@ -135,7 +135,7 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 
 **Why.** The owner wants the app to be forgiving about a late reading or a missed week but never to invent odometer values.
 
-**Consequences.** Periods can be 6, 7, 8 or more days long, so charts that compare weeks must either show the day count or scale to 7 days (decided in MIL-03). Needs property tests: results do not change when readings are added in a different order, and periods join end to end so days and miles add up to the first-to-last change.
+**Consequences.** Periods can be 6, 7, 8 or more days long. Charts show each period's actual miles as they are, with no scaling to 7 days, so an 8-day period is drawn as an 8-day period (owner decision, 2026-11-10). Editing a reading keeps its date; deleting one removes it for good. Needs property tests: results do not change when readings are added in a different order, and periods join end to end so days and miles add up to the first-to-last change.
 
 **Original decision (superseded).** Each Friday got an odometer value: the actual reading if one was taken that day, otherwise linear interpolation by date between the nearest readings on either side. A week using an interpolated value was marked estimated. No extrapolation past the last reading.
 
