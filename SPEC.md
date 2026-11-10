@@ -102,7 +102,7 @@ Notes:
 | Maintenance reminders by mileage or date (oil change, tires, registration, insurance) | Next |
 | Multiple vehicles | Later |
 
-**How weeks are calculated (ADR-0008, amended 2026-11-10).** Weeks run Friday to Thursday. A week's reading is the earliest one taken in it, so a reading added on Saturday still counts for that Friday's week (the period is then 8 days). Miles for a period are the difference between consecutive weekly readings. The app never guesses a missing reading: a week with no reading is listed and the owner is asked to add it.
+**How weeks are calculated (ADR-0008, amended 2026-11-10).** Weeks run Friday to Thursday. A week's reading is the earliest one taken in it, so a reading added on Saturday still counts for that Friday's week (the period is then 8 days). Miles for a period are the difference between consecutive weekly readings. The app never guesses a missing reading: a week with no reading is shown as a gap, and the screen is flexible about late readings and missed weeks (a reading is always dated when it is entered).
 
 ### 6.6 Giving (charitable)
 

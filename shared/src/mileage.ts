@@ -1,7 +1,7 @@
 // Weekly mileage from odometer readings (ADR-0008 as amended 2026-11-10, MIL-02). Pure: no clock, no time zone, no I/O.
 // Nothing is guessed. Each Friday-to-Thursday week has at most one "check-in": its earliest reading. A reading taken
 // on Saturday still counts for that week (the gap is then 8 days). A week with no reading is reported as missing so the
-// app can ask for it. Dates are plain calendar dates ("YYYY-MM-DD", ADR-0007) turned into day numbers, so no time zone
+// app can show it as a gap. Dates are plain calendar dates ("YYYY-MM-DD", ADR-0007) turned into day numbers, so no time zone
 // or daylight-saving shift can move a reading to another day.
 
 export interface OdometerReading {
@@ -78,8 +78,8 @@ export function weeklyMiles(readings: readonly OdometerReading[]): MilesPeriod[]
 
 /**
  * Fridays that start a week with no reading, from the week of the first reading up to and including the week that
- * contains `today`, oldest first. The app asks the owner to add these. A reading added later (even a day or two late)
- * fills the gap with no guessing and no other week changing.
+ * contains `today`, oldest first. The app shows these as gaps (the current week is the one to prompt for). A reading entered late is dated
+ * when it is entered, so it counts for the week it is entered in. An old gap stays a gap and nothing is guessed.
  */
 export function missingWeeks(readings: readonly OdometerReading[], today: string): string[] {
   const list = checkIns(readings);

@@ -368,11 +368,11 @@ add({ id: 'demo', title: 'Demo', path: 'demo', group: 'Dashboard', keys: ['DEM-0
 const weeks = [['Nov 6 → Nov 13', 'In progress', ''], ['Oct 30 → Nov 6', '212 mi', ''], ['Oct 23 → Oct 30', '188 mi', ''], ['Oct 16 → Oct 23', 'No reading yet', 'missing'], ['Oct 9 → Oct 23', '14 days: 410 mi', ''], ['Oct 2 → Oct 9', '174 mi', '']];
 add({ id: 'car', title: 'Car', path: 'car', group: 'Car', keys: ['MIL-02', 'MIL-03', 'AC-MIL-02.1', 'AC-MIL-02.5', 'AC-MIL-02.6', 'AC-MIL-03.1', 'AC-MIL-03.2', 'AC-MIL-03.3', 'AC-MIL-03.4'],
   nav: { tab: 'Car', sub: 'Mileage' }, acts: '<div class="btn sm up-t">+ Log reading</div>',
-  review: ['Weeks run Friday to Thursday. A week with no reading is listed with an “Add reading” button. A reading added a day late (Saturday) still counts for that week. Nothing is guessed.', 'Chart has a text alternative. Busiest and quietest weeks are marked.', 'Phone uses a floating “+ Log reading” button. Tablet and desktop put it in the header.'],
+  review: ['Weeks run Friday to Thursday. A week with no reading is listed as “No reading”, never guessed. A reading entered late is dated when entered and counts for that week.', 'Chart has a text alternative. Busiest and quietest weeks are marked.', 'Phone uses a floating “+ Log reading” button. Tablet and desktop put it in the header.'],
   body: () => `${cols(1, 2, 3, `
     ${card('Miles per week', `${bars([34, 52, 48, 60, 62, 64, 40, 55, 70, 58, 66, 62], { 8: 'top', 3: 'low' }, 110)}<div class="axis"><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span></div><p class="sub">Bar chart: miles driven each week. Darkest bar: busiest week. Lightest bar: quietest.</p>`, 'sp-t2 sp-d2')}
     ${card('Totals', `<div class="two"><div><div class="sub">8-week avg</div><b class="big" style="font-size:20px">196 mi</b></div><div><div class="sub">November</div><b class="big" style="font-size:20px">418 mi</b></div><div><div class="sub">This year</div><b class="big" style="font-size:20px">9,870 mi</b></div><div><div class="sub">Busiest / quietest</div><b style="font-size:13px">248 / 118 mi</b></div></div>`)}
-    ${card('Weeks', weeks.map(w => item(w[0], w[1], w[2] ? chip('Add reading', 'warn') : '', '')).join(''), 'sp-all')}`)}
+    ${card('Weeks', weeks.map(w => item(w[0], w[1], w[2] ? chip('No reading', 'grey') : '', '')).join(''), 'sp-all')}`)}
     <div class="fab only-m">+ Log reading</div>` });
 
 add({ id: 'logreading', title: 'Log odometer', path: 'car/log', group: 'Car', keys: ['MIL-01', 'AC-MIL-01.1', 'AC-MIL-01.2', 'AC-MIL-01.3', 'AC-MIL-01.4'],
