@@ -14,7 +14,7 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 | [TESTING.md](TESTING.md) | The test pyramid and CI |
 | [OBSERVABILITY.md](OBSERVABILITY.md) | Logging rules |
 | [docs/azure-setup.md](docs/azure-setup.md) | One-time Azure setup (obsolete once the migration finishes) |
-| [BACKLOG.md](BACKLOG.md) | Stories and acceptance criteria |
+| [docs/ac-ids.txt](docs/ac-ids.txt) | Valid acceptance-criterion IDs (the stories and criteria text are in Linear) |
 | [AGENTS.md](AGENTS.md) | Working rules for contributors and AI coding agents |
 
 Wireframes: [the full suite at mobile, tablet, and desktop widths](wireframes-suite.html).
