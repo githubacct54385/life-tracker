@@ -13,8 +13,15 @@ Everything here fits the Neon free plan. Check the plan's current limits on neon
 ## Steps (you do these; they need your Neon account)
 
 1. Create a Neon project on the free plan. Pick the region closest to where the Worker will run (US East or US Central for you). Postgres 17 is fine.
-2. From the Neon dashboard, copy the **pooled** connection string of the default role. This is the admin URL. Do not paste it into chat, a file in this repo, or an issue.
-3. Store it as the GitHub `production` environment secret `DATABASE_ADMIN_URL`. For local work, put it in an untracked shell variable, never in a file in the repo.
+2. In the Neon dashboard, open Connect, turn **Connection pooling off**, and copy the **direct** connection string of the default role. This is the admin URL. Migrations take a session-level lock and run multi-statement scripts, which a pooler can break. The app's own connection (step 5) uses the pooled string. Do not paste either string into chat, a file in this repo, or an issue.
+3. Store it as the GitHub `production` environment secret `DATABASE_ADMIN_URL`, and keep it in a shell variable for the next steps. Neither command below puts the value in your shell history:
+
+   ```bash
+   read -rs DATABASE_ADMIN_URL && export DATABASE_ADMIN_URL   # paste the string, press Return (nothing is shown)
+   printf %s "$DATABASE_ADMIN_URL" | gh secret set DATABASE_ADMIN_URL --env production --repo githubacct54385/life-tracker
+   ```
+
+   `psql` is needed for step 4: `brew install libpq`, then use `/opt/homebrew/opt/libpq/bin/psql` (or add that folder to your PATH).
 4. Create the app role and its grants with `app-role.sql` (needs `psql`):
 
    ```bash
@@ -22,7 +29,13 @@ Everything here fits the Neon free plan. Check the plan's current limits on neon
    psql "$DATABASE_ADMIN_URL" -v app_password="$APP_PW" -f db/setup/app-role.sql
    ```
 
-5. Build the app connection string by taking the admin URL and replacing the user with `lt_app` and the password with `$APP_PW` (keep `sslmode=require`). Store it as the `DATABASE_URL` Cloudflare secret (MIG-03) and discard `$APP_PW` from your shell history.
+5. Build the app connection string from the admin URL with the user `lt_app`, the password `$APP_PW`, and the **pooled** host (the hostname with `-pooler` in it; keep `sslmode=require`). Do it in the shell so nothing is typed by hand:
+
+   ```bash
+   APP_URL="$(APP_PW="$APP_PW" node -e 'const u = new URL(process.env.DATABASE_ADMIN_URL); u.username = "lt_app"; u.password = process.env.APP_PW; if (!u.hostname.includes("-pooler")) u.hostname = u.hostname.replace(".", "-pooler."); console.log(u.toString())')"
+   ```
+
+   Store it as the `DATABASE_URL` Cloudflare secret in MIG-03. If you do not have a Cloudflare account set up yet, skip storing it: running step 4 again later issues a fresh password.
 6. Run the migrations: `DATABASE_ADMIN_URL=... pnpm migrate` (the Release workflow does this for you after MIG-05).
 7. Run `app-role-grants.sql` again if you ever create tables outside `pnpm migrate`. Tables created by migrations are covered automatically by the default privileges.
 
