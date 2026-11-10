@@ -19,8 +19,8 @@ export interface ReadingCheck {
   needsConfirmation: boolean;
 }
 
-/** About 1.7 times a very long driving day. A guess until the owner says otherwise; callers can pass their own. */
-export const DEFAULT_MAX_MILES_PER_DAY = 800;
+/** A typical day is well under this, so more than 300 miles in a day is worth a second look. Callers can pass their own limit. */
+export const DEFAULT_MAX_MILES_PER_DAY = 300;
 
 const MS_PER_DAY = 86_400_000;
 
