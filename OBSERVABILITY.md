@@ -1,4 +1,6 @@
-# Logging and Observability (Draft v0.1)
+# Logging and Observability (Draft v0.2)
+
+> **Platform change (ADR-0021, 2026-11-10).** The app is moving from Azure to Cloudflare Workers + Neon. Everything below about Application Insights, Log Analytics, and Azure budgets stays true until MIG-06, which replaces it with Workers Logs (optionally Sentry's free tier) and rewrites this file. The privacy rules in "Privacy control" apply on any platform and do not change.
 
 ## Recommendation
 
@@ -33,13 +35,13 @@ I did not verify the Sentry and Grafana free-tier limits against their current p
 
 ## Privacy control (the important one)
 
-The spec says: *no transaction or health data in logs or telemetry.* Application Insights captures request URLs, exception messages, and SQL command text by default, so this needs to be enforced in code, not just intended.
+The spec says: *no health, mileage, or giving data in logs or telemetry.* Application Insights captures request URLs, exception messages, and SQL command text by default, so this needs to be enforced in code, not just intended.
 
 - All logging goes through `telemetry/logger.ts`. Handlers and services never call `console.log` or the SDK directly.
 - The logger takes only an event name and a small allow-list of fields: request ID, route name, status code, duration, row counts, and error type.
-- Never log: amounts, merchants, descriptions, weights, odometer values, names, or request bodies.
+- Never log: gift amounts, notes, descriptions, weights, workout details, odometer values, names, or request bodies.
 - Add a telemetry initializer that strips query strings and turns SQL command text off.
-- Add a unit test with fake data that fails if a banned field name or a known fake merchant appears in captured output.
+- Add a unit test with fake data that fails if a banned field name or a known fake gift amount or weight appears in captured output.
 - The browser side: skip the Application Insights JavaScript SDK at first. It records page URLs and user behavior, which adds privacy surface for little gain.
 
 ## What to watch
@@ -48,7 +50,7 @@ The spec says: *no transaction or health data in logs or telemetry.* Application
 |---|---|
 | Failed requests and exceptions | Bugs, and probes against the API |
 | 401 and 403 count | Someone other than the owner trying to get in |
-| Import duration and row counts | Catches slow parsing or a changed bank format |
+| Import duration and row counts | Catches slow parsing or a changed spreadsheet format |
 | SQL dependency duration | Serverless database cold starts |
 | Availability ping on the home page | Free, and tells you if the site is down |
 

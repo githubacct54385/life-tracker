@@ -2,34 +2,38 @@
 
 One entry per decision that is costly to reverse. Each says what we chose, why, and what it costs us. To change a decision, add a new entry that supersedes the old one. Do not delete history.
 
-**Status values:** *Accepted* (agreed, build on it) and *Verify* (agreed, but it rests on a cloud-provider fact that must be checked in the portal or the provider's docs before we depend on it).
+**Status values:** *Accepted* (agreed, build on it), *Verify* (agreed, but it rests on a cloud-provider fact that must be checked in the portal or the provider's docs before we depend on it), *Superseded* (replaced by a later entry; kept for history), and *Withdrawn* (the feature it served is out of scope; kept for history).
 
 | # | Decision | Status |
 |---|---|---|
-| 0001 | Hosting and database | Accepted |
-| 0002 | Data access and migrations | Accepted |
-| 0003 | Database credentials and network | Accepted, verify firewall behavior |
-| 0004 | Source control, pull requests, and manual release | Accepted, verify SWA setup |
+| 0001 | Hosting and database | Superseded by 0021 |
+| 0002 | Data access and migrations | Accepted (driver changes with 0021) |
+| 0003 | Database credentials and network | Superseded by 0021 |
+| 0004 | Source control, pull requests, and manual release | Accepted (deploy target changes with 0021) |
 | 0005 | Testing strategy | Accepted |
-| 0006 | Auth testing and request protection | Accepted |
+| 0006 | Auth testing and request protection | Accepted (identity mechanics superseded by 0021) |
 | 0007 | Dates, time zones, money | Accepted |
 | 0008 | Weekly mileage algorithm | Accepted |
 | 0009 | Apple Health is parsed in the browser | Accepted, spike first |
-| 0010 | Import fingerprints and commit validation | Accepted |
-| 0011 | Income and transfers are category types | Accepted |
-| 0012 | Frontend and tooling stack | Accepted |
+| 0010 | Import fingerprints and commit validation | Withdrawn (finance moved out, 0021) |
+| 0011 | Income and transfers are category types | Withdrawn (finance moved out, 0021) |
+| 0012 | Frontend and tooling stack | Accepted (Functions model superseded by 0021) |
 | 0013 | Public repo, license, and planning documents | Accepted |
 | 0014 | Demo parity | Accepted |
 | 0015 | Product choices from the spec's open questions | Accepted |
-| 0016 | Bank export layout and pending rows | Accepted |
-| 0017 | Navigation and layout | Accepted |
-| 0018 | Integration tests run in CI; locally they are optional | Accepted |
+| 0016 | Bank export layout and pending rows | Withdrawn (finance moved out, 0021) |
+| 0017 | Navigation and layout | Accepted, amended by 0021 (no Money) |
+| 0018 | Integration tests run in CI; locally they are optional | Accepted (Postgres container with 0021) |
 | 0019 | Pull request screenshots are release assets | Accepted |
-| 0020 | How the API and `shared` are packaged for deploy | Accepted |
+| 0020 | How the API and `shared` are packaged for deploy | Superseded by 0021 |
+| 0021 | Move to Cloudflare Workers + Neon Postgres; finance moved out of this app | Accepted |
 
 ---
 
 ## ADR-0001: Hosting and database
+
+> **Superseded by [ADR-0021](#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app) (2026-11-10).** Kept for history. Do not build on the Azure details below.
+
 
 **Decision.** Azure Static Web Apps (Free plan) serves the React app and runs the managed API (Azure Functions, HTTP triggers only). Data is in Azure SQL Database, serverless, on the free offer. We choose the setting "auto-pause until next month" when the monthly free allowance is used up, instead of "continue and bill".
 
@@ -45,6 +49,9 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 
 ## ADR-0002: Data access and migrations
 
+> **Amended by ADR-0021 (2026-11-10).** The driver is a Postgres driver, not `mssql`. Everything else (hand-written parameterized SQL only in `repositories/`, numbered journaled migrations) stands.
+
+
 **Decision.** The API uses the `mssql` package with hand-written, parameterized SQL, only inside `repositories/`. Migrations are numbered `.sql` files (`0001_create_accounts.sql`) in `db/migrations/`, applied by a small script (`pnpm migrate`, code in `api/src/db/`) that records applied files in a journal table and refuses to run if an already-applied file changed.
 
 **Why.** It keeps SQL visible and reviewable in a portfolio, and makes the "SQL only in repositories" rule easy to check. A query builder or ORM would add a layer to learn for little gain at this size.
@@ -52,6 +59,9 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 **Consequences.** More typing for queries. Every repository function needs an integration test against a real database (see TESTING.md).
 
 ## ADR-0003: Database credentials and network
+
+> **Superseded by [ADR-0021](#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app) (2026-11-10).** Kept for history. The two-login idea carries over (app role and admin role); the Azure firewall and Static Web Apps details do not.
+
 
 **Decision.** Two database logins:
 - An **app login** for the API with read and write on the app's tables only. No schema changes. Its password lives in the Static Web Apps application settings. Rotate it once a year.
@@ -64,6 +74,9 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 **Consequences.** One long-lived password to rotate. **Verify** whether GitHub-hosted runners can reach the database through "allow Azure services". If not, the release workflow opens a firewall rule for the runner's IP and removes it afterward (already sketched in `release.yml`).
 
 ## ADR-0004: Source control, pull requests, and manual release
+
+> **Amended by ADR-0021 (2026-11-10).** Same release gates. The deploy target is Cloudflare (`wrangler deploy` with a scoped API token), migrations run against Neon, and there is no Azure OIDC login, Static Web Apps "Other" source, or firewall step.
+
 
 **Decision.**
 - The code lives in a **public GitHub repository**.
@@ -90,6 +103,9 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 **Consequences.** The layer rules in ARCHITECTURE.md are also what make unit testing cheap: services depend on repository interfaces and can be tested with in-memory fakes.
 
 ## ADR-0006: Auth testing and request protection
+
+> **Amended by ADR-0021 (2026-11-10).** Identity comes from a signed Cloudflare Access token, not the `x-ms-client-principal` header. `ownerGuard` verifies the token (signature, audience, expiry) and compares the identity to the owner setting; it still fails closed and has no bypass. The `OWNER_ID`, `staticwebapp.config.json`, Microsoft-sign-in block, and SWA CLI emulator details below are replaced by Access policy and signed test tokens. The custom-header rule and "no rate limiting" stand.
+
 
 **Decision.**
 - `ownerGuard` reads only the identity header and the owner setting. There is no environment-based bypass. Tests send synthetic owner, non-owner, and missing identities.
@@ -129,6 +145,9 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 
 ## ADR-0010: Import fingerprints and commit validation
 
+> **Withdrawn (2026-11-10).** Finance and transaction tracking moved to a separate private repository ([ADR-0021](#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app)). Kept for history only; nothing here applies to this app.
+
+
 **Decision.** A transaction's fingerprint is a hash of account, posted date, amount, and cleaned description, plus an **occurrence number** (1 for the first identical row in that account on that date, 2 for the second, and so on). The unique index covers the fingerprint (which includes the occurrence). The preview marks a row duplicate when its fingerprint already exists.
 
 The commit call receives rows from the browser, so it does not trust them: it validates the schema, caps the row count (5,000), recomputes fingerprints, and rejects unknown categories or accounts.
@@ -139,9 +158,15 @@ The commit call receives rows from the browser, so it does not trust them: it va
 
 ## ADR-0011: Income and transfers are category types
 
+> **Withdrawn (2026-11-10).** Finance and transaction tracking moved to a separate private repository ([ADR-0021](#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app)). Kept for history only; nothing here applies to this app.
+
+
 **Decision.** Every category has a type: **expense**, **income**, or **transfer**. "Spent" counts expenses only. This is in the MVP because AC-FIN-07.4 needs it. Automatic detection of transfers between own accounts and splitting a transaction stay in *Next*.
 
 ## ADR-0012: Frontend and tooling stack
+
+> **Amended by ADR-0021 (2026-11-10).** The Azure Functions Node v4 model is replaced by Hono on a Cloudflare Worker. Recharts mention of FIN-07.5 below referred to a retired criterion; chart accessibility now applies to mileage and health charts (AC-MIL-03.4, AC-HLT-01.2).
+
 
 **Decision.** pnpm workspaces (`web`, `api`, `shared`). React, TypeScript, Vite, React Router, TanStack Query, Recharts, Tailwind. zod schemas in `shared/` for every request and response. ESLint and Prettier. `dependency-cruiser` enforces the layer rules. Azure Functions Node programming model v4.
 
@@ -150,6 +175,9 @@ The commit call receives rows from the browser, so it does not trust them: it va
 **Consequences.** Low-stakes choices. Swap a library if it gets in the way, and add a new entry.
 
 ## ADR-0013: Public repo, license, and planning documents
+
+> **Amended by ADR-0021 (2026-11-10).** The "primary bank's CSV format" wording no longer applies; there is no bank data in this project.
+
 
 **Decision.** MIT license. The planning documents are public, so they use generic wording: "a child", "charitable giving", "the primary bank's CSV format", and the wireframes use "Example Bank". Real names, amounts, bank, and dates stay out of the repo.
 
@@ -171,6 +199,9 @@ The commit call receives rows from the browser, so it does not trust them: it va
 
 ## ADR-0016: Bank export layout and pending rows
 
+> **Withdrawn (2026-11-10).** Finance and transaction tracking moved to a separate private repository ([ADR-0021](#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app)). Kept for history only; nothing here applies to this app.
+
+
 **Context.** Redacted samples of the primary bank's checking and credit-card downloads (checked November 2026) showed the real layout. The bank's own download is a **CSV with a header row** (DATE, DESCRIPTION, AMOUNT, CHECK #, STATUS), every field in double quotes except that an empty CHECK # may be written as nothing at all (`,,`), dates as text in MM/DD/YYYY, amounts as decimal text with two places, signed (negative is money out, the same for both account types), a STATUS of Posted or Pending, and newest first. Checking and credit card use the same layout. The owner also keeps an Excel copy made by converting that CSV; it gains a merged title row naming the account, stores dates as text and amounts as numbers, and declares a sheet range far past the last data row. One checking row in the CSV sample had only 4 fields instead of 5 (probably a redaction artifact, but a real file could do the same).
 
 **Decision.**
@@ -186,6 +217,9 @@ The commit call receives rows from the browser, so it does not trust them: it va
 
 ## ADR-0017: Navigation and layout
 
+> **Amended by ADR-0021 (2026-11-10).** The Money destination, transaction editing sheet/panel, CSV bank import rule, and "Upload CSV" quick action are removed. Current navigation: **Mobile:** bottom tab bar with five tabs, Home, Giving, Health, Car, More (Settings inside More). **Tablet:** icon rail with Home, Giving, Health, Car, More. **Desktop:** sidebar with Home, Giving, Health, Car, Settings. Quick actions: add weight, add workout, log odometer, add giving. The rest of this entry is historical.
+
+
 **Decision.** Decided while reviewing [wireframes-suite.html](wireframes-suite.html).
 - **Destinations:** Home, Money, Giving, Health, Car, Settings. **Giving is its own feature**, not part of Money's transaction handling.
 - **Mobile (under 640 px):** a bottom tab bar with five tabs: Home, Money, Health, Car, More. Giving and Settings are inside More (Giving first). A sixth tab would be cramped.
@@ -199,6 +233,9 @@ The commit call receives rows from the browser, so it does not trust them: it va
 **Why.** It keeps the phone bar at the usual maximum of five tabs while giving Giving its own place where there is room. If Giving turns out to be used often on the phone, promoting it to a sixth tab or swapping it with Car is a small change.
 
 ## ADR-0018: Integration tests run in CI; locally they are optional
+
+> **Amended by ADR-0021 (2026-11-10).** The database is Postgres, not SQL Server. The Postgres image is small and runs natively on Apple Silicon, so the "x86 only, slow locally" reason below mostly goes away. CI still always runs integration tests and `CI=true` still turns a skip into a failure. Revisit making them required locally once the Postgres container is in place.
+
 
 **Decision.** Integration tests that need SQL Server run in a Testcontainers container, one container per run. CI always runs them. On a developer machine they run only if Docker is available, and are skipped with a warning if not. The decision logic (which migrations to run, change detection) is a pure module with unit tests, so the important rules are checked on every machine.
 
@@ -222,6 +259,9 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 
 ## ADR-0020: How the API and `shared` are packaged for deploy
 
+> **Superseded by [ADR-0021](#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app) (2026-11-10).** Kept for history. The Worker is bundled by Wrangler, so the staged-folder packaging and Oryx workarounds no longer apply. The idea of testing the built output (`verify-api-bundle`) should carry over.
+
+
 **Decision.**
 - `shared` stays plain TypeScript for development: `main` points at `src/index.ts`, so Vite, Vitest, and `tsc -p .` need no build step. It also has `tsconfig.build.json` (NodeNext, with declarations) and a `publishConfig` that points at the compiled `dist/`.
 - `@life-tracker/shared` is a runtime `dependency` of the API in development, because compiled API code imports it. It is not installed as a package in the deployed folder (see below).
@@ -233,3 +273,42 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 **Why.** The first handler that imported `shared` crashed under Node, and nothing in CI ran the built output. A prebuilt, verified folder removes the difference between what is tested and what is deployed, and avoids Azure's Oryx build guessing at a pnpm workspace.
 
 **Consequences.** The staged folder is about 70 MB, mostly the `mssql` dependency tree. Watch it against the Static Web Apps API size limit (**Verify** on the first release). If it gets close, bundle the API with a bundler instead.
+
+## ADR-0021: Move to Cloudflare Workers + Neon Postgres, and move finance out of this app
+
+**Status.** Accepted, 2026-11-10. The full write-up and open items are in the Linear document "ADR-0021: Move to Cloudflare Workers + Neon Postgres". Work is tracked in the Linear milestone "0. Platform migration" (MIG-01 to MIG-07).
+
+**Context.** The app ran on Azure Static Web Apps (Free), Azure Functions, and an Azure SQL free-offer database. Developer experience was poor: the first Release run failed at the Static Web Apps deploy step, serverless auto-pause made the first request slow, GitHub runners needed a firewall workaround, and local development relied on an Azure-specific emulator and header. Separately, the owner decided that bank transactions must not live on an internet-hosted app at all, even encrypted.
+
+**Decision.**
+
+*Scope.* Finance and transaction tracking is removed from this project and handled in a separate private repository. Giving (regular gifts and special contributions) stays. There are no accounts, categories, rules, bank CSV import, or transaction tables here. FIN-01 to FIN-09 are canceled. ADR-0010, 0011 and 0016 are withdrawn. Navigation has no Money destination (see ADR-0017 note).
+
+*Platform.*
+
+| Concern | Choice |
+|---|---|
+| Web hosting | Cloudflare Workers with static assets (React/Vite build) |
+| API | Hono on the same Worker, `/api/*`, TypeScript |
+| Database | Neon Postgres (free plan, scale to zero) |
+| Login | Cloudflare Access with GitHub as identity provider and an owner-only policy. `ownerGuard` also verifies the signed Access token in the API. |
+| Migrations | Numbered `.sql` files via `pnpm migrate`, journaled, admin role only (ADR-0002 model) |
+| Database roles | App role (read/write, no schema changes) and admin role (migrations only, GitHub `production` secret) |
+| Logging | Workers Logs through the existing allow-listed logger; optional Sentry free tier |
+| Release | Same manual, approval-gated workflow; `wrangler deploy` with a scoped Cloudflare API token |
+| Tests | Integration tests on a Postgres Testcontainer |
+
+**Why.** One tool (`wrangler`) for local dev, preview and deploy. Owner-only access is still enforced at the edge and again in the API. Neon wakes quickly and offers branching. Total cost stays at about $0.
+
+**Alternatives rejected.** Vercel Hobby + Neon: good developer experience, but no edge identity layer, so login would be application code, and Hobby is non-commercial only. Supabase: free projects pause after a week of inactivity and Pro ($25 per month) breaks the $0 cap. Staying on Azure: the pain is structural.
+
+**Consequences and risks (Verify).**
+- **Worker CPU time.** The free plan caps CPU per request, so spreadsheet parsing (MIL-04) happens in the browser and only validated rows are sent, as in ADR-0009. Check current limits in MIG-03.
+- **Neon free plan.** Limited compute hours, 0.5 GB storage, and a short restore window. Confirm current numbers on neon.com/pricing in MIG-02. Mitigation: `pg_dump` export procedure (OPS-02).
+- **No IP allow-list on the Neon free plan.** Security rests on TLS, long random credentials, and least-privilege roles. Credentials live only in Cloudflare and GitHub secrets.
+- **iOS PWA sign-in through Access** is the main unknown. Test early (AC-MIG-04.7).
+- **Cloudflare Access free tier.** Confirm the user limit and session length (MIG-04).
+- Pricing figures were taken from third-party summaries on 2026-11-10. Confirm on the official pages.
+- Rewrite needed for `ownerGuard`, handler wiring, the SQL repositories, the Release workflow, the logger sink, and the setup docs. Until MIG-02 to MIG-07 land, the code in the repo still targets Azure.
+
+**Order of work.** MIG-01 (docs and scope) then MIG-02 (database), MIG-03 (Worker API), MIG-04 (Access), MIG-05 (release), MIG-06 (logging), MIG-07 (decommission Azure). Resume FND-04, FND-05, SET-03, and Mileage work after MIG-05 passes.

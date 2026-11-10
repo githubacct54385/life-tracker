@@ -60,7 +60,7 @@ else
   read -r -p "   Create it now? [y/N] " answer
   [ "$answer" = "y" ] || { echo "Stopped. Nothing was created."; exit 1; }
   gh repo create "$REPO" --public --source=. --remote=origin --push \
-    --description "Private single-user life tracker (finances, health, mileage, giving). Public code, private data."
+    --description "Private single-user life tracker (health, mileage, giving). Public code, private data."
 fi
 git push -u origin main 2>/dev/null || true
 
@@ -118,5 +118,5 @@ Still to do by hand (see DECISIONS.md ADR-0003 and ADR-0004):
   - Add the secrets listed at the top of .github/workflows/release.yml to the 'production' environment
     (Settings > Environments > production). Never put them in the repo.
   - Confirm in Settings > Branches that main shows: require pull request, require status checks, no bypass.
-  - From now on, never push to main. Work on a branch like fin-03-import-preview and open a pull request.
+  - From now on, never push to main. Work on a branch like mil-03-mileage-graphs and open a pull request.
 DONE

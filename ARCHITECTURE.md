@@ -1,18 +1,20 @@
-# Life Tracker: Architecture Diagrams (Draft v0.2)
+# Life Tracker: Architecture Diagrams (Draft v0.3)
 
 All diagrams are [Mermaid](https://mermaid.js.org/) code blocks, so they render on GitHub and in VS Code (see the tool comparison at the bottom).
 
-**Stack.** Decided in [DECISIONS.md](DECISIONS.md): a React app (Vite, PWA) on Azure Static Web Apps, its managed API on Azure Functions (TypeScript), and Azure SQL. A `shared/` package holds the zod schemas used by both sides. File names below are proposals. If a name changes, the structure still holds.
+**Stack.** Decided in [DECISIONS.md](DECISIONS.md) (ADR-0021): a React app (Vite, PWA) served by a Cloudflare Worker that also runs the API (TypeScript, Hono), Cloudflare Access for the owner-only login, and Neon Postgres. A `shared/` package holds the zod schemas used by both sides. File names below are proposals. If a name changes, the structure still holds.
+
+> **Migration in progress.** The code in the repo still targets Azure (Static Web Apps, Functions, Azure SQL) until stories MIG-02 to MIG-07 land. These diagrams show the target. Finance and transaction tracking are **not part of this app** (ADR-0021); they live in a separate private repository.
 
 ## 1. Deployment overview
 
-Where things run, and who talks to whom. Note the two separate paths: users reach the app through the hosting edge, and code reaches production only through the manual Release workflow.
+Where things run, and who talks to whom. Note the two separate paths: users reach the app through the Cloudflare edge, and code reaches production only through the manual Release workflow.
 
 ```mermaid
 flowchart LR
     phone["Phone (installed PWA)"]
-    desk["Desktop browser (CSV import)"]
-    gh["GitHub OAuth (login)"]
+    desk["Desktop browser"]
+    gh["GitHub (identity provider)"]
     dev["Developer: pull request"]
 
     subgraph github["GitHub (public repo)"]
@@ -21,27 +23,28 @@ flowchart LR
         rel["Actions: Release (manual, owner approval)"]
     end
 
-    subgraph azure["Azure"]
-        swa["Static Web Apps: serves the React app, enforces owner role"]
-        api["Managed API: Azure Functions"]
-        sql[("Azure SQL Database")]
-        ai["Application Insights"]
+    subgraph cf["Cloudflare"]
+        access["Access: owner-only GitHub sign-in at the edge"]
+        worker["Worker: serves the React app and the API"]
+        logs["Workers Logs"]
     end
 
-    phone --> swa
-    desk --> swa
-    swa -. "sign in" .-> gh
-    swa --> api
-    api -- "app login (read/write)" --> sql
-    api -. "logs, traces" .-> ai
+    neon[("Neon Postgres")]
+
+    phone --> access
+    desk --> access
+    access -. "sign in" .-> gh
+    access --> worker
+    worker -- "app role (read/write)" --> neon
+    worker -. "logs" .-> logs
 
     dev --> main
     main --> ci
-    rel -- "1. migrations (admin login)" --> sql
-    rel -- "2. deploy site and API" --> swa
+    rel -- "1. migrations (admin role)" --> neon
+    rel -- "2. wrangler deploy" --> worker
 ```
 
-Merging to `main` does not touch Azure. Only the Release workflow does.
+Merging to `main` does not touch Cloudflare or Neon. Only the Release workflow does.
 
 ## 2. Main code files and what they do
 
@@ -55,33 +58,31 @@ flowchart TD
 
     subgraph web["Frontend: web/src"]
         main["main.tsx: app start, router, service worker"]
-        pages["pages/: one screen per area (Home, Money, Health, Car, Giving, Settings)"]
+        pages["pages/: one screen per area (Home, Giving, Health, Car, Settings)"]
         comps["components/: shared UI (tables, charts, forms)"]
-        importers["importers/: browser-side readers (appleHealth worker)"]
+        importers["importers/: browser-side readers (appleHealth worker, mileage spreadsheet)"]
         client["api/client.ts: typed fetch calls, the only place that talks to the API"]
         demo["demo/demoApi.ts: same interface as client.ts, but seeded fake data in the browser"]
         sw["sw.js: caches the app shell only, never API data"]
     end
 
-    subgraph fn["API: api/src"]
-        handlers["handlers/: HTTP entry points (transactions, import, mileage, giving, health)"]
-        guard["auth/ownerGuard.ts: checks the owner's user ID and role from the identity header, fails closed, no bypass"]
+    subgraph fn["API: api/src (Worker)"]
+        handlers["handlers/: HTTP entry points (mileage, giving, health)"]
+        guard["auth/ownerGuard.ts: validates the Access token, checks the owner identity, fails closed, no bypass"]
         reqguard["auth/requestGuard.ts: requires the custom header on non-GET calls"]
-        services["services/: business rules (importService, categorizer, mileageService)"]
-        parsers["parsers/: CSV and XLSX readers (primaryBank.ts, columnMapping.ts)"]
-        dedupe["services/dedupe.ts: fingerprints with occurrence numbers"]
+        services["services/: business rules (mileageService, givingService, workoutService)"]
         repos["repositories/: all SQL queries, one file per table group"]
-        db["db/connection.ts: pooled connection, app login"]
+        db["db/connection.ts: Postgres connection, app role"]
         log["telemetry/logger.ts: structured logging with a redaction filter"]
     end
 
     subgraph ops["Database tooling (not part of the running app)"]
         migrations["db/migrations/*.sql: numbered, additive"]
-        migrate["pnpm migrate (api/src/db/migrate-cli.ts): applies migrations, admin login, journal table"]
+        migrate["pnpm migrate (api/src/db/migrate-cli.ts): applies migrations, admin role, journal table"]
     end
 
-    sqldb[("Azure SQL")]
-    insights["Application Insights"]
+    pgdb[("Neon Postgres")]
+    wlogs["Workers Logs"]
 
     main --> pages
     main --> sw
@@ -100,16 +101,13 @@ flowchart TD
     handlers --> schemas
     handlers --> services
     handlers --> log
-    services --> parsers
-    services --> dedupe
     services --> repos
-    dedupe --> repos
     repos --> db
-    db --> sqldb
-    log --> insights
+    db --> pgdb
+    log --> wlogs
 
     migrate --> migrations
-    migrate --> sqldb
+    migrate --> pgdb
 ```
 
 **One-line job of each layer**
@@ -117,18 +115,17 @@ flowchart TD
 | Layer | Job | Must not |
 |---|---|---|
 | `pages/`, `components/` | Draw screens, hold UI state | Call `fetch` directly |
-| `importers/` | Read big files in the browser (Apple Health) and output validated rows | Send the file anywhere |
+| `importers/` | Read big or untrusted files in the browser (Apple Health, mileage spreadsheet) and output validated rows | Send the file anywhere |
 | `api/client.ts` | Single doorway from the UI to the API | Contain business rules |
 | `demo/demoApi.ts` | Stand-in for `client.ts` with fake data | Ever call the real API |
 | `shared/schemas` | One definition of every request and response | Import from `web` or `api` |
 | `handlers/` | Parse and validate the request, check the owner, call a service, shape the response | Contain SQL or business rules |
 | `auth/ownerGuard.ts` | Reject anyone who is not the owner | Trust the edge check alone, or read an environment flag |
 | `auth/requestGuard.ts` | Reject non-GET requests without the custom header | Contain any identity logic |
-| `services/` | The rules: categorize, dedupe, mileage weeks, validation | Know about HTTP or SQL |
-| `parsers/` | Turn a file into clean row objects, drop account numbers | Write to the database |
+| `services/` | The rules: mileage weeks, giving totals, workout streaks, validation | Know about HTTP or SQL |
 | `repositories/` | The only code that talks to SQL | Contain business rules |
-| `telemetry/logger.ts` | One logging door, strips personal data | Log amounts, merchants, or health values |
-| `pnpm migrate` (`api/src/db/migrate-cli.ts`, runner in `api/src/db/`) | Apply SQL migrations with the admin login (`SQL_ADMIN_CONNECTION`). `db/` is the only place besides `repositories/` that imports `mssql` | Run inside the app |
+| `telemetry/logger.ts` | One logging door, strips personal data | Log health values, odometer values, or gift amounts |
+| `pnpm migrate` (`api/src/db/migrate-cli.ts`, runner in `api/src/db/`) | Apply SQL migrations with the admin role (`DATABASE_ADMIN_URL`). `db/` is the only place besides `repositories/` that imports the Postgres driver | Run inside the app |
 
 A dependency check (dependency-cruiser) enforces these arrows in CI (AC-FND-03.6): handlers may not skip to repositories or `db`, services may not import `db`, only `repositories/` may use `db/`, and `db/` imports nothing above it. An ESLint rule rejects SQL text outside `repositories/`, `db/`, and tests (AC-FND-03.3; write SQL keywords in UPPER CASE so the rule can see them).
 
@@ -136,90 +133,33 @@ A dependency check (dependency-cruiser) enforces these arrows in CI (AC-FND-03.6
 
 | Boundary | Test level |
 |---|---|
-| Inside `services/`, `parsers/`, `shared/`, guards, logger, components | Unit (in-memory fakes for repositories) |
-| `repositories/` and `pnpm migrate` against a real SQL Server | Integration |
-| `handlers/` called with fake requests against a real SQL Server | Integration |
+| Inside `services/`, `shared/`, importers, guards, logger, components | Unit (in-memory fakes for repositories) |
+| `repositories/` and `pnpm migrate` against a real Postgres | Integration |
+| `handlers/` called with fake requests against a real Postgres | Integration |
 | `pages/` against `demoApi`; `client.ts` and `demoApi.ts` against one contract suite | Integration |
-| The built app in a browser through the SWA CLI | End-to-end |
+| The built app in a browser through `wrangler dev` | End-to-end |
 
-## 3. Sequence: uploading a CSV
+## 3. Sequence: every request is checked twice
 
-Import is two calls. Nothing is saved on the first one. The browser holds the parsed rows between the calls, so the server never stores the file. Because those rows come back from the browser, the commit call treats them as untrusted input.
-
-```mermaid
-sequenceDiagram
-    actor Owner
-    participant Page as Import page
-    participant Client as api/client.ts
-    participant H as handlers/import
-    participant G as ownerGuard + requestGuard
-    participant P as parsers
-    participant S as importService
-    participant D as dedupe
-    participant R as repositories
-    participant DB as Azure SQL
-
-    Owner->>Page: Choose account, drop statement.csv
-    Page->>Client: previewImport(file, accountId)
-    Client->>H: POST /api/import/preview
-    H->>G: verify owner and header
-    G-->>H: ok
-    H->>H: check size and type
-    H->>P: parse(file)
-    P-->>H: rows (account numbers dropped, merchant cleaned)
-    H->>S: preview(rows, accountId)
-    S->>D: compute fingerprints with occurrence numbers
-    S->>R: find existing fingerprints for date range
-    R->>DB: SELECT
-    DB-->>R: fingerprints
-    R-->>S: fingerprints
-    S->>D: mark duplicates
-    D-->>S: rows with status new or duplicate
-    S->>S: apply category rules in order
-    S-->>H: preview result
-    H-->>Client: rows, counts, detected format
-    Client-->>Page: show preview
-    Note over Page: File is gone. Rows live only in browser memory.
-
-    Owner->>Page: Fix categories, press Import
-    Page->>Client: commitImport(rows, accountId)
-    Client->>H: POST /api/import/commit
-    H->>G: verify owner and header
-    H->>H: validate schema, row cap, known category and account
-    H->>S: commit(rows)
-    S->>D: recompute fingerprints, re-check duplicates
-    S->>R: insert batch and transactions (one transaction)
-    R->>DB: INSERT
-    DB-->>R: ok
-    R-->>S: counts
-    S-->>H: 128 imported
-    H-->>Client: result
-    Client-->>Page: success screen
-```
-
-Why re-check duplicates on commit: another import could have happened between preview and commit, and the database also has a unique index on the fingerprint as the final safety net. Undoing an import deletes the rows that belong to one batch (FIN-09).
-
-## 4. Sequence: every request is checked twice
-
-This is the same for all endpoints. It is the "fail closed" rule from the spec. Tests use this same path with synthetic identity headers. There is no test-only shortcut.
+This is the same for all endpoints. It is the "fail closed" rule from the spec. Tests use this same path with synthetic signed tokens. There is no test-only shortcut.
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant Edge as Static Web Apps edge
-    participant API as Function handler
+    participant Edge as Cloudflare Access
+    participant API as Worker handler
     participant G as ownerGuard
     participant RG as requestGuard
 
     User->>Edge: request to /api/anything
-    alt not signed in or not owner role
-        Edge-->>User: 401 or 403
-    else owner role present
-        Edge->>API: forwards request with identity header
-        API->>G: compare user ID and role from the identity header to OWNER_ID setting
-        alt ID does not match, or setting missing
+    alt not signed in or not on the owner policy
+        Edge-->>User: redirect to sign-in, or access denied
+    else owner policy passes
+        Edge->>API: forwards request with a signed Access token
+        API->>G: verify token signature, audience and expiry, compare identity to the owner setting
+        alt token invalid, identity does not match, or setting missing
             G-->>API: deny
-            API-->>User: 403, no data
+            API-->>User: 401 or 403, no data
         else match
             G-->>API: allow
             API->>RG: non-GET? custom header present?
@@ -234,51 +174,7 @@ sequenceDiagram
     end
 ```
 
-## 5. Sequence: fixing a category and "teaching the app"
-
-```mermaid
-sequenceDiagram
-    actor Owner
-    participant Page as Transactions page
-    participant H as handlers/transactions
-    participant S as categorizer
-    participant R as repositories
-    participant DB as Azure SQL
-
-    Owner->>Page: Set category, tick "apply to similar"
-    Page->>H: PATCH /api/transactions/{id}
-    H->>S: recategorize(id, category, createRule=true)
-    S->>R: update this transaction
-    S->>R: save rule (merchant contains text, next position)
-    S->>R: find other uncategorized matches
-    R->>DB: UPDATE and INSERT in one transaction
-    DB-->>R: ok
-    R-->>S: 3 updated
-    S-->>H: result
-    H-->>Page: updated rows
-```
-
-## 6. State diagram: life of an import
-
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> Uploading: file dropped
-    Uploading --> Rejected: wrong type, too big, unreadable
-    Uploading --> Previewing: parsed OK
-    Rejected --> Idle: try again
-    Previewing --> Previewing: edit categories, filter rows
-    Previewing --> Committing: press Import
-    Previewing --> Idle: cancel
-    Committing --> Done: rows saved
-    Committing --> Failed: database error, nothing saved
-    Failed --> Previewing: retry
-    Done --> Undone: undo this import
-    Undone --> [*]
-    Done --> [*]
-```
-
-## 7. Sequence: importing from Apple Health (in the browser)
+## 4. Sequence: importing from Apple Health (in the browser)
 
 The big file never leaves the phone or computer. A background worker reads workouts from the ZIP, and only those rows are sent.
 
@@ -313,11 +209,13 @@ sequenceDiagram
     Note over Page,W: The ZIP and XML are never uploaded or stored.
 ```
 
-## 8. Flow: from change to production
+The mileage spreadsheet import (MIL-04) follows the same shape: the browser reads the file, shows a preview, and sends only validated readings to the API.
+
+## 5. Flow: from change to production
 
 ```mermaid
 flowchart TD
-    A["Branch: fin-03-import-preview"] --> B["Open pull request"]
+    A["Branch: mil-01-log-odometer"] --> B["Open pull request"]
     B --> C{"CI: hygiene + test green, branch up to date?"}
     C -- "no" --> A
     C -- "yes" --> D["Squash merge to main"]
@@ -327,62 +225,19 @@ flowchart TD
     G -- "no" --> X["Stopped, nothing changed"]
     G -- "yes" --> H{"CI passed on this exact commit?"}
     H -- "no" --> X
-    H -- "yes" --> I["Apply pending SQL migrations (admin login)"]
+    H -- "yes" --> I["Apply pending SQL migrations (admin role)"]
     I --> J{"Migrations OK?"}
     J -- "no" --> X
-    J -- "yes" --> K["Deploy site and API"]
+    J -- "yes" --> K["wrangler deploy: site and API"]
     K --> L["Summary: commit and migrations applied"]
 ```
 
-## 9. Data model (ER diagram)
+## 6. Data model (ER diagram)
 
-Only the tables the MVP needs. No account numbers, no raw files. Weekly mileage is computed from readings, not stored (ADR-0008). Every table also has created and updated timestamps, left out below.
+Only the tables the MVP needs. No raw files, and no financial or bank data (ADR-0021). Weekly mileage is computed from readings, not stored (ADR-0008). Every table also has created and updated timestamps, left out below.
 
 ```mermaid
 erDiagram
-    ACCOUNT ||--o{ TRANSACTION : holds
-    ACCOUNT ||--o{ IMPORT_BATCH : "imported into"
-    IMPORT_BATCH ||--o{ TRANSACTION : contains
-    CATEGORY ||--o{ TRANSACTION : labels
-    CATEGORY ||--o{ RULE : "assigned by"
-
-    ACCOUNT {
-        int id PK
-        string name
-        string type "checking, credit card, cash"
-    }
-    IMPORT_BATCH {
-        int id PK
-        int account_id FK
-        date imported_on
-        int row_count
-        string source_format
-    }
-    TRANSACTION {
-        int id PK
-        int account_id FK
-        int batch_id FK "null for manual entries"
-        date posted_on
-        decimal amount
-        string description "original text"
-        string merchant "cleaned name"
-        string note
-        int category_id FK
-        string source "import or manual"
-        string fingerprint UK "includes occurrence"
-        int occurrence
-    }
-    CATEGORY {
-        int id PK
-        string name
-        string type "expense, income, transfer"
-    }
-    RULE {
-        int id PK
-        string merchant_contains
-        int category_id FK
-        int position "first match wins"
-    }
     ODOMETER_READING {
         int id PK
         date read_on
@@ -393,7 +248,7 @@ erDiagram
         int id PK
         date given_on
         date for_month "null for special"
-        decimal amount
+        numeric amount
         string method
         string kind "regular or special"
         string occasion "special only"
@@ -402,11 +257,11 @@ erDiagram
     WEIGHT_ENTRY {
         int id PK
         date logged_on UK
-        decimal pounds
+        numeric pounds
     }
     WORKOUT {
         int id PK
-        datetime started_at_utc
+        timestamptz started_at_utc
         date done_on "local date"
         string type
         int minutes
@@ -418,9 +273,9 @@ erDiagram
     }
 ```
 
-`WORKOUT` has a unique index on (start time, type, minutes) so re-imports skip repeats. The last few tables stand alone for now, so they have no lines.
+`WORKOUT` has a unique index on (start time, type, minutes) so re-imports skip repeats. `WEIGHT_ENTRY` is unique per day. All tables stand alone for now, so they have no lines.
 
-## 10. Tool comparison: which diagramming tool?
+## 7. Tool comparison: which diagramming tool?
 
 Your two requirements are (1) viewable in VS Code and (2) viewable on GitHub.
 
@@ -443,8 +298,8 @@ Your two requirements are (1) viewable in VS Code and (2) viewable on GitHub.
 |---|---|---|
 | Deployment overview | Shows hosting, release path, and cost surface | Section 1 |
 | Dependency graph | Keeps layers clean | Section 2 |
-| Sequence | Follows one action across modules | Sections 3, 4, 5, 7 |
-| State | Catches missing failure paths in multi-step flows | Section 6 |
-| Change-to-production flow | Shows the gates between a commit and real data | Section 8 |
-| ER | Agrees on tables before writing SQL | Section 9 |
+| Sequence | Follows one action across modules | Sections 3, 4 |
+| Change-to-production flow | Shows the gates between a commit and real data | Section 5 |
+| ER | Agrees on tables before writing SQL | Section 6 |
+| State | Catches missing failure paths in multi-step flows | Add when a multi-step flow needs one |
 | Screen flow (navigation map) | Later, once wireframes settle | Not yet |

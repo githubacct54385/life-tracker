@@ -241,12 +241,11 @@
 <div class="decisions">
   <h2>Decisions (resolved)</h2>
   <ol>
-    <li><b>Tablet navigation:</b> a left icon rail (Home, Money, Giving, Health, Car, More).</li>
+    <li><b>Tablet navigation:</b> a left icon rail (Home, Giving, Health, Car, More).</li>
     <li><b>Accent color:</b> forest green, as drawn. Tokens are the CSS variables at the top of this file.</li>
-    <li><b>Giving</b> is its own destination, separate from Money. Tablet rail and desktop sidebar show it directly. On phone it is the first item in More, so the tab bar keeps five tabs.</li>
-    <li><b>Transaction editing:</b> bottom sheet below 1024 px (tablet included), side panel at 1024 px and up.</li>
-    <li><b>CSV import</b> is desktop only. Below 1024 px the entry is hidden and the screen says to import from a computer. No reminder shortcut.</li>
-    <li><b>Quick actions:</b> add weight, add workout, log odometer on every size. Upload CSV on desktop only.</li>
+    <li><b>Giving</b> is its own destination on every size: a phone tab, a tablet rail item, and a desktop sidebar item. Settings is inside More on phone and tablet.</li>
+    <li><b>No Money destination.</b> Finance moved to a separate private repository (ADR-0021). Mileage and Apple Health imports work on every size.</li>
+    <li><b>Quick actions:</b> add weight, add workout, log odometer, add giving, on every size.</li>
     <li><b>Dark theme:</b> offered (light, dark, or system). Use the toggle at the top to preview.</li>
   </ol>
 </div>
@@ -268,25 +267,22 @@ const pageTop = (title, acts = '') => `<div class="top"><h2>${title}</h2><div cl
 const tr = (tm, tt, td, cells, h = '') => `<div class="tr ${h}" style="--tm:${tm};--tt:${tt};--td:${td}">${cells.map(c => Array.isArray(c) ? `<span class="${c[1]}">${c[0]}</span>` : `<span>${c}</span>`).join('')}</div>`;
 const svg = (h, inner) => `<svg viewBox="0 0 300 ${h}" style="width:100%;display:block">${inner}</svg>`;
 const poly = (pts, color, w = 2, dash = '') => `<polyline fill="none" stroke="${color}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ''} stroke-linejoin="round" points="${pts}"/>`;
-const desktopOnlyNote = (what) => `<div class="ph"><b>Desktop only</b>${what} is not shown below 1024 px (AC-FIN-02.2).</div>`;
-const fromComputer = () => `<div class="ph"><b>Import from a computer</b>Bank files usually live on your computer. Open Life Tracker there to import transactions. Your other imports (Apple Health, mileage spreadsheet) work here.</div>`;
 
 /* ===================== navigation model ===================== */
 const NAV = {
   Home: [],
-  Money: ['Transactions', 'Summary', 'Import', 'Import history', 'Accounts', 'Categories & rules'],
   Giving: ['History', 'Log a gift'],
   Health: ['Weight', 'Workouts', 'Apple Health import'],
   Car: ['Mileage', 'Log reading', 'Import spreadsheet'],
   More: []
 };
-const TABS = ['Home', 'Money', 'Health', 'Car', 'More']; /* phone: five tabs, Giving lives inside More */
-const RAIL = ['Home', 'Money', 'Giving', 'Health', 'Car', 'More']; /* tablet: Giving is its own destination */
+const TABS = ['Home', 'Giving', 'Health', 'Car', 'More']; /* phone: five tabs, Settings lives inside More (ADR-0021) */
+const RAIL = ['Home', 'Giving', 'Health', 'Car', 'More']; /* tablet: icon rail, Settings inside More */
 
-function tabbar(n) { const act = n.tab === 'Giving' ? 'More' : n.tab; return `<div class="tabs">${TABS.map(t => `<div class="tab ${act === t ? 'on' : ''}"><i></i>${t}</div>`).join('')}</div>`; }
+function tabbar(n) { const act = n.tab; return `<div class="tabs">${TABS.map(t => `<div class="tab ${act === t ? 'on' : ''}"><i></i>${t}</div>`).join('')}</div>`; }
 function rail(n) { return `<div class="rail">${RAIL.map(t => `<div class="${n.tab === t ? 'on' : ''}"><i></i>${t}</div>`).join('')}</div>`; }
 function sidebar(n) {
-  const groups = ['Home', 'Money', 'Giving', 'Health', 'Car', 'Settings'];
+  const groups = ['Home', 'Giving', 'Health', 'Car', 'Settings'];
   const active = n.tab === 'More' ? 'Settings' : n.tab;
   return `<div class="side"><div class="brand"><b>L</b>Life Tracker</div>${groups.map(g => {
     const on = g === active;
@@ -294,7 +290,7 @@ function sidebar(n) {
     return `<div class="g ${on && !subs ? 'on' : ''} ${on && subs ? 'on' : ''}"><i class="ic"></i>${g}</div>${subs}`;
   }).join('')}<div class="foot">Signed in as owner</div></div>`;
 }
-function strip(n, vp) { let s = (NAV[n.tab] || []).filter(x => x !== 'Import'); /* CSV import entry is desktop only (AC-FIN-02.2) */
+function strip(n, vp) { let s = (NAV[n.tab] || []);
   const at = s.indexOf(n.sub); if (vp === 'phone' && at > 1) s = s.slice(at - 1); /* phone strip is scrolled so the active chip is visible */ return s.length ? `<div class="strip nod">${s.map(x => `<span class="${x === n.sub ? 'on' : ''}">${x}</span>`).join('')}</div>` : ''; }
 
 /* ===================== frame builder ===================== */
@@ -316,23 +312,6 @@ function frame(s, vp) {
 }
 
 /* ===================== reusable bodies ===================== */
-const txRows = [
-  ['Nov 7', 'Coffee Shop', 'Checking', 'Dining', '−$4.85', 'neg'],
-  ['Nov 7', 'Grocery Mart', 'Credit card', 'Groceries', '−$62.10', 'neg'],
-  ['Nov 6', 'City Fuel', 'Credit card', 'Fuel', '−$38.40', 'neg'],
-  ['Nov 6', 'Transfer to savings', 'Checking', '__need__', '−$200.00', 'neg'],
-  ['Nov 5', 'Paycheck', 'Checking', 'Income', '+$1,850.00', 'pos'],
-  ['Nov 4', 'Streaming Service', 'Credit card', 'Subscriptions', '−$11.99', 'neg'],
-  ['Nov 4', 'Hardware Store', 'Credit card', 'Home', '−$23.17', 'neg'],
-  ['Nov 3', 'Pharmacy', 'Checking', 'Health', '−$14.60', 'neg']
-];
-const catCell = c => c === '__need__' ? chip('Needs category', 'warn') : c;
-const editForm = () => `<h3>Edit transaction</h3><div class="stack">
-  ${field('Merchant (cleaned)', 'Coffee Shop')}${field('Original text', 'SQ *COFFEE SHOP 4417 CITY')}
-  ${field('Category', 'Dining ▾')}${field('Note', 'Add a note…')}
-  <label class="chk">☑ Apply to similar (new rule: text contains “COFFEE SHOP”)</label>
-  ${btn('Save')}<div class="ok-line">Rule created. 3 other transactions updated.</div></div>`;
-
 /* ===================== screens ===================== */
 const SCREENS = [];
 const add = s => SCREENS.push(s);
@@ -341,10 +320,10 @@ const add = s => SCREENS.push(s);
 add({ id: 'signin', title: 'Sign in', path: 'signin', group: 'Foundation', keys: ['FND-02', 'DEM-01', 'AC-FND-02.1'],
   review: ['One login option (GitHub). The demo link needs no sign-in.', 'Phone, tablet, and desktop use the same centered card. Desktop adds a short feature strip.'],
   nav: null, body: () => `<div class="auth"><div class="logo">L</div><h2>Life Tracker</h2>
-    <p class="sub" style="margin:0 20px 22px">A private space for my money, health, and miles.</p>${btn('Sign in with GitHub', 'dark')}
+    <p class="sub" style="margin:0 20px 22px">A private space for my health, miles, and giving.</p>${btn('Sign in with GitHub', 'dark')}
     <p class="sub" style="margin:14px 18px">Private app. Only the owner can sign in. Passkey or 2FA is handled by GitHub.</p>
     ${btn('View the demo (fake data)', 'ghost')}
-    <div class="only-d" style="margin-top:26px"><div class="two" style="grid-template-columns:repeat(4,1fr)">${['Money', 'Health', 'Car', 'Giving'].map(x => `<div class="chip grey" style="margin:0;padding:6px">${x}</div>`).join('')}</div></div></div>` });
+    <div class="only-d" style="margin-top:26px"><div class="two" style="grid-template-columns:repeat(3,1fr)">${['Health', 'Car', 'Giving'].map(x => `<div class="chip grey" style="margin:0;padding:6px">${x}</div>`).join('')}</div></div></div>` });
 
 add({ id: 'denied', title: 'Access denied', path: 'denied', group: 'Foundation', keys: ['FND-02', 'AC-FND-02.2', 'AC-FND-02.3', 'AC-FND-02.4'],
   review: ['Any other GitHub account lands here. Nothing is saved and no data is shown.', 'No navigation is shown, so there is nothing to click into.'],
@@ -353,37 +332,37 @@ add({ id: 'denied', title: 'Access denied', path: 'denied', group: 'Foundation',
     ${btn('Sign out', 'ghost')}<div style="height:10px"></div>${btn('View the demo', 'ghost')}</div>` });
 
 add({ id: 'states', title: 'System states', path: 'states', group: 'Foundation', keys: ['FND-05', 'SET-02', 'AC-FND-05.3', 'AC-FND-05.4', 'AC-SET-02.5'],
-  nav: { tab: 'Home' }, review: ['Offline: a clear message and no private data on screen.', 'Database waking from auto-pause: loading state, one automatic retry, then a plain error with a retry button.', 'Every list and chart has an empty state that says what to do next.'],
+  nav: { tab: 'Home' }, review: ['Offline: a clear message and no private data on screen.', 'Database waking from idle: loading state, one automatic retry, then a plain error with a retry button.', 'Every list and chart has an empty state that says what to do next.'],
   body: () => cols(1, 2, 2, `
     ${card('Offline', `<div class="center" style="padding:14px 0"><div class="logo" style="background:var(--muted)">⌁</div><b style="color:var(--g900)">You’re offline</b><p class="sub">Life Tracker needs a connection to show your data. Nothing is stored on this device.</p>${btn('Try again', 'ghost')}</div>`)}
-    ${card('Database waking up', `<div class="center" style="padding:14px 0"><div class="prog" style="margin:6px 20px 12px"><i style="width:55%"></i></div><b style="color:var(--g900)">Waking things up…</b><p class="sub">The database sleeps when idle. This takes up to a minute the first time.</p></div>`)}
-    ${card('Empty state: transactions', `<div class="center" style="padding:14px 0"><b style="color:var(--g900)">No transactions yet</b><p class="sub">Import a bank file on a computer, or add one by hand.</p>${btn('Add a transaction', 'ghost')}</div>`)}
+    ${card('Database waking up', `<div class="center" style="padding:14px 0"><div class="prog" style="margin:6px 20px 12px"><i style="width:55%"></i></div><b style="color:var(--g900)">Waking things up…</b><p class="sub">The database sleeps when idle. This usually takes a few seconds.</p></div>`)}
+    ${card('Empty state: giving', `<div class="center" style="padding:14px 0"><b style="color:var(--g900)">No gifts logged yet</b><p class="sub">Log your first gift to see monthly and year-to-date totals.</p>${btn('Log a gift', 'ghost')}</div>`)}
     ${card('Something went wrong', `<div class="center" style="padding:14px 0"><b style="color:var(--danger)">Couldn’t load this</b><p class="sub">Nothing was changed. Check your connection and try again.</p>${btn('Retry', 'ghost')}</div>`)}`) });
 
 add({ id: 'more', title: 'More', path: 'more', group: 'Foundation', keys: ['FND-04', 'AC-FND-04.1', 'AC-FND-04.2', 'AC-FND-04.3'],
-  nav: { tab: 'More' }, review: ['The “More” tab exists on phone and tablet only. On phone it also holds Giving (the tab bar stays at five tabs). On tablet, Giving is in the rail, so it is not repeated here.', 'On desktop everything is in the sidebar, so the page is not used.'],
-  body: vp => `<div class="lt-d">${card('', `<div class="only-m">${item('Giving', 'Gifts and special contributions', '›')}</div>${item('Settings', 'Theme, time zone, units, sign out', '›')}${item('Categories & rules', 'Money', '›')}${item('Accounts', 'Money', '›')}${item('Import history', 'Undo an import', '›')}${item('Try the demo', 'Fake data, in the browser', '›')}`)}</div>
+  nav: { tab: 'More' }, review: ['The “More” tab exists on phone and tablet only. It holds Settings and the demo link. Giving is its own tab on phone and its own rail item on tablet.', 'On desktop everything is in the sidebar, so the page is not used.'],
+  body: vp => `<div class="lt-d">${card('', `${item('Settings', 'Theme, time zone, units, sign out', '›')}${item('Try the demo', 'Fake data, in the browser', '›')}`)}</div>
     <div class="only-d"><div class="ph"><b>Not used at 1024 px and wider</b>All destinations are in the left sidebar.</div></div>` });
 
 /* ---- Dashboard & demo ---- */
 add({ id: 'dashboard', title: 'Good morning', path: 'home', group: 'Dashboard', keys: ['DSH-01', 'AC-DSH-01.1', 'AC-DSH-01.2', 'AC-DSH-01.3', 'AC-DSH-01.4'],
-  nav: { tab: 'Home' }, review: ['One column on phone. Two columns on tablet. Three on desktop (AC-DSH-01.4).', 'The odometer-due banner appears only when this week’s reading is missing.', 'Quick actions: add weight, add workout, log odometer. “Upload CSV” appears at 1024 px and up only.'],
+  nav: { tab: 'Home' }, review: ['One column on phone. Two columns on tablet. Three on desktop (AC-DSH-01.4).', 'The odometer-due banner appears only when this week’s reading is missing.', 'Quick actions: add weight, add workout, log odometer, add giving.'],
   body: () => cols(1, 2, 3, `
     <div class="banner sp-all"><b>Odometer due (Friday)</b>Log this week’s reading.<div class="btn sm warn" style="margin-top:8px">Log odometer</div></div>
-    ${card('Spending · November', `<div class="big">$2,184</div><div class="delta bad">▲ $142 vs. October</div>${hbar('Groceries', '$612', 70)}${hbar('Dining', '$288', 40)}`)}
+    ${card('Giving · year to date', `<div class="big">$5,000</div><div class="sub">Regular $4,400 · Special $600</div>${hbar('Regular', '$4,400', 88)}${hbar('Special', '$600', 12)}`)}
     ${card('Weight', `<div class="big">181.4 lb</div><div class="delta">▼ 0.6 lb over 7 days (trend)</div>${svg(46, poly('0,10 40,14 80,12 120,20 160,18 200,26 240,24 300,32', 'var(--g500)', 2.5))}`)}
     ${card('Last week’s miles', `<div class="big">212 mi</div><div class="sub">8-week average: 196 mi</div>${bars([40, 55, 50, 62, 48, 70, 58, 66], { 7: '' }, 52)}`)}
     ${card('Workouts this week', `<div class="big">3 of 4</div><div class="dots"><i></i><i></i><i></i><i class="o"></i></div><div class="sub" style="margin-top:6px">Streak: 5 weeks</div>`)}
-    ${card('Quick actions', `<div class="gap10">${btn('+ Add weight', 'ghost')}${btn('+ Add workout', 'ghost')}${btn('+ Log odometer', 'ghost')}<div class="only-d">${btn('⬆ Upload CSV', 'ghost')}</div></div>`)}`) });
+    ${card('Quick actions', `<div class="gap10">${btn('+ Add weight', 'ghost')}${btn('+ Add workout', 'ghost')}${btn('+ Log odometer', 'ghost')}${btn('+ Add giving', 'ghost')}</div>`)}`) });
 
 add({ id: 'demo', title: 'Demo', path: 'demo', group: 'Dashboard', keys: ['DEM-01', 'DEM-02', 'AC-DEM-01.1', 'AC-DEM-01.2', 'AC-DEM-02.1', 'AC-DEM-02.2'],
-  nav: { tab: 'Money', sub: 'Import' }, review: ['A “Demo, fake data” ribbon is on every demo screen.', 'The import screen offers a built-in sample file generated in code. Nothing is sent to a server.', 'On phone and tablet the demo shows the same “import from a computer” message as the real app.'],
+  nav: { tab: 'Car', sub: 'Import spreadsheet' }, review: ['A “Demo, fake data” ribbon is on every demo screen.', 'The mileage import screen offers a built-in sample file generated in code. Nothing is sent to a server.', 'The demo walks through upload, preview, and done at every size (AC-DEM-02).'],
   acts: '<span class="chip">DEMO</span>',
   body: () => `<div class="ribbon" style="margin-bottom:10px">Demo · fake data · stays in your browser</div>
-    <div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 0)}<div style="height:10px"></div>${cols(1, 1, 2, `
-      ${card('Choose a file', `<div class="drop">Drop a CSV here<br><span class="sub">or</span></div><div style="height:8px"></div>${btn('Use the built-in sample file')}<p class="sub">The sample is generated in your browser. No real data.</p>`)}
-      ${card('What happens next', `<ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.7"><li>Preview shows new and duplicate rows</li><li>Fix categories if needed</li><li>Import, then undo any time</li></ol>`)}`)}</div>
-    <div class="lt-d">${fromComputer()}<div style="height:10px"></div>${card('Explore the demo', `${item('Dashboard', '', '›')}${item('Transactions', '', '›')}${item('Car', '', '›')}${item('Health', '', '›')}`)}</div>` });
+    ${steps(['1 Upload', '2 Preview', '3 Done'], 0)}<div style="height:10px"></div>${cols(1, 1, 2, `
+      ${card('Choose a file', `<div class="drop">Drop a spreadsheet here<br><span class="sub">or</span></div><div style="height:8px"></div>${btn('Use the built-in sample file')}<p class="sub">The sample is generated in your browser. No real data.</p>`)}
+      ${card('What happens next', `<ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.7"><li>Preview shows rows that differ from the sheet</li><li>Import the readings</li><li>Re-importing creates no duplicates</li></ol>`)}`)}
+    <div style="height:10px"></div>${card('Explore the demo', `${item('Dashboard', '', '›')}${item('Giving', '', '›')}${item('Car', '', '›')}${item('Health', '', '›')}`)}` });
 
 /* ---- Mileage ---- */
 const weeks = [['Nov 6 → Nov 13', 'In progress', ''], ['Oct 30 → Nov 6', '212 mi', ''], ['Oct 23 → Oct 30', '188 mi', ''], ['Oct 9 → Oct 23', '2 weeks, spread evenly: 205 mi each', 'est'], ['Oct 2 → Oct 9', '174 mi', '']];
@@ -414,71 +393,10 @@ add({ id: 'importmiles', title: 'Import mileage history', path: 'car/import', gr
       ${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Oct 16', '47,928', ['190', 'c-t'], ['205', 'c-t'], chip('differs', 'warn')])}
       ${tr('1fr auto', '1fr 1fr 1fr auto', '1fr 1fr 1fr 1fr auto', ['Sep 25', '47,610', ['174', 'c-t'], ['181', 'c-t'], chip('differs', 'warn')])}`, 'sp-t2 sp-d2')}`)}` });
 
-/* ---- Finance ---- */
-add({ id: 'transactions', title: 'Transactions', path: 'money/transactions', group: 'Money', keys: ['FIN-05', 'FIN-06', 'AC-FIN-05.1', 'AC-FIN-05.2', 'AC-FIN-05.3', 'AC-FIN-05.4', 'AC-FIN-06.1', 'AC-FIN-06.2', 'AC-FIN-06.3'],
-  nav: { tab: 'Money', sub: 'Transactions' }, acts: '<div class="btn sm ghost">+ Add</div>',
-  review: ['Below 1024 px: a list, and editing opens a bottom sheet. At 1024 px and up: a table with an edit side panel (AC-FIN-05.4).', 'Filters: search, date range, account, category, amount range, and “needs category only”.', 'Editing a category can create a rule and updates other matches, and says how many (AC-FIN-06.2, 06.3).'],
-  body: () => `<div class="stack" style="margin-bottom:8px">${field('Search', '🔍 coffee, grocery…')}
-    <div style="display:flex;gap:6px;flex-wrap:wrap">${chip('Nov 1–8', 'grey')}${chip('All accounts', 'grey')}${chip('All categories', 'grey')}${chip('Amount', 'grey')}${chip('Needs category (1)', 'warn')}</div></div>
-    <div class="split"><div>
-      <div class="lt-d card" style="padding:4px 14px">${txRows.slice(0, 6).map(r => item(r[1], `${r[0]} · ${r[2]}`, `<span class="${r[5]}">${r[4]}</span><br>${r[3] === '__need__' ? chip('Needs category', 'warn') : `<span class="sub">${r[3]}</span>`}`)).join('')}</div>
-      <div class="only-d card" style="padding:6px 14px">${tr('', '', '70px 2fr 1.1fr 1.2fr 90px', ['Date', 'Merchant', 'Account', 'Category', ['Amount', 'rt']], 'h')}
-        ${txRows.map((r, i) => tr('', '', '70px 2fr 1.1fr 1.2fr 90px', [r[0], `<b${i === 0 ? ' style="color:var(--g700)"' : ''}>${r[1]}</b>`, r[2], catCell(r[3]), [`<span class="${r[5]}">${r[4]}</span>`, 'rt']])).join('')}
-        <div class="sub" style="padding-top:8px">1–8 of 214 · Next ›</div></div></div>
-      <div class="panel only-d">${editForm()}</div></div>
-    <div class="scrim lt-d"></div><div class="sheet lt-d">${editForm()}</div>` });
-
-add({ id: 'importupload', title: 'Import transactions', path: 'money/import', group: 'Money', keys: ['FIN-02', 'AC-FIN-02.1', 'AC-FIN-02.2', 'AC-FIN-02.3', 'AC-FIN-02.4', 'AC-FIN-02.5', 'AC-FIN-02.6', 'AC-FIN-02.7', 'AC-FIN-02.8', 'AC-FIN-08.5'],
-  nav: { tab: 'Money', sub: 'Import' }, review: ['Step 1 of 3. Desktop only: the entry is hidden below 1024 px and the screen explains “Import from a computer”.', 'You pick the account first. Only .csv or .xlsx up to 5 MB. The file is read, the rows are kept, and the file is thrown away.'],
-  body: () => `<div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 0)}<div style="height:12px"></div>${cols(1, 1, 2, `
-      <div class="stack">${field('Account', 'Everyday Checking ▾')}<div class="drop">⬆ Drop your bank file here<br><span class="sub">or choose a file · .csv or .xlsx, up to 5 MB</span></div></div>
-      ${card('How it works', `<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7"><li>The layout is detected from the header row (a title row above it is fine). Pending rows are skipped.</li><li>Account numbers are dropped and never leave the importer.</li><li>You review everything before anything is saved.</li><li>The file itself is never stored.</li></ul>`)}`)}</div>
-    <div class="lt-d">${fromComputer()}</div>` });
-
-add({ id: 'importpreview', title: 'Import transactions', path: 'money/import/preview', group: 'Money', keys: ['FIN-03', 'AC-FIN-03.1', 'AC-FIN-03.2', 'AC-FIN-03.3', 'AC-FIN-03.4', 'AC-FIN-03.5', 'AC-FIN-03.6'],
-  nav: { tab: 'Money', sub: 'Import' }, review: ['Step 2 of 3, desktop only. Counts for total, new, duplicate, needs-category. Duplicates are greyed and skipped by default.', 'Rows the bank still marks Pending are shown and skipped. They come in on a later upload once posted (AC-FIN-03.7).', 'Nothing is saved until you press Import.'],
-  body: () => `<div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 1)}<div style="height:10px"></div>
-    <div class="two" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">${[['Total', '128', ''], ['New', '120', ''], ['Duplicates', '8', 'var(--muted)'], ['Needs category', '14', 'var(--warn)']].map(c => card(c[0], `<div class="big" style="${c[2] ? 'color:' + c[2] : ''}">${c[1]}</div>`)).join('')}</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><div style="width:360px">${seg(['All', 'New', 'Duplicates', 'Needs category'], 0)}</div><span class="sub">statement.csv · Example Bank layout · Everyday Checking · 5 pending rows skipped</span><span style="margin-left:auto;width:180px">${btn('Import 120 rows')}</span></div>
-    <div class="card" style="padding:6px 14px">${tr('', '', '70px 2fr 1.4fr 90px 100px', ['Date', 'Merchant', 'Category', ['Amount', 'rt'], 'Status'], 'h')}
-      ${[['Nov 7', 'Coffee Shop', 'Dining', '−$4.85', chip('New'), ''], ['Nov 6', 'Transfer to savings', chip('Needs category', 'warn') + ' ▾', '−$200.00', chip('New'), ''], ['Nov 5', 'Paycheck', 'Income', '+$1,850.00', chip('New'), ''], ['Nov 3', 'Pharmacy', 'Health', '−$14.60', chip('Duplicate', 'grey'), 'opacity:.5'], ['Nov 7', 'Grocery Mart', '—', '−$62.10', chip('Pending', 'warn'), 'opacity:.5']].map(r => `<div style="${r[5]}">${tr('', '', '70px 2fr 1.4fr 90px 100px', [r[0], r[1], r[2], [r[3], 'rt'], r[4]])}</div>`).join('')}</div></div>
-    <div class="lt-d">${desktopOnlyNote('The import preview')}</div>` });
-
-add({ id: 'importdone', title: 'Import transactions', path: 'money/import/done', group: 'Money', keys: ['FIN-04', 'AC-FIN-04.1', 'AC-FIN-04.2', 'AC-FIN-04.3', 'AC-FIN-04.4', 'AC-FIN-04.6'],
-  nav: { tab: 'Money', sub: 'Import' }, review: ['Step 3 of 3, desktop only. Says what was imported and skipped, links to the new transactions, and offers undo.', 'Re-uploading the same file imports zero new rows. Two identical same-day purchases are both kept.'],
-  body: () => `<div class="only-d">${steps(['1 Upload', '2 Preview', '3 Done'], 2)}<div style="height:12px"></div><div style="max-width:520px">${card('', `<div class="center" style="padding:10px 0"><div class="logo">✓</div><h3 style="font-size:20px">120 transactions imported</h3><p class="sub">8 duplicates skipped · 14 still need a category</p>${btn('View the new transactions')}<div style="height:8px"></div>${btn('Undo this import', 'ghost')}</div>`)}</div></div>
-    <div class="lt-d">${desktopOnlyNote('The import result')}</div>` });
-
-add({ id: 'importhistory', title: 'Import history', path: 'money/import-history', group: 'Money', keys: ['FIN-09', 'AC-FIN-09.1', 'AC-FIN-09.2', 'AC-FIN-09.3', 'AC-FIN-09.4', 'AC-FIN-09.5'],
-  nav: { tab: 'Money', sub: 'Import history' }, review: ['Works at every width, so a bad import can be undone from the phone.', 'Undo asks first, says how many transactions were edited by hand, and is all or nothing. The dialog is a bottom sheet on phone and a centered dialog on tablet and desktop.'],
-  body: () => `${card('', [['Nov 8', 'Everyday Checking', '120 transactions', ''], ['Oct 12', 'Credit card', '97 transactions', ''], ['Sep 9', 'Everyday Checking', '131 transactions', '']].map(b => item(b[0] + ' · ' + b[1], b[2], '<span class="btn sm ghost">Undo</span>')).join(''))}
-    <div class="scrim"></div><div class="dlg"><h3>Undo this import?</h3><p style="font-size:13px;line-height:1.5;margin:0 0 10px">This deletes the <b>120 transactions</b> from Nov 8 (Everyday Checking). <b>3 of them were edited by hand</b> and those edits will be lost. You can import the same file again afterward.</p><div style="display:flex;gap:8px"><span style="flex:1">${btn('Cancel', 'ghost')}</span><span style="flex:1">${btn('Delete 120', 'danger')}</span></div></div>` });
-
-add({ id: 'summary', title: 'Summary', path: 'money/summary', group: 'Money', keys: ['FIN-07', 'AC-FIN-07.1', 'AC-FIN-07.2', 'AC-FIN-07.3', 'AC-FIN-07.4', 'AC-FIN-07.5'],
-  nav: { tab: 'Money', sub: 'Summary' }, acts: '<span class="sub">‹ &nbsp;<b style="color:var(--ink)">November</b>&nbsp; ›</span>',
-  review: ['“Spent” counts expense categories only. Income and transfers are excluded and the screen says so.', 'Month switcher with previous and next. Charts have text alternatives and do not rely on color alone.'],
-  body: () => cols(1, 2, 3, `
-    ${card('Total spent', `<div class="big">$2,184</div><div class="delta bad">▲ $142 vs. October</div><div style="margin-top:6px">${chip('Income and transfers excluded', 'grey')}</div>`)}
-    ${card('By category', `${hbar('Groceries', '$612', 72)}${hbar('Housing', '$540', 64)}${hbar('Dining', '$288', 34)}${hbar('Fuel', '$214', 26)}${hbar('Other', '$530', 55)}`)}
-    ${card('Spending over time', `${svg(120, poly('0,80 25,70 50,76 75,60 100,66 125,50 150,58 175,40 200,48 225,44 250,32 300,38', 'var(--g500)', 2.5) + poly('0,90 300,90', 'var(--line)', 1))}<div class="axis"><span>Dec</span><span>Mar</span><span>Jun</span><span>Sep</span><span>Nov</span></div><p class="sub">Line chart: monthly spending, last 12 months.</p>`, 'sp-t2 sp-d2')}`) });
-
-add({ id: 'rules', title: 'Categories & rules', path: 'money/rules', group: 'Money', keys: ['FIN-01', 'AC-FIN-01.1', 'AC-FIN-01.2', 'AC-FIN-01.3', 'AC-FIN-01.4', 'AC-FIN-01.5', 'AC-FIN-01.6', 'AC-FIN-01.7'],
-  nav: { tab: 'Money', sub: 'Categories & rules' }, acts: '<div class="btn sm ghost">Re-apply rules</div>',
-  review: ['Each category has a type: expense, income, or transfer. Only expenses count as “spent”.', 'Rules run top to bottom and the first match wins. Drag to reorder.', '“Re-apply rules” categorizes existing uncategorized transactions and reports how many changed.'],
-  body: () => `<div class="banner ok" style="margin-bottom:10px"><b>Rules re-applied</b>14 uncategorized transactions were updated.</div>${cols(1, 1, 2, `
-    ${card('Categories', ['Groceries|expense', 'Dining|expense', 'Fuel|expense', 'Subscriptions|expense', 'Paycheck|income', 'Transfers|transfer'].map(c => { const [n, t] = c.split('|'); return item(n, '', chip(t, t === 'expense' ? '' : t === 'income' ? 'warn' : 'grey') + ' ⋯'); }).join('') + `<div style="height:8px"></div>${btn('+ Add category', 'ghost')}`)}
-    ${card('Rules (first match wins)', [['COFFEE', 'Dining'], ['GROCERY', 'Groceries'], ['CITY FUEL', 'Fuel'], ['STREAMING', 'Subscriptions']].map((r, i) => item(`<span class="sub">≡ ${i + 1}</span> &nbsp;contains <b>${r[0]}</b>`, '', `→ ${r[1]} ⋯`)).join('') + `<div style="height:8px"></div>${btn('+ Add rule', 'ghost')}`)}`)}` });
-
-add({ id: 'accounts', title: 'Accounts', path: 'money/accounts', group: 'Money', keys: ['FIN-08', 'AC-FIN-08.1', 'AC-FIN-08.2', 'AC-FIN-08.3', 'AC-FIN-08.4'],
-  nav: { tab: 'Money', sub: 'Accounts' }, review: ['Accounts have a name and a type only. Account numbers are never stored.', 'Manual entry covers cash and gaps. Manual transactions are labeled and can be edited or deleted.'],
-  body: () => cols(1, 2, 2, `
-    ${card('Accounts', `${item('Everyday Checking', 'Checking · 214 transactions', '⋯')}${item('Travel Card', 'Credit card · 97 transactions', '⋯')}${item('Cash', 'Cash · 12 transactions', '⋯')}<div style="height:8px"></div>${btn('+ Add account', 'ghost')}<p class="sub" style="margin-top:8px">Only a name and type are stored. Never an account number.</p>`)}
-    ${card('Add a transaction', `<div class="stack">${field('Date', 'Nov 8 ▾')}${field('Amount', '−$18.00')}${field('Description', 'Farmers market')}<div class="two">${field('Account', 'Cash ▾')}${field('Category', 'Groceries ▾')}</div>${btn('Save')}<div class="sub">Shown in the list with a “manual” label ${chip('manual', 'grey')}</div></div>`)}`) });
-
 /* ---- Giving ---- */
 add({ id: 'giving', title: 'Giving', path: 'giving', group: 'Giving', keys: ['GIV-03', 'AC-GIV-03.1', 'AC-GIV-03.2', 'AC-GIV-03.3', 'AC-GIV-02.2'],
   nav: { tab: 'Giving', sub: 'History' }, acts: '<div class="btn sm">+ Log a gift</div>',
-  review: ['Giving is its own destination, separate from Money. The tablet rail and desktop sidebar show it directly. On phone it is the first item in More, so the tab bar stays at five tabs.', 'Regular giving is grouped by the month it is for. A month with no regular gift is marked “no gift”.', 'Special contributions are listed and totaled separately. Year-to-date shows regular, special, and combined.', 'Several gifts in one month show as one total with a count.'],
+  review: ['Giving is its own destination: a phone tab, a tablet rail item, and a desktop sidebar item.', 'Regular giving is grouped by the month it is for. A month with no regular gift is marked “no gift”.', 'Special contributions are listed and totaled separately. Year-to-date shows regular, special, and combined.', 'Several gifts in one month show as one total with a count.'],
   body: () => `${cols(3, 3, 3, ['Regular|$4,400', 'Special|$600', 'Combined|$5,000'].map(x => { const [a, b] = x.split('|'); return card(a, `<div class="big" style="font-size:20px">${b}</div>`); }).join(''))}<div style="height:10px"></div>
     ${cols(1, 1, 2, `${card('Regular giving by month', [['January', '$400 · 1 gift', ''], ['February', '$400 · 1 gift', ''], ['March', '', 'none'], ['April', '$800 · 2 gifts', ''], ['May', '$400 · 1 gift', ''], ['June', '$400 · 1 gift', '']].map(m => item(m[0], m[1], m[2] ? chip('no gift', 'red') : '›')).join(''))}
     ${card('Special contributions', `${item('Annual offering', 'Given Mar 24', '$350')}${item('Building fund', 'Given Aug 11', '$250')}<div class="sub" style="margin-top:8px">Totaled separately from regular giving.</div>`)}`)}` });
@@ -524,11 +442,10 @@ add({ id: 'applehealth', title: 'Apple Health import', path: 'health/import', gr
 
 /* ---- Settings ---- */
 add({ id: 'settings', title: 'Settings', path: 'settings', group: 'Settings', keys: ['SET-01', 'AC-SET-01.1', 'AC-SET-01.2', 'AC-SET-01.3', 'AC-SET-01.4'],
-  nav: { tab: 'More', sub: 'Settings' }, review: ['Theme: light, dark, or system. Time zone and weight unit live here.', 'Categories & rules is reachable from here. Sign out ends the session.', 'Export and delete data are “Next”, so they are shown disabled as a preview only.'],
+  nav: { tab: 'More', sub: 'Settings' }, review: ['Theme: light, dark, or system. Time zone and weight unit live here.', 'Sign out ends the session.', 'Export and delete data are “Next”, so they are shown disabled as a preview only.'],
   body: () => cols(1, 1, 2, `
     ${card('Appearance', `${seg(['Light', 'Dark', 'System'], 2)}`)}
     ${card('Preferences', `<div class="stack">${field('Time zone', 'Region/City ▾')}${field('Weight unit', 'Pounds (lb) ▾')}</div>`)}
-    ${card('Money', `${item('Categories & rules', '', '›')}${item('Accounts', '', '›')}${item('Import history', '', '›')}`)}
     ${card('Account', `${item('Signed in', 'GitHub · owner', '')}<div style="height:8px"></div>${btn('Sign out', 'ghost')}`)}
     ${card('Your data (coming later)', `<div class="stack"><div class="btn ghost dis">Export all my data</div><div class="btn ghost dis">Delete all my data</div></div>`, 'sp-t2')}`) });
 
