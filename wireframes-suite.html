@@ -376,9 +376,9 @@ add({ id: 'car', title: 'Car', path: 'car', group: 'Car', keys: ['MIL-02', 'MIL-
     <div class="fab only-m">+ Log reading</div>` });
 
 add({ id: 'logreading', title: 'Log odometer', path: 'car/log', group: 'Car', keys: ['MIL-01', 'AC-MIL-01.1', 'AC-MIL-01.2', 'AC-MIL-01.3', 'AC-MIL-01.4'],
-  nav: { tab: 'Car', sub: 'Log reading' }, review: ['The reading field is focused when the screen opens. Date defaults to today but can be any date (backfill).', 'A lower-than-last reading shows a warning and needs confirmation (shown). A very large jump gets the same treatment.', 'Recent readings can be edited or deleted.'],
+  nav: { tab: 'Car', sub: 'Log reading' }, review: ['The reading field is focused when the screen opens. There is no date or time field: a reading is dated at the moment it is saved. A small “Different day” link (for a missed week or older history) opens a date picker.', 'A lower-than-last reading shows a warning and needs confirmation (shown). A very large jump gets the same treatment.', 'Recent readings can be edited or deleted.'],
   body: () => cols(1, 2, 2, `<div class="stack">
-      ${field('Odometer reading', '48,402<span style="color:var(--g500)">|</span> mi', 'hot')}${field('Date', 'Fri, Nov 6 ▾')}${field('Note (optional)', '—')}
+      ${field('Odometer reading', '48,402<span style="color:var(--g500)">|</span> mi', 'hot')}<div class="sub" style="margin:2px 0 6px">Saved as of now · <u>Different day</u></div>${field('Note (optional)', '—')}
       <div class="banner"><b>Lower than your last reading</b>Last reading was 48,550 on Oct 30. Save anyway?<div style="display:flex;gap:8px;margin-top:8px"><span class="btn sm warn">Yes, save</span><span class="btn sm ghost">Change it</span></div></div>
       ${btn('Save reading', 'dis')}</div>
     ${card('Recent readings', `${item('Nov 6', 'Estimated week follows', '48,402')}${item('Oct 30', '', '48,550')}${item('Oct 23', '', '48,338')}${item('Oct 9', 'Backfilled', '47,928')}<div class="sub" style="margin-top:6px">Tap a reading to edit or delete.</div>`)}`) });
