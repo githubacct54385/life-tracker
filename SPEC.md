@@ -58,8 +58,8 @@ Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking, accounts, catego
 
 | Feature | Priority |
 |---|---|
-| Log weight (date, value), with a trend line and moving average. Pounds or kilograms. | MVP |
-| Log workouts manually (type, duration, notes) | MVP |
+| Log weight (a value; it is dated when saved, with no date to enter), with a trend line and moving average. Pounds or kilograms. | MVP |
+| Log workouts manually (type, duration, notes; dated when saved, with no date to enter) | MVP |
 | Import workouts from an Apple Health export (the ZIP is opened in the browser) | MVP |
 | Workout history, weekly and monthly totals, consistency streaks | MVP |
 | Goals: target weight, workouts per week | Next |
@@ -91,12 +91,12 @@ Notes:
 
 | Feature | Priority |
 |---|---|
-| Weekly odometer entry (one number, fast on a phone). The screen never asks for a date or time: the reading is dated at the moment it is saved. A "Different day" link opens a date picker for a missed week or older history. | MVP |
+| Weekly odometer entry (one number, fast on a phone). The screen never asks for a date or time: the reading is dated at the moment it is saved, so a late reading simply counts for the week it is entered in. | MVP |
 | Import existing Excel history (upload the .xlsx or a CSV export of it). Columns: Date, Start Miles (Friday), Miles Driven. The importer reads Date and Start Miles, recalculates miles driven itself, and flags any row where its result differs from the sheet's calculated column. | MVP |
 | Miles driven per week, with graphs | MVP |
 | Rolling average, monthly and yearly totals, busiest and quietest weeks | MVP |
 | Sanity checks: warn if a reading is lower than the last one or implausibly high | MVP |
-| Missed weeks handled gracefully. History starts in late 2024 and has skipped Fridays, so gaps are normal, not errors. A missed week is listed with an "Add reading" prompt, never guessed (ADR-0008). Entries may be added on any date through "Different day", and readings can be backfilled or edited later. | MVP |
+| Missed weeks handled gracefully. History starts in late 2024 and has skipped Fridays, so gaps are normal, not errors. A missed week is shown as a gap ("no reading") and never guessed (ADR-0008). The app is flexible about late readings: a reading is always dated when it is entered, and readings can be edited or deleted later. Older history comes in through the spreadsheet import, which carries its own dates. | MVP |
 | Weekly reminder (see 6.10) | MVP |
 | Fuel fill-ups: gallons, cost, MPG and cost per mile (entered by hand) | Next |
 | Maintenance reminders by mileage or date (oil change, tires, registration, insurance) | Next |

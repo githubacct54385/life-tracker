@@ -376,9 +376,9 @@ add({ id: 'car', title: 'Car', path: 'car', group: 'Car', keys: ['MIL-02', 'MIL-
     <div class="fab only-m">+ Log reading</div>` });
 
 add({ id: 'logreading', title: 'Log odometer', path: 'car/log', group: 'Car', keys: ['MIL-01', 'AC-MIL-01.1', 'AC-MIL-01.2', 'AC-MIL-01.3', 'AC-MIL-01.4'],
-  nav: { tab: 'Car', sub: 'Log reading' }, review: ['The reading field is focused when the screen opens. There is no date or time field: a reading is dated at the moment it is saved. A small “Different day” link (for a missed week or older history) opens a date picker.', 'A lower-than-last reading shows a warning and needs confirmation (shown). A very large jump gets the same treatment.', 'Recent readings can be edited or deleted.'],
+  nav: { tab: 'Car', sub: 'Log reading' }, review: ['The reading field is focused when the screen opens. There is no date or time field: a reading is dated at the moment it is saved. A late reading simply counts for the week it is entered in.', 'A lower-than-last reading shows a warning and needs confirmation (shown). A very large jump gets the same treatment.', 'Recent readings can be edited or deleted.'],
   body: () => cols(1, 2, 2, `<div class="stack">
-      ${field('Odometer reading', '48,402<span style="color:var(--g500)">|</span> mi', 'hot')}<div class="sub" style="margin:2px 0 6px">Saved as of now · <u>Different day</u></div>${field('Note (optional)', '—')}
+      ${field('Odometer reading', '48,402<span style="color:var(--g500)">|</span> mi', 'hot')}<div class="sub" style="margin:2px 0 6px">Saved as of now</div>${field('Note (optional)', '—')}
       <div class="banner"><b>Lower than your last reading</b>Last reading was 48,550 on Oct 30. Save anyway?<div style="display:flex;gap:8px;margin-top:8px"><span class="btn sm warn">Yes, save</span><span class="btn sm ghost">Change it</span></div></div>
       ${btn('Save reading', 'dis')}</div>
     ${card('Recent readings', `${item('Nov 6', 'Estimated week follows', '48,402')}${item('Oct 30', '', '48,550')}${item('Oct 23', '', '48,338')}${item('Oct 9', 'Backfilled', '47,928')}<div class="sub" style="margin-top:6px">Tap a reading to edit or delete.</div>`)}`) });
@@ -414,7 +414,7 @@ add({ id: 'weight', title: 'Weight', path: 'health/weight', group: 'Health', key
   body: () => `${cols(1, 2, 3, `
     ${card('Trend', `<div class="big">181.4 lb</div><div class="delta">▼ 0.6 lb over 7 days</div>${svg(130, [[20,34],[45,56],[70,36],[95,52],[120,50],[145,64],[170,58],[195,74],[220,66],[245,82],[270,74]].map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--g300)"/>`).join('') + poly('20,40 45,43 70,46 95,50 120,54 145,58 170,62 195,66 220,70 245,73 270,76', 'var(--g700)', 2.5))}<div class="axis"><span>Sep</span><span>Oct</span><span>Nov</span></div><p class="sub">Line chart: dots are daily weights, the line is the 7-day average.</p>`, 'sp-t2 sp-d2')}
     <div class="stack"><div class="banner"><b>Already logged today</b>181.2 lb at 7:10. Replace it with 181.4?<div style="display:flex;gap:8px;margin-top:8px"><span class="btn sm warn">Replace</span><span class="btn sm ghost">Cancel</span></div></div>
-      ${card('Log weight', `<div class="stack">${field('Weight', '181.4 lb', 'hot')}${field('Date', 'Today ▾')}${seg(['lb', 'kg'], 0)}${btn('Save')}</div>`)}</div>
+      ${card('Log weight', `<div class="stack">${field('Weight', '181.4 lb', 'hot')}<div class="sub" style="margin:2px 0 6px">Saved as of now</div>${seg(['lb', 'kg'], 0)}${btn('Save')}</div>`)}</div>
     ${card('Entries', [['Nov 7', '181.4'], ['Nov 6', '181.9'], ['Nov 5', '181.0'], ['Nov 4', '182.3']].map(e => item(e[0], '', e[1] + ' lb ⋯')).join(''), 'sp-all')}`)}
     <div class="fab only-m">+ Log weight</div>` });
 
@@ -429,7 +429,7 @@ add({ id: 'workouts', title: 'Workouts', path: 'health/workouts', group: 'Health
 
 add({ id: 'addworkout', title: 'Add workout', path: 'health/workouts/new', group: 'Health', keys: ['HLT-02', 'AC-HLT-02.1', 'AC-HLT-02.2'],
   nav: { tab: 'Health', sub: 'Workouts' }, review: ['Type, date, duration, and an optional note. Existing workouts open the same form with a Delete button.'],
-  body: () => cols(1, 2, 2, `${card('New workout', `<div class="stack"><div style="display:flex;gap:6px;flex-wrap:wrap">${['Run', 'Walk', 'Strength', 'Cycling', 'Yoga', 'Other'].map((t, i) => chip(t, i === 2 ? '' : 'grey')).join('')}</div>${field('Date', 'Today ▾')}${field('Duration', '45 min')}${field('Note (optional)', '—')}${btn('Save workout')}</div>`)}
+  body: () => cols(1, 2, 2, `${card('New workout', `<div class="stack"><div style="display:flex;gap:6px;flex-wrap:wrap">${['Run', 'Walk', 'Strength', 'Cycling', 'Yoga', 'Other'].map((t, i) => chip(t, i === 2 ? '' : 'grey')).join('')}</div><div class="sub" style="margin:2px 0 6px">Saved as of now</div>${field('Duration', '45 min')}${field('Note (optional)', '—')}${btn('Save workout')}</div>`)}
     ${card('Editing an existing workout', `<div class="stack">${field('Type', 'Strength ▾')}${field('Duration', '45 min')}${btn('Save changes')}${btn('Delete workout', 'ghost')}<div class="sub">Imported watch workouts can be edited too.</div></div>`)}`) });
 
 add({ id: 'applehealth', title: 'Apple Health import', path: 'health/import', group: 'Health', keys: ['HLT-03', 'AC-HLT-03.1', 'AC-HLT-03.2', 'AC-HLT-03.3', 'AC-HLT-03.4', 'AC-HLT-03.5', 'AC-HLT-03.7'],
