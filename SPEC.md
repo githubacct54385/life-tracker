@@ -1,6 +1,6 @@
 # Personal Life Tracker: Product Spec (Draft v0.3)
 
-Status: planning, with foundation code in place. Technical choices are recorded in [DECISIONS.md](DECISIONS.md). Stories and acceptance criteria are in [BACKLOG.md](BACKLOG.md).
+Status: planning, with foundation code in place. Technical choices are recorded in [DECISIONS.md](DECISIONS.md). Stories and acceptance criteria are in Linear (project Life Tracker); the valid criterion IDs are in [docs/ac-ids.txt](docs/ac-ids.txt).
 
 ## 1. Purpose
 
@@ -52,7 +52,7 @@ Priority: **MVP** = first release, **Next** = soon after, **Later** = nice to ha
 
 ### 6.1 Finance (removed)
 
-Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking, accounts, categories and rules, bank file import, spending summaries, and the related "Next" and "Later" ideas live in a separate private repository. Nothing financial is stored in this app. This section number is kept so other references stay stable. The retired stories are FIN-01 to FIN-09 in [BACKLOG.md](BACKLOG.md).
+Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking, accounts, categories and rules, bank file import, spending summaries, and the related "Next" and "Later" ideas live in a separate private repository. Nothing financial is stored in this app. This section number is kept so other references stay stable. The retired stories are FIN-01 to FIN-09 in Linear (canceled); their criterion IDs are marked retired in [docs/ac-ids.txt](docs/ac-ids.txt).
 
 ### 6.2 Health
 

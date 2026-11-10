@@ -12,7 +12,7 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 - [TESTING.md](TESTING.md): the test pyramid, what goes at which level, CI jobs
 - [OBSERVABILITY.md](OBSERVABILITY.md): logging rules
 - [docs/azure-setup.md](docs/azure-setup.md): one-time Azure resource setup. **Obsolete after MIG-07**; the app is moving to Cloudflare + Neon (ADR-0021)
-- [BACKLOG.md](BACKLOG.md): stories and acceptance criteria (mirrors Linear)
+- [docs/ac-ids.txt](docs/ac-ids.txt): the list of valid acceptance-criterion IDs. The stories and criteria text are in Linear.
 - [wireframes-suite.html](wireframes-suite.html): every MVP screen at mobile, tablet, and desktop widths
 
 If these documents conflict with a request, say so and ask. Do not silently pick one.
@@ -85,14 +85,14 @@ Follow [TESTING.md](TESTING.md). In short: a pyramid with many unit tests, fewer
 
 ## Acceptance criteria and test traceability
 
-Every user story in BACKLOG.md and Linear has acceptance criteria (AC) with a unique ID.
+Every user story in Linear has acceptance criteria (AC) with a unique ID. The IDs (not the text) are listed in `docs/ac-ids.txt`.
 
 **ID format:** `AC-<AREA>-<NN>.<n>`, for example `AC-MIL-03.2`.
 
 - Area codes: MIG, FND, DEM, MIL, GIV, HLT, DSH, SET, OPS. (FIN is retired.)
 - `<AREA>-<NN>` is the story key. It is also the prefix of the Linear issue title, for example `MIL-03: Mileage stats and graphs`.
-- IDs are permanent. Never reuse or renumber one. Mark removed criteria `(retired)`, in the form `- AC-FND-01.1 (retired): reason`.
-- When you add a criterion, take the next free number for that story and add it to both BACKLOG.md and the Linear issue.
+- IDs are permanent. Never reuse or renumber one. Mark a removed criterion `(retired): reason` in its Linear issue, and add the word `retired` after its ID in `docs/ac-ids.txt`.
+- When you add a criterion, take the next free number for that story, add it to the Linear issue, and add its ID to `docs/ac-ids.txt` in the same pull request.
 
 **Tests must carry the ID in the test name**, inside square brackets at the start, so it shows up in every test report and can be found with grep:
 
@@ -115,16 +115,16 @@ Rules:
 - A story is not done until every one of its criteria has either a passing automated test or a manual-check entry.
 - Do not put real or realistic personal data in test names or fixtures.
 
-**Traceability check.** `scripts/ac-coverage.mjs` reads BACKLOG.md for all `AC-` IDs, searches tests and `docs/manual-checks.md`, and prints:
+**Traceability check.** `scripts/ac-coverage.mjs` reads `docs/ac-ids.txt` for all `AC-` IDs, searches tests and `docs/manual-checks.md`, and prints:
 
 - criteria with no test or manual check,
-- test IDs that do not exist in BACKLOG.md, or that point at retired criteria (typos).
+- test IDs that do not exist in `docs/ac-ids.txt`, or that point at retired criteria (typos).
 
 CI fails on the second list and reports the first. When the MVP is feature-complete, switch CI to `--strict` so the first list fails too.
 
 ## Working with Linear
 
-- Linear is the source of truth for status. BACKLOG.md holds the stories and criteria text and must match it.
+- Linear is the source of truth for status, stories, and criteria text. The repo keeps only the criterion IDs, in `docs/ac-ids.txt`.
 - The free plan allows **250 issues**. It is unconfirmed whether closed issues count, so assume they do. **Do not create issues without being asked.**
 - **Do not create teams.** Use the existing team (key `ALE`).
 - **No sub-issues.** Use the acceptance criteria as the checklist.
@@ -140,6 +140,15 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
   - **When complete:** after the pull request is merged and the definition of done is met, move the issue to **Done**. Never mark it Done on an open pull request.
   - Work on one issue at a time unless the owner says otherwise.
 
+## Standing requirements for every story
+
+These apply to all stories and are not repeated as criteria on each one:
+
+- The work merges through a pull request with green CI (ADR-0004).
+- New API methods are added to both `client.ts` and `demoApi.ts`. The shared contract test (AC-DEM-01.5) fails if one is missing.
+- Layout is checked at mobile, tablet, and desktop widths.
+- Tests follow TESTING.md: each criterion is proven at the lowest level that can prove it.
+
 ## Definition of done
 
 1. All acceptance criteria met, each with a passing `[AC-...]` test or a manual-check entry.
@@ -148,7 +157,7 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
 4. No personal data, secrets, or banned log fields (see Hard rules).
 5. New API methods exist in both `client.ts` and `demoApi.ts`.
 6. Diagrams in ARCHITECTURE.md updated if the structure or a flow changed.
-7. SPEC.md, BACKLOG.md, or DECISIONS.md updated if behavior or a decision changed.
+7. SPEC.md, DECISIONS.md, or `docs/ac-ids.txt` updated if behavior, a decision, or a criterion changed.
 8. Any migration is backward compatible with the live code.
 
 ## Stack

@@ -35,7 +35,7 @@ Write "No UI change" if this PR has no visible change.
 - [ ] No personal data, secrets, or real-looking fixtures in code, tests, comments, or screenshots
 - [ ] No banned fields in logs or telemetry (all logging goes through `telemetry/logger.ts`)
 - [ ] Any migration is additive and works with the code that is live now
-- [ ] ARCHITECTURE.md, SPEC.md, BACKLOG.md, or DECISIONS.md updated if structure, behavior, or a decision changed
+- [ ] ARCHITECTURE.md, SPEC.md, DECISIONS.md, or `docs/ac-ids.txt` updated if structure, behavior, a decision, or a criterion changed
 
 **Good practice**
 

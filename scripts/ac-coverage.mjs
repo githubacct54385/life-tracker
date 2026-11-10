@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Traceability check between BACKLOG.md and tests (AGENTS.md, "Acceptance criteria").
+// Traceability check between docs/ac-ids.txt and tests (AGENTS.md, "Acceptance criteria").
 //
 // Fails (exit 1) when:
-//   - a test names an AC ID that is not in BACKLOG.md, or that is retired
-//   - an AC ID is defined twice in BACKLOG.md
+//   - a test names an AC ID that is not in docs/ac-ids.txt, or that is retired
+//   - an AC ID is listed twice in docs/ac-ids.txt
 // Reports criteria that have no automated test and no dated manual check.
 // With --strict, those uncovered criteria also fail the run.
 //
@@ -18,17 +18,23 @@ const ID = 'AC-[A-Z]+-\\d{2}\\.\\d+';
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', 'test-results', 'playwright-report', '.swa']);
 const TEST_FILE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/;
 
-// 1. Read criteria from BACKLOG.md. A criterion is a line that starts with "- AC-...".
+// 1. Read criteria from docs/ac-ids.txt: one ID per line, optionally followed by "retired". "#" starts a comment.
 const active = new Set();
 const retired = new Set();
 const duplicates = [];
-const backlog = readFileSync(join(root, 'BACKLOG.md'), 'utf8');
-for (const line of backlog.split('\n')) {
-  const m = line.match(new RegExp(`^- (${ID})(.*)$`));
-  if (!m) continue;
-  const [, id, rest] = m;
+const idList = readFileSync(join(root, 'docs', 'ac-ids.txt'), 'utf8');
+const malformed = [];
+for (const raw of idList.split('\n')) {
+  const line = raw.replace(/#.*$/, '').trim();
+  if (!line) continue;
+  const m = line.match(new RegExp(`^(${ID})(\\s+retired)?$`));
+  if (!m) {
+    malformed.push(line);
+    continue;
+  }
+  const [, id, isRetired] = m;
   if (active.has(id) || retired.has(id)) duplicates.push(id);
-  if (/^\s*\(retired/i.test(rest)) retired.add(id);
+  if (isRetired) retired.add(id);
   else active.add(id);
 }
 
@@ -78,11 +84,15 @@ console.log(`Covered: ${active.size - uncovered.length} (automated: ${[...active
 let failed = false;
 if (duplicates.length) {
   failed = true;
-  console.error(`\nERROR: defined more than once in BACKLOG.md: ${duplicates.join(', ')}`);
+  console.error(`\nERROR: listed more than once in docs/ac-ids.txt: ${duplicates.join(', ')}`);
+}
+if (malformed.length) {
+  failed = true;
+  console.error(`\nERROR: docs/ac-ids.txt has lines that are not an ID (optionally followed by "retired"):\n  ${malformed.join('\n  ')}`);
 }
 if (unknown.length) {
   failed = true;
-  console.error(`\nERROR: tests reference IDs that are not in BACKLOG.md (typo?):\n  ${unknown.join('\n  ')}`);
+  console.error(`\nERROR: tests reference IDs that are not in docs/ac-ids.txt (typo?):\n  ${unknown.join('\n  ')}`);
 }
 if (pointsAtRetired.length) {
   failed = true;

@@ -1,0 +1,214 @@
+# Acceptance criteria IDs
+#
+# The list of valid criterion IDs. scripts/ac-coverage.mjs checks tests and docs/manual-checks.md against it.
+# The text of each criterion lives in the Linear issue for its story (see AGENTS.md); this file holds only the IDs.
+#
+# One ID per line. Append the word "retired" for a criterion that was removed or replaced.
+# IDs are permanent: never reuse or renumber one. A test that names a retired ID fails CI.
+# When you add a criterion in Linear, add its ID here in the same pull request.
+
+AC-MIG-01.1
+AC-MIG-01.2
+AC-MIG-01.3
+AC-MIG-01.4
+AC-MIG-02.1
+AC-MIG-02.2
+AC-MIG-02.3
+AC-MIG-02.4
+AC-MIG-02.5
+AC-MIG-02.6
+AC-MIG-02.7
+AC-MIG-03.1
+AC-MIG-03.2
+AC-MIG-03.3
+AC-MIG-03.4
+AC-MIG-03.5
+AC-MIG-03.6
+AC-MIG-03.7
+AC-MIG-04.1
+AC-MIG-04.2
+AC-MIG-04.3
+AC-MIG-04.4
+AC-MIG-04.5
+AC-MIG-04.6
+AC-MIG-04.7
+AC-MIG-05.1
+AC-MIG-05.2
+AC-MIG-05.3
+AC-MIG-05.4
+AC-MIG-05.5
+AC-MIG-05.6
+AC-MIG-06.1
+AC-MIG-06.2
+AC-MIG-06.3
+AC-MIG-06.4
+AC-MIG-07.1
+AC-MIG-07.2
+AC-MIG-07.3
+AC-MIG-07.4
+AC-FND-01.1 retired
+AC-FND-01.2
+AC-FND-01.3
+AC-FND-01.4
+AC-FND-01.5
+AC-FND-01.6
+AC-FND-01.7
+AC-FND-02.1
+AC-FND-02.2
+AC-FND-02.3
+AC-FND-02.4
+AC-FND-02.5
+AC-FND-02.6
+AC-FND-02.7
+AC-FND-02.8
+AC-FND-03.1
+AC-FND-03.2
+AC-FND-03.3
+AC-FND-03.4
+AC-FND-03.5
+AC-FND-03.6
+AC-FND-04.1
+AC-FND-04.2
+AC-FND-04.3
+AC-FND-04.4
+AC-FND-04.5
+AC-FND-05.1
+AC-FND-05.2
+AC-FND-05.3
+AC-FND-05.4
+AC-FND-06.1
+AC-FND-06.2
+AC-FND-06.3
+AC-FND-06.4
+AC-FND-06.5
+AC-FND-06.6
+AC-FND-06.7
+AC-SET-03.1
+AC-SET-03.2
+AC-SET-03.3
+AC-OPS-01.1
+AC-OPS-01.2
+AC-OPS-01.3
+AC-OPS-01.4
+AC-OPS-01.5
+AC-DEM-01.1
+AC-DEM-01.2
+AC-DEM-01.3
+AC-DEM-01.4
+AC-DEM-01.5
+AC-MIL-01.1
+AC-MIL-01.2
+AC-MIL-01.3
+AC-MIL-01.4
+AC-MIL-02.1
+AC-MIL-02.2
+AC-MIL-02.3
+AC-MIL-02.4
+AC-MIL-03.1
+AC-MIL-03.2
+AC-MIL-03.3
+AC-MIL-03.4
+AC-MIL-04.1
+AC-MIL-04.2
+AC-MIL-04.3
+AC-MIL-04.4
+AC-MIL-04.5
+AC-OPS-02.1
+AC-OPS-02.2
+AC-OPS-02.3
+AC-OPS-02.4
+AC-OPS-02.5
+AC-FIN-01.1 retired
+AC-FIN-01.2 retired
+AC-FIN-01.3 retired
+AC-FIN-01.4 retired
+AC-FIN-01.5 retired
+AC-FIN-01.6 retired
+AC-FIN-01.7 retired
+AC-FIN-08.1 retired
+AC-FIN-08.2 retired
+AC-FIN-08.3 retired
+AC-FIN-08.4 retired
+AC-FIN-08.5 retired
+AC-FIN-02.1 retired
+AC-FIN-02.2 retired
+AC-FIN-02.3 retired
+AC-FIN-02.4 retired
+AC-FIN-02.5 retired
+AC-FIN-02.6 retired
+AC-FIN-02.7 retired
+AC-FIN-02.8 retired
+AC-FIN-03.1 retired
+AC-FIN-03.2 retired
+AC-FIN-03.3 retired
+AC-FIN-03.4 retired
+AC-FIN-03.5 retired
+AC-FIN-03.6 retired
+AC-FIN-03.7 retired
+AC-FIN-04.1 retired
+AC-FIN-04.2 retired
+AC-FIN-04.3 retired
+AC-FIN-04.4 retired
+AC-FIN-04.5 retired
+AC-FIN-04.6 retired
+AC-FIN-04.7 retired
+AC-FIN-09.1 retired
+AC-FIN-09.2 retired
+AC-FIN-09.3 retired
+AC-FIN-09.4 retired
+AC-FIN-09.5 retired
+AC-FIN-05.1 retired
+AC-FIN-05.2 retired
+AC-FIN-05.3 retired
+AC-FIN-05.4 retired
+AC-FIN-06.1 retired
+AC-FIN-06.2 retired
+AC-FIN-06.3 retired
+AC-FIN-06.4 retired
+AC-FIN-07.1 retired
+AC-FIN-07.2 retired
+AC-FIN-07.3 retired
+AC-FIN-07.4 retired
+AC-FIN-07.5 retired
+AC-GIV-01.1
+AC-GIV-01.2
+AC-GIV-01.3
+AC-GIV-01.4
+AC-GIV-02.1
+AC-GIV-02.2
+AC-GIV-03.1
+AC-GIV-03.2
+AC-GIV-03.3
+AC-HLT-01.1
+AC-HLT-01.2
+AC-HLT-01.3
+AC-HLT-01.4
+AC-HLT-02.1
+AC-HLT-02.2
+AC-HLT-02.3
+AC-HLT-03.1
+AC-HLT-03.2
+AC-HLT-03.3
+AC-HLT-03.4
+AC-HLT-03.5
+AC-HLT-03.6
+AC-HLT-03.7
+AC-HLT-04.1
+AC-HLT-04.2
+AC-HLT-04.3
+AC-DSH-01.1
+AC-DSH-01.2
+AC-DSH-01.3
+AC-DSH-01.4
+AC-SET-01.1
+AC-SET-01.2 retired
+AC-SET-01.3
+AC-SET-01.4
+AC-SET-02.1
+AC-SET-02.2
+AC-SET-02.3
+AC-SET-02.4
+AC-SET-02.5
+AC-DEM-02.1
+AC-DEM-02.2
+AC-DEM-02.3
