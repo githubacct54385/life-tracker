@@ -8,7 +8,9 @@
     "test:unit": "vitest run --passWithNoTests",
     "test:int": "vitest run --config vitest.int.config.ts --passWithNoTests",
     "build": "tsc -p tsconfig.build.json",
-    "migrate": "tsx src/db/migrate-cli.ts"
+    "migrate": "tsx src/db/migrate-cli.ts",
+    "dev": "wrangler dev",
+    "build:worker": "wrangler deploy --dry-run --outdir ../.stage/worker"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.2.1",
@@ -17,10 +19,12 @@
     "fast-check": "^4.10.2",
     "testcontainers": "^12.2.1",
     "tsx": "^4.23.15",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.159.0"
   },
   "dependencies": {
     "@life-tracker/shared": "workspace:*",
+    "hono": "^4.13.17",
     "pg": "^8.23.1"
   }
 }

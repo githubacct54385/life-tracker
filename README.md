@@ -17,6 +17,17 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 | [docs/ac-ids.txt](docs/ac-ids.txt) | Valid acceptance-criterion IDs (the stories and criteria text are in Linear) |
 | [AGENTS.md](AGENTS.md) | Working rules for contributors and AI coding agents |
 
+## Run it locally
+
+```bash
+pnpm install
+printf 'DATABASE_URL=<app-role connection string, local or Neon branch>\n' > api/.dev.vars   # git-ignored; never commit it
+pnpm dev          # builds the web app, then `wrangler dev` serves web + API at http://localhost:8787
+pnpm dev:web      # optional: Vite with hot reload at http://localhost:5173, forwarding /api to the Worker
+```
+
+Check it works: `curl localhost:8787/api/health` returns `{"status":"ok"}`, and `curl localhost:8787/api/health/db` returns the same only when the database answers. No Cloudflare login is needed for local runs.
+
 Wireframes: [the full suite at mobile, tablet, and desktop widths](wireframes-suite.html).
 ## How changes reach production
 

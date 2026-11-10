@@ -41,3 +41,8 @@ blob-report/
 !.vscode/extensions.json
 *.log
 .stage/
+
+# Cloudflare Workers local state and secrets
+.wrangler/
+.dev.vars
+.dev.vars.*
