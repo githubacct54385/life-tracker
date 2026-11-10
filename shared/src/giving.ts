@@ -88,3 +88,16 @@ export function givingYearToDate(regular: readonly RegularGift[], special: reado
   }
   return { regularCents, specialCents, combinedCents: regularCents + specialCents };
 }
+
+/** The individual regular gifts made for one month, oldest first, so the owner can drill in from the month's total. */
+export function giftsForMonth(gifts: readonly RegularGift[], month: string): RegularGift[] {
+  checkMonth(month);
+  return gifts
+    .filter((gift) => {
+      checkMonth(gift.forMonth);
+      checkDate(gift.dateGiven);
+      checkCents(gift.cents);
+      return gift.forMonth === month;
+    })
+    .sort((a, b) => (a.dateGiven < b.dateGiven ? -1 : a.dateGiven > b.dateGiven ? 1 : a.cents - b.cents));
+}

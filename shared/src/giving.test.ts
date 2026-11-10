@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { givingYearToDate, monthlyRegularGiving, type RegularGift, type SpecialContribution } from "./giving";
+import { giftsForMonth, givingYearToDate, monthlyRegularGiving, type RegularGift, type SpecialContribution } from "./giving";
 
 // Invented amounts, in integer cents (ADR-0007).
 const gift = (dateGiven: string, forMonth: string, cents: number): RegularGift => ({ dateGiven, forMonth, cents });
@@ -66,5 +66,15 @@ describe("givingYearToDate", () => {
         expect(months).toEqual(monthlyRegularGiving([...gifts].reverse(), { year: 2026, today: "2026-12-31" }));
       }),
     );
+  });
+});
+
+describe("giftsForMonth", () => {
+  it("[AC-GIV-03.1] lists each gift made for a month, oldest first, so the month total can be opened up", () => {
+    const gifts = [gift("2026-02-03", "2026-01", 10_000), gift("2026-01-20", "2026-01", 5_000), gift("2026-02-20", "2026-02", 12_000)];
+    expect(giftsForMonth(gifts, "2026-01")).toEqual([gift("2026-01-20", "2026-01", 5_000), gift("2026-02-03", "2026-01", 10_000)]);
+    expect(giftsForMonth(gifts, "2026-01").reduce((s, g) => s + g.cents, 0)).toBe(monthlyRegularGiving(gifts, { year: 2026, today: "2026-03-01" })[0]!.cents);
+    expect(giftsForMonth(gifts, "2026-03")).toEqual([]);
+    expect(() => giftsForMonth(gifts, "2026-1")).toThrow(/month/i);
   });
 });
