@@ -15,7 +15,10 @@
     "test": "pnpm test:unit && pnpm test:int && pnpm test:e2e",
     "build": "pnpm -r build",
     "migrate": "pnpm --filter @life-tracker/api migrate",
-    "pr-screenshots": "node scripts/pr-screenshots.mjs"
+    "pr-screenshots": "node scripts/pr-screenshots.mjs",
+    "dev": "pnpm --filter web build && pnpm --filter @life-tracker/api dev",
+    "dev:web": "pnpm --filter web dev",
+    "check:worker-size": "node scripts/check-worker-size.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

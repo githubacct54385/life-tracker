@@ -2,7 +2,7 @@
 //
 //   pnpm build && node scripts/stage-api.mjs [outDir]      (default outDir: .stage/api)
 //
-// The folder holds host.json, package.json, the compiled code, and production dependencies only.
+// The folder holds package.json, the compiled code, and production dependencies only.
 // The compiled `shared` package is copied to dist/_shared and imported by relative path (ADR-0020).
 import { execFileSync } from "node:child_process";
 import { cp, readdir, readFile, rm, writeFile } from "node:fs/promises";

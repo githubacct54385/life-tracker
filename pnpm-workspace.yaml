@@ -7,4 +7,5 @@ allowBuilds:
   esbuild: false
   keytar: false
   protobufjs: false
+  workerd: false
   ssh2: false

@@ -1,0 +1,17 @@
+// One Worker serves the built web app and the API (ADR-0021, MIG-03).
+// Secrets (DATABASE_URL) are never written here: locally they go in api/.dev.vars, in production in Cloudflare secrets.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "life-tracker",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  // Needed by the `pg` driver (sockets, crypto) and so that secrets appear in process.env.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    // Run the Worker for every request so security headers reach static files too (AC-MIG-03.7).
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  }
+}
