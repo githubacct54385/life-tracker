@@ -1,12 +1,12 @@
-// Run with `pnpm migrate`. Uses SQL_ADMIN_CONNECTION. Not part of the deployed API.
+// Run with `pnpm migrate`. Uses DATABASE_ADMIN_URL (the admin role). Not part of the deployed API.
 import { appendFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyMigrations, readMigrationFiles } from "./migrationRunner.js";
 
-const connection = process.env.SQL_ADMIN_CONNECTION;
+const connection = process.env.DATABASE_ADMIN_URL;
 if (!connection) {
-  console.error("SQL_ADMIN_CONNECTION is not set.");
+  console.error("DATABASE_ADMIN_URL is not set.");
   process.exit(1);
 }
 

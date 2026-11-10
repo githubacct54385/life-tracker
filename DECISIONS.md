@@ -7,7 +7,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | # | Decision | Status |
 |---|---|---|
 | 0001 | Hosting and database | Superseded by 0021 |
-| 0002 | Data access and migrations | Accepted (driver changes with 0021) |
+| 0002 | Data access and migrations | Accepted (Postgres `pg` driver since MIG-02) |
 | 0003 | Database credentials and network | Superseded by 0021 |
 | 0004 | Source control, pull requests, and manual release | Accepted (deploy target changes with 0021) |
 | 0005 | Testing strategy | Accepted |
@@ -49,7 +49,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 
 ## ADR-0002: Data access and migrations
 
-> **Amended by ADR-0021 (2026-11-10).** The driver is a Postgres driver, not `mssql`. Everything else (hand-written parameterized SQL only in `repositories/`, numbered journaled migrations) stands.
+> **Amended by ADR-0021 (2026-11-10, implemented in MIG-02).** The driver is `pg` (node-postgres), not `mssql`. The journal is `migrations.schema_migrations`, in a schema the app role cannot see. Each migration file runs in one transaction; there is no `GO` batch splitting. Everything else (hand-written parameterized SQL only in `repositories/`, numbered journaled migrations that refuse to run if an applied file changed) stands. In the Worker (MIG-03) the same code may use Neon's serverless driver, which has the same API.
 
 
 **Decision.** The API uses the `mssql` package with hand-written, parameterized SQL, only inside `repositories/`. Migrations are numbered `.sql` files (`0001_create_accounts.sql`) in `db/migrations/`, applied by a small script (`pnpm migrate`, code in `api/src/db/`) that records applied files in a journal table and refuses to run if an already-applied file changed.

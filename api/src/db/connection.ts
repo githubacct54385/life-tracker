@@ -1,23 +1,27 @@
-import sql from "mssql";
+import pg from "pg";
 
-let pool: Promise<sql.ConnectionPool> | undefined;
-let override: string | sql.config | undefined;
+let pool: pg.Pool | undefined;
+let override: string | pg.PoolConfig | undefined;
 
-/** Point the pool somewhere else (integration tests). The app itself uses SQL_CONNECTION. */
-export async function useConnection(connection: string | sql.config | undefined): Promise<void> {
+/** Point the pool somewhere else (integration tests). The app itself uses DATABASE_URL. */
+export async function useConnection(connection: string | pg.PoolConfig | undefined): Promise<void> {
   await closePool();
   override = connection;
 }
 
-/** Pooled connection for the API, using the least-privilege app login (SQL_CONNECTION). */
-export function getPool(): Promise<sql.ConnectionPool> {
+/**
+ * Pooled connection for the API, using the least-privilege app role (DATABASE_URL).
+ * Connections are opened lazily, so a database that is waking from idle only delays the
+ * first query; a failed attempt does not poison the pool and the next call tries again.
+ */
+export function getPool(): pg.Pool {
   if (!pool) {
-    const connection = override ?? process.env.SQL_CONNECTION;
-    if (!connection) return Promise.reject(new Error("SQL_CONNECTION is not set"));
-    pool = new sql.ConnectionPool(connection as sql.config).connect().catch((error: unknown) => {
-      pool = undefined; // allow a retry, e.g. while the database wakes from auto-pause
-      throw error;
-    });
+    const connection = override ?? process.env.DATABASE_URL;
+    if (!connection) throw new Error("DATABASE_URL is not set");
+    const config: pg.PoolConfig = typeof connection === "string" ? { connectionString: connection } : connection;
+    pool = new pg.Pool({ max: 5, connectionTimeoutMillis: 15_000, idleTimeoutMillis: 30_000, ...config });
+    // An idle client can be dropped by the server (for example when Neon suspends). Do not crash the process.
+    pool.on("error", () => {});
   }
   return pool;
 }
@@ -25,7 +29,5 @@ export function getPool(): Promise<sql.ConnectionPool> {
 export async function closePool(): Promise<void> {
   const current = pool;
   pool = undefined;
-  if (current) await (await current).close();
+  if (current) await current.end();
 }
-
-export { sql };

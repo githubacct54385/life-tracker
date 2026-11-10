@@ -69,7 +69,7 @@ jobs:
       - name: Unit tests
         if: steps.app.outputs.present == 'true'
         run: pnpm test:unit
-      - name: Integration tests (SQL Server in a container)
+      - name: Integration tests (Postgres in a container)
         if: steps.app.outputs.present == 'true'
         run: pnpm test:int
       - name: Build

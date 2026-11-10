@@ -64,7 +64,7 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 - Name files `*.int.test.ts` and run them with a separate Vitest project.
 - Data comes from **builders in code** (`aGift({ amountCents: 1250 })`), never from files.
 
-**Local note (ADR-0018, amended by ADR-0021).** The code still targets SQL Server until MIG-02. That image is x86 only and slow on Apple Silicon. The Postgres image is small and runs natively, so this note will be relaxed once MIG-02 lands. Until then **CI is the source of truth for integration tests**. Locally they are optional: one container is started per run (`api/src/db/globalSetup.int.ts`). If no Docker is found on a laptop, database tests are skipped with a visible warning; when the `CI` variable is set they never skip, and a missing Docker fails the job. Logic that does not need a database (migration planning, checksums, batch splitting, layer rules) is covered by unit tests that always run.
+**Local note (ADR-0018, amended by ADR-0021).** The database is Postgres (`postgres:17-alpine`), which is small and runs natively on Apple Silicon. **CI is still the source of truth for integration tests**, and locally they are optional: one container is started per run (`api/src/db/globalSetup.int.ts`). If no Docker is found on a laptop, database tests are skipped with a visible warning; when the `CI` variable is set they never skip, and a missing Docker fails the job. Logic that does not need a database (migration planning, checksums, batch splitting, layer rules) is covered by unit tests that always run.
 
 ### 3. End-to-end tests (Playwright)
 

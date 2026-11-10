@@ -11,9 +11,9 @@
     "migrate": "tsx src/db/migrate-cli.ts"
   },
   "devDependencies": {
-    "@testcontainers/mssqlserver": "^12.2.1",
-    "@types/mssql": "^12.3.0",
+    "@testcontainers/postgresql": "^12.2.1",
     "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
     "fast-check": "^4.10.2",
     "testcontainers": "^12.2.1",
     "tsx": "^4.23.15",
@@ -21,6 +21,6 @@
   },
   "dependencies": {
     "@life-tracker/shared": "workspace:*",
-    "mssql": "^12.7.14"
+    "pg": "^8.23.1"
   }
 }

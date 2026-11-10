@@ -167,9 +167,9 @@ Decided in [DECISIONS.md](DECISIONS.md):
 - pnpm workspaces: `web`, `api`, `shared`.
 - Web: React, TypeScript, Vite, PWA, React Router, TanStack Query, Recharts, Tailwind.
 - API and hosting (target, ADR-0021): a Cloudflare Worker (Hono, TypeScript) serving the web app and `/api/*`, behind Cloudflare Access. **Today the code still targets Azure Functions and Static Web Apps until MIG-03 and MIG-04 land.**
-- Database (target): Neon Postgres, hand-written parameterized SQL through a Postgres driver, numbered `.sql` migrations. **Today: Azure SQL and `mssql` until MIG-02 lands.**
+- Database: Neon Postgres, hand-written parameterized SQL through the `pg` package, numbered `.sql` migrations (`DATABASE_URL` for the app role, `DATABASE_ADMIN_URL` for migrations). Setup: [db/setup/README.md](db/setup/README.md).
 - Validation: zod, shared by client and API.
-- Tests: Vitest, Testing Library, fast-check, Testcontainers (Postgres after MIG-02), Playwright with a local server (`wrangler dev` after MIG-03).
+- Tests: Vitest, Testing Library, fast-check, Testcontainers (Postgres), Playwright with a local server (`wrangler dev` after MIG-03).
 - Telemetry: Workers Logs after MIG-06 (Application Insights until then).
 - Source, CI, release, and login: GitHub (Actions, protected `main`, `production` environment).
 

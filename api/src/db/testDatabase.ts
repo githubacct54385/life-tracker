@@ -1,15 +1,20 @@
-// Test helper for *.int.test.ts. A throwaway SQL Server in a container; synthetic data only.
+// Test helper for *.int.test.ts. A throwaway Postgres in a container; synthetic data only.
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { MSSQLServerContainer, type StartedMSSQLServerContainer } from "@testcontainers/mssqlserver";
-import sql from "mssql";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
+import pg from "pg";
 
-export interface SqlServerInfo {
+export interface PostgresInfo {
   host: string;
   port: number;
   user: string;
   password: string;
 }
+
+const GRANTS_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../db/setup/app-role-grants.sql");
 
 /** True when a Docker socket or DOCKER_HOST is configured. Used to skip locally, never in CI. */
 export function dockerAvailable(): boolean {
@@ -20,58 +25,43 @@ export function dockerAvailable(): boolean {
   );
 }
 
-export function startSqlServer(): Promise<StartedMSSQLServerContainer> {
-  return new MSSQLServerContainer("mcr.microsoft.com/mssql/server:2022-latest").acceptLicense().start();
+export function startPostgres(): Promise<StartedPostgreSqlContainer> {
+  return new PostgreSqlContainer("postgres:17-alpine").start();
 }
 
-export function configFor(server: SqlServerInfo, database: string, user = server.user, pass = server.password): sql.config {
-  return {
-    server: server.host,
-    port: server.port,
-    database,
-    user,
-    password: pass,
-    options: { encrypt: false, trustServerCertificate: true },
-  };
+export function configFor(server: PostgresInfo, database: string, user = server.user, password = server.password): pg.ClientConfig {
+  return { host: server.host, port: server.port, database, user, password };
 }
 
-/** A random password that meets SQL Server's complexity rules. */
-export function randomPassword(): string {
-  return `Aa1!${randomBytes(12).toString("hex")}`;
+/** Run statements with a short-lived connection. */
+export async function run<T extends pg.QueryResultRow = pg.QueryResultRow>(config: pg.ClientConfig, text: string): Promise<T[]> {
+  const client = new pg.Client(config);
+  await client.connect();
+  try {
+    return (await client.query<T>(text)).rows;
+  } finally {
+    await client.end();
+  }
 }
 
 /** Create an empty database with a unique name and return its admin config. */
-export async function createFreshDatabase(server: SqlServerInfo): Promise<{ admin: sql.config; name: string }> {
+export async function createFreshDatabase(server: PostgresInfo): Promise<{ admin: pg.ClientConfig; name: string }> {
   const name = `t_${randomBytes(6).toString("hex")}`;
-  const master = await new sql.ConnectionPool(configFor(server, "master")).connect();
-  try {
-    await master.request().batch(`CREATE DATABASE [${name}]`);
-  } finally {
-    await master.close();
-  }
+  await run(configFor(server, "postgres"), `CREATE DATABASE ${name}`);
   return { admin: configFor(server, name), name };
 }
 
 /**
- * Create the app login the same way docs/azure-setup.md does for lt_app:
- * a user in db_datareader and db_datawriter, nothing else.
+ * Create the app role exactly the way db/setup/app-role.sql does: a plain login role plus the grants in
+ * db/setup/app-role-grants.sql. That file is run as written, with only the role name swapped, so the test proves
+ * the script that production uses. Role names are cluster-wide in Postgres, hence the random suffix.
  */
-export async function createAppLogin(server: SqlServerInfo, database: string): Promise<sql.config> {
-  const user = "lt_app_test";
-  const pass = randomPassword();
-  const master = await new sql.ConnectionPool(configFor(server, "master")).connect();
-  try {
-    await master.request().batch(`CREATE LOGIN ${user} WITH PASSWORD = '${pass}'`);
-  } finally {
-    await master.close();
-  }
-  const admin = await new sql.ConnectionPool(configFor(server, database)).connect();
-  try {
-    await admin.request().batch(`CREATE USER ${user} FOR LOGIN ${user}`);
-    await admin.request().batch(`ALTER ROLE db_datareader ADD MEMBER ${user}`);
-    await admin.request().batch(`ALTER ROLE db_datawriter ADD MEMBER ${user}`);
-  } finally {
-    await admin.close();
-  }
-  return configFor(server, database, user, pass);
+export async function createAppRole(server: PostgresInfo, database: string): Promise<pg.ClientConfig> {
+  const role = `lt_app_${randomBytes(4).toString("hex")}`;
+  const password = randomBytes(16).toString("hex");
+  const admin = configFor(server, database);
+  await run(admin, `CREATE ROLE ${role} WITH LOGIN PASSWORD '${password}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+  const grants = (await readFile(GRANTS_FILE, "utf8")).replaceAll("lt_app", role);
+  await run(admin, grants);
+  return configFor(server, database, role, password);
 }
