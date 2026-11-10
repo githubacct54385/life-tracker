@@ -1,6 +1,8 @@
-// Weekly mileage from odometer readings (ADR-0008, MIL-02). Pure: no clock, no time zone, no I/O.
-// Dates are plain calendar dates ("YYYY-MM-DD", ADR-0007). They are turned into day numbers so no time zone or
-// daylight-saving shift can move a reading to another day.
+// Weekly mileage from odometer readings (ADR-0008 as amended 2026-11-10, MIL-02). Pure: no clock, no time zone, no I/O.
+// Nothing is guessed. Each Friday-to-Thursday week has at most one "check-in": its earliest reading. A reading taken
+// on Saturday still counts for that week (the gap is then 8 days). A week with no reading is reported as missing so the
+// app can ask for it. Dates are plain calendar dates ("YYYY-MM-DD", ADR-0007) turned into day numbers, so no time zone
+// or daylight-saving shift can move a reading to another day.
 
 export interface OdometerReading {
   /** Calendar date, "YYYY-MM-DD". */
@@ -8,15 +10,20 @@ export interface OdometerReading {
   miles: number;
 }
 
-export interface WeekMiles {
-  /** The Friday the week starts on. */
-  start: string;
-  /** The Thursday the week ends on (start + 6 days). */
-  end: string;
-  /** Odometer change from this Friday to the next. */
+/** The miles driven between two consecutive check-ins. */
+export interface MilesPeriod {
+  /** Date of the earlier check-in reading. */
+  from: string;
+  /** Date of the later check-in reading. */
+  to: string;
+  /** Days between the two readings: 7 for two Fridays, 8 when one was taken on Saturday, and so on. */
+  days: number;
+  /** Odometer change between the two readings. */
   miles: number;
-  /** True when either Friday value was interpolated instead of read. */
-  estimated: boolean;
+  /** Friday of the week this period ends in. */
+  weekStart: string;
+  /** Weeks with no reading inside this period (0 normally). The gap is simply longer, never filled in. */
+  missedWeeks: number;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -33,56 +40,55 @@ function toDayNumber(date: string): number {
   return ms / MS_PER_DAY;
 }
 
-function toDate(dayNumber: number): string {
-  return new Date(dayNumber * MS_PER_DAY).toISOString().slice(0, 10);
+const toDate = (dayNumber: number) => new Date(dayNumber * MS_PER_DAY).toISOString().slice(0, 10);
+
+/** Day number of the Friday that starts the week containing `day`. */
+function fridayOf(day: number): number {
+  const weekday = new Date(day * MS_PER_DAY).getUTCDay();
+  return day - ((weekday - FRIDAY + 7) % 7);
 }
 
-const isFriday = (dayNumber: number) => new Date(dayNumber * MS_PER_DAY).getUTCDay() === FRIDAY;
-
-/**
- * Miles per Friday-to-Thursday week.
- *
- * Each Friday between the first and last reading gets an odometer value: the reading itself if one was taken that day,
- * otherwise a straight-line value by date between the nearest readings on either side (readings on any weekday count).
- * Nothing is extrapolated, so no week is reported before the first reading or after the last one.
- * Two readings on one date keep the higher value, so the result never depends on the order readings were entered.
- * The input is not changed. Weeks come back oldest first.
- */
-export function weeklyMiles(readings: readonly OdometerReading[]): WeekMiles[] {
-  // One value per day, ascending by day.
-  const byDay = new Map<number, number>();
+/** One check-in per week: the earliest reading in it. Two readings on one date keep the higher value (order never matters). */
+function checkIns(readings: readonly OdometerReading[]): { week: number; day: number; miles: number }[] {
+  const byWeek = new Map<number, { week: number; day: number; miles: number }>();
   for (const { date, miles } of readings) {
     const day = toDayNumber(date);
-    byDay.set(day, Math.max(byDay.get(day) ?? -Infinity, miles));
+    const week = fridayOf(day);
+    const current = byWeek.get(week);
+    if (!current || day < current.day || (day === current.day && miles > current.miles)) byWeek.set(week, { week, day, miles });
   }
-  const points = [...byDay.entries()].sort((a, b) => a[0] - b[0]);
-  const first = points[0];
-  const last = points.at(-1);
-  if (!first || !last) return [];
+  return [...byWeek.values()].sort((a, b) => a.week - b.week);
+}
 
-  // Friday values, walking forward through the readings once.
-  const fridays: { day: number; miles: number; estimated: boolean }[] = [];
-  let i = 0;
-  for (let day = first[0]; day <= last[0]; day++) {
-    if (!isFriday(day)) continue;
-    while (points[i + 1] && points[i + 1]![0] <= day) i++;
-    const [beforeDay, beforeMiles] = points[i]!;
-    if (beforeDay === day) {
-      fridays.push({ day, miles: beforeMiles, estimated: false });
-    } else {
-      const [afterDay, afterMiles] = points[i + 1]!; // exists: day < last[0]
-      const share = (day - beforeDay) / (afterDay - beforeDay);
-      fridays.push({ day, miles: beforeMiles + (afterMiles - beforeMiles) * share, estimated: true });
-    }
-  }
-
-  return fridays.slice(1).map((end, index) => {
-    const start = fridays[index]!;
+/** Miles between each pair of consecutive check-ins, oldest first. Needs two check-ins; fewer gives an empty list. */
+export function weeklyMiles(readings: readonly OdometerReading[]): MilesPeriod[] {
+  const list = checkIns(readings);
+  return list.slice(1).map((to, index) => {
+    const from = list[index]!;
     return {
-      start: toDate(start.day),
-      end: toDate(end.day - 1),
-      miles: end.miles - start.miles,
-      estimated: start.estimated || end.estimated,
+      from: toDate(from.day),
+      to: toDate(to.day),
+      days: to.day - from.day,
+      miles: to.miles - from.miles,
+      weekStart: toDate(to.week),
+      missedWeeks: (to.week - from.week) / 7 - 1,
     };
   });
+}
+
+/**
+ * Fridays that start a week with no reading, from the week of the first reading up to and including the week that
+ * contains `today`, oldest first. The app asks the owner to add these. A reading added later (even a day or two late)
+ * fills the gap with no guessing and no other week changing.
+ */
+export function missingWeeks(readings: readonly OdometerReading[], today: string): string[] {
+  const list = checkIns(readings);
+  const first = list[0];
+  if (!first) return [];
+  const have = new Set(list.map((c) => c.week));
+  const missing: string[] = [];
+  for (let week = first.week; week <= fridayOf(toDayNumber(today)); week += 7) {
+    if (!have.has(week)) missing.push(toDate(week));
+  }
+  return missing;
 }

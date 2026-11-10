@@ -1,65 +1,61 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { weeklyMiles, type OdometerReading } from "./mileage";
+import { missingWeeks, weeklyMiles, type OdometerReading } from "./mileage";
 
 // All dates and values are invented. 2026-01-02 is a Friday.
 const r = (date: string, miles: number): OdometerReading => ({ date, miles });
 
 describe("weeklyMiles", () => {
-  it("[AC-MIL-02.1] a week runs Friday to Thursday and its miles are the difference between consecutive Fridays", () => {
-    const weeks = weeklyMiles([r("2026-01-02", 1000), r("2026-01-09", 1120), r("2026-01-16", 1150)]);
-    expect(weeks).toEqual([
-      { start: "2026-01-02", end: "2026-01-08", miles: 120, estimated: false },
-      { start: "2026-01-09", end: "2026-01-15", miles: 30, estimated: false },
+  it("[AC-MIL-02.1] a week runs Friday to Thursday and its miles are the difference between consecutive weekly readings", () => {
+    expect(weeklyMiles([r("2026-01-02", 1000), r("2026-01-09", 1120), r("2026-01-16", 1150)])).toEqual([
+      { from: "2026-01-02", to: "2026-01-09", days: 7, miles: 120, weekStart: "2026-01-09", missedWeeks: 0 },
+      { from: "2026-01-09", to: "2026-01-16", days: 7, miles: 30, weekStart: "2026-01-16", missedWeeks: 0 },
     ]);
   });
 
-  it("[AC-MIL-02.2] a Friday with no reading is interpolated by date between the nearest readings on either side", () => {
-    // Readings on Thursday 01-01 (1000) and Wednesday 01-14 (1130): 13 days, 10 miles per day.
-    // Fridays 01-02 and 01-09: values 1010 and 1080. 01-16 is past the last reading, so there is no week after 01-09.
-    const weeks = weeklyMiles([r("2026-01-01", 1000), r("2026-01-14", 1130)]);
-    expect(weeks).toEqual([{ start: "2026-01-02", end: "2026-01-08", miles: 70, estimated: true }]);
-  });
-
-  it("[AC-MIL-02.2] readings on any weekday take part, and a real Friday reading beats interpolation", () => {
-    const weeks = weeklyMiles([r("2026-01-02", 500), r("2026-01-06", 540), r("2026-01-09", 600), r("2026-01-16", 700)]);
-    expect(weeks.map((w) => [w.start, w.miles, w.estimated])).toEqual([
-      ["2026-01-02", 100, false],
-      ["2026-01-09", 100, false],
+  it("[AC-MIL-02.5] a reading taken on Saturday counts for the Friday's week, and that period is 8 days", () => {
+    const periods = weeklyMiles([r("2026-01-02", 1000), r("2026-01-10", 1130), r("2026-01-16", 1200)]);
+    expect(periods).toEqual([
+      { from: "2026-01-02", to: "2026-01-10", days: 8, miles: 130, weekStart: "2026-01-09", missedWeeks: 0 },
+      { from: "2026-01-10", to: "2026-01-16", days: 6, miles: 70, weekStart: "2026-01-16", missedWeeks: 0 }, // next week's Friday is on time again
     ]);
   });
 
-  it("[AC-MIL-02.2] never extrapolates before the first reading or after the last", () => {
+  it("[AC-MIL-02.5] a reading on any day Friday to Thursday counts for that week, and only the earliest one is used", () => {
+    // Thursday 01-15 is still the week that began Friday 01-09, so it is not a second check-in.
+    const periods = weeklyMiles([r("2026-01-02", 100), r("2026-01-15", 300), r("2026-01-09", 200), r("2026-01-16", 400)]);
+    expect(periods.map((p) => [p.to, p.miles])).toEqual([["2026-01-09", 100], ["2026-01-16", 200]]);
+    const twoInOneWeek = weeklyMiles([r("2026-01-02", 100), r("2026-01-09", 200), r("2026-01-13", 240)]);
+    expect(twoInOneWeek).toHaveLength(1); // the Tuesday reading is the same week as the Friday one and is not a second check-in
+    expect(twoInOneWeek[0]!.to).toBe("2026-01-09");
+  });
+
+  it("[AC-MIL-02.6] a week with no reading is not filled in: the next period just covers the longer gap", () => {
+    const periods = weeklyMiles([r("2026-01-02", 1000), r("2026-01-16", 1210)]);
+    expect(periods).toEqual([{ from: "2026-01-02", to: "2026-01-16", days: 14, miles: 210, weekStart: "2026-01-16", missedWeeks: 1 }]);
+  });
+
+  it("[AC-MIL-02.6] fewer than two weekly readings gives no periods", () => {
     expect(weeklyMiles([])).toEqual([]);
-    expect(weeklyMiles([r("2026-01-02", 1000)])).toEqual([]); // one Friday, no second to subtract
-    expect(weeklyMiles([r("2026-01-03", 1000), r("2026-01-08", 1100)])).toEqual([]); // no two Fridays inside the range
-    const weeks = weeklyMiles([r("2026-01-05", 1000), r("2026-01-30", 1250)]);
-    expect(weeks[0]!.start).toBe("2026-01-09"); // first Friday on or after the first reading
-    expect(weeks.at(-1)!.end).toBe("2026-01-29"); // 01-30 is a Friday with a real reading, so the last week ends the day before
+    expect(weeklyMiles([r("2026-01-02", 1000)])).toEqual([]);
+    expect(weeklyMiles([r("2026-01-02", 1000), r("2026-01-05", 1010)])).toEqual([]); // same week
   });
 
-  it("[AC-MIL-02.3] a week is estimated when either of its Fridays is interpolated", () => {
-    const weeks = weeklyMiles([r("2026-01-02", 0), r("2026-01-12", 100), r("2026-01-16", 140), r("2026-01-23", 200)]);
-    expect(weeks.map((w) => [w.start, w.estimated])).toEqual([
-      ["2026-01-02", true], // 01-09 interpolated
-      ["2026-01-09", true], // 01-09 interpolated
-      ["2026-01-16", false],
-    ]);
-  });
-
-  it("[AC-MIL-02.4] two readings on one date keep the higher value, so the result does not depend on entry order", () => {
+  it("[AC-MIL-02.4] two readings on one date keep the higher value, whatever order they were entered in", () => {
     const a = weeklyMiles([r("2026-01-02", 100), r("2026-01-02", 90), r("2026-01-09", 200)]);
     const b = weeklyMiles([r("2026-01-09", 200), r("2026-01-02", 90), r("2026-01-02", 100)]);
     expect(a).toEqual(b);
     expect(a[0]!.miles).toBe(100);
   });
 
-  it("[AC-MIL-02.4] editing or deleting a reading recalculates only from the readings given", () => {
-    const base = [r("2026-01-02", 1000), r("2026-01-09", 1100), r("2026-01-16", 1300)];
-    expect(weeklyMiles(base).map((w) => w.miles)).toEqual([100, 200]);
-    expect(weeklyMiles([base[0]!, r("2026-01-09", 1150), base[2]!]).map((w) => w.miles)).toEqual([150, 150]);
-    const deleted = weeklyMiles([base[0]!, base[2]!]);
-    expect(deleted.map((w) => [w.miles, w.estimated])).toEqual([[150, true], [150, true]]);
+  it("[AC-MIL-02.4] adding a late reading recalculates only the affected periods; editing or deleting works the same way", () => {
+    const withGap = [r("2026-01-02", 1000), r("2026-01-16", 1300)];
+    expect(weeklyMiles(withGap).map((p) => [p.days, p.miles])).toEqual([[14, 300]]);
+    const filled = weeklyMiles([...withGap, r("2026-01-10", 1150)]); // added a day late
+    expect(filled.map((p) => [p.days, p.miles])).toEqual([[8, 150], [6, 150]]);
+    const edited = weeklyMiles([r("2026-01-02", 1000), r("2026-01-10", 1100), r("2026-01-16", 1300)]);
+    expect(edited.map((p) => p.miles)).toEqual([100, 200]);
+    expect(weeklyMiles(withGap.slice(0, 1))).toEqual([]);
   });
 
   it("[AC-MIL-02.1] rejects dates that are not real calendar dates", () => {
@@ -68,11 +64,29 @@ describe("weeklyMiles", () => {
   });
 });
 
+describe("missingWeeks", () => {
+  it("[AC-MIL-02.6] lists each Friday that starts a week with no reading, up to the week of today", () => {
+    const readings = [r("2026-01-02", 1000), r("2026-01-16", 1200)];
+    expect(missingWeeks(readings, "2026-01-16")).toEqual(["2026-01-09"]);
+    expect(missingWeeks(readings, "2026-01-29")).toEqual(["2026-01-09", "2026-01-23"]); // the week of 01-23 is current but still has no reading
+    expect(missingWeeks(readings, "2026-01-22")).toEqual(["2026-01-09"]); // 01-22 is a Thursday, still the week of 01-16
+  });
+
+  it("[AC-MIL-02.5][AC-MIL-02.6] a reading added a day late fills the week it belongs to", () => {
+    const readings = [r("2026-01-02", 1000), r("2026-01-16", 1200)];
+    expect(missingWeeks([...readings, r("2026-01-10", 1100)], "2026-01-16")).toEqual([]);
+  });
+
+  it("[AC-MIL-02.6] has nothing to ask for before the first reading", () => {
+    expect(missingWeeks([], "2026-01-16")).toEqual([]);
+    expect(missingWeeks([r("2026-01-02", 1000)], "2026-01-05")).toEqual([]);
+  });
+});
+
 describe("weeklyMiles properties", () => {
   const readingsArb = fc
     .array(fc.record({ day: fc.integer({ min: 0, max: 400 }), step: fc.integer({ min: 0, max: 500 }) }), { minLength: 2, maxLength: 25 })
     .map((items) => {
-      // Build a non-decreasing odometer over distinct days, from a Friday-agnostic start date.
       const byDay = new Map<number, number>();
       for (const { day, step } of items) byDay.set(day, step);
       let total = 10_000;
@@ -80,43 +94,44 @@ describe("weeklyMiles properties", () => {
         .sort((x, y) => x[0] - y[0])
         .map(([day, step]) => {
           total += step;
-          const d = new Date(Date.UTC(2026, 0, 1 + day));
-          return { date: d.toISOString().slice(0, 10), miles: total };
+          return { date: new Date(Date.UTC(2026, 0, 1 + day)).toISOString().slice(0, 10), miles: total };
         });
     });
 
   it("[AC-MIL-02.4] the result is the same for any order the readings were entered in", () => {
     fc.assert(
-      fc.property(readingsArb, fc.infiniteStream(fc.nat()), (readings, rand) => {
+      fc.property(readingsArb, fc.array(fc.nat(), { minLength: 30, maxLength: 30 }), (readings, rand) => {
         const shuffled = [...readings];
-        const it = rand[Symbol.iterator]();
         for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = it.next().value % (i + 1);
+          const j = rand[i]! % (i + 1);
           [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
         }
         expect(weeklyMiles(shuffled)).toEqual(weeklyMiles(readings));
+        expect(missingWeeks(shuffled, "2027-03-01")).toEqual(missingWeeks(readings, "2027-03-01"));
       }),
     );
   });
 
-  it("[AC-MIL-02.1][AC-MIL-02.2] weekly miles add up to the odometer change between the first and last Friday, and are never negative", () => {
+  it("[AC-MIL-02.1][AC-MIL-02.6] periods join end to end, so their days and miles add up to the first-to-last change with nothing guessed", () => {
     fc.assert(
       fc.property(readingsArb, (readings) => {
-        const weeks = weeklyMiles(readings);
-        const total = weeks.reduce((sum, w) => sum + w.miles, 0);
-        if (weeks.length === 0) return;
-        const first = weeks[0]!.start;
-        const last = weeks.at(-1)!.end;
-        // Weeks are contiguous, each exactly seven days.
-        for (let i = 1; i < weeks.length; i++) {
-          const prevEnd = Date.parse(weeks[i - 1]!.end) + 86_400_000;
-          expect(Date.parse(weeks[i]!.start)).toBe(prevEnd);
-        }
-        expect(Date.parse(last) - Date.parse(first)).toBe((7 * weeks.length - 1) * 86_400_000);
-        expect(weeks.every((w) => w.miles >= -1e-9)).toBe(true);
-        const odo = readings.at(-1)!.miles - readings[0]!.miles;
-        expect(total).toBeLessThanOrEqual(odo + 1e-6);
+        const periods = weeklyMiles(readings);
+        for (let i = 1; i < periods.length; i++) expect(periods[i]!.from).toBe(periods[i - 1]!.to);
+        if (periods.length === 0) return;
+        const days = periods.reduce((s, p) => s + p.days, 0);
+        expect(days).toBe((Date.parse(periods.at(-1)!.to) - Date.parse(periods[0]!.from)) / 86_400_000);
+        expect(periods.every((p) => p.miles >= 0 && p.days >= 1)).toBe(true);
+        // Every week between the first and last is either a period end or counted as missed.
+        expect(periods.reduce((s, p) => s + 1 + p.missedWeeks, 0)).toBe(
+          (Date.parse(periods.at(-1)!.weekStart) - Date.parse(fridayStart(periods[0]!.from))) / (7 * 86_400_000),
+        );
       }),
     );
   });
 });
+
+function fridayStart(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 5 + 7) % 7));
+  return d.toISOString().slice(0, 10);
+}
