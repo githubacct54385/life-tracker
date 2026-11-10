@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { weeklyStreak, workoutTotals, type Workout } from "./workouts";
+import { DEFAULT_WEEKLY_WORKOUT_TARGET, weeklyStreak, workoutTotals, type Workout } from "./workouts";
 
 // Invented data. 2026-01-05 is a Monday.
 const w = (date: string, minutes: number): Workout => ({ date, minutes });
@@ -69,6 +69,13 @@ describe("weeklyStreak", () => {
     const list = [w("2026-01-05", 30), w("2026-01-06", 30), w("2026-01-12", 30), w("2026-01-19", 30), w("2026-01-20", 30)];
     expect(weeklyStreak(list, { target: 2, today })).toBe(1); // 01-12 week had one workout; current week has two
     expect(weeklyStreak([], { target: 1, today })).toBe(0);
+  });
+
+  it("[AC-HLT-04.3] the target defaults to three workouts a week", () => {
+    expect(DEFAULT_WEEKLY_WORKOUT_TARGET).toBe(3);
+    const three = (monday: string) => [w(monday, 20), w(monday.replace(/\d\d$/, (d) => String(Number(d) + 1).padStart(2, "0")), 20), w(monday.replace(/\d\d$/, (d) => String(Number(d) + 2).padStart(2, "0")), 20)];
+    expect(weeklyStreak([...three("2026-01-05"), ...three("2026-01-12")], { today })).toBe(2);
+    expect(weeklyStreak([w("2026-01-12", 20), w("2026-01-13", 20)], { today })).toBe(0);
   });
 
   it("[AC-HLT-04.3] rejects a target below one", () => {

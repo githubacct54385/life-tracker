@@ -19,6 +19,9 @@ export interface WeekOptions {
   weekStartsOn?: number;
 }
 
+/** Workouts per week that count toward a streak until the goals setting exists (owner decision, 2026-11-10). */
+export const DEFAULT_WEEKLY_WORKOUT_TARGET = 3;
+
 const MS_PER_DAY = 86_400_000;
 
 function toDayNumber(date: string): number {
@@ -56,12 +59,13 @@ export function workoutTotals(workouts: readonly Workout[], by: "week" | "month"
 }
 
 /**
- * Number of consecutive weeks, counting back, that each have at least `target` workouts.
+ * Number of consecutive weeks, counting back, that each have at least `target` workouts (default 3).
  * The week containing `today` counts if it already meets the target, but while it is still short it does not
  * break the streak: the count then starts from last week. Workouts after `today` are ignored.
  */
-export function weeklyStreak(workouts: readonly Workout[], options: WeekOptions & { target: number; today: string }): number {
-  const { target, today } = options;
+export function weeklyStreak(workouts: readonly Workout[], options: WeekOptions & { target?: number; today: string }): number {
+  const { today } = options;
+  const target = options.target ?? DEFAULT_WEEKLY_WORKOUT_TARGET;
   if (!Number.isInteger(target) || target < 1) throw new Error("Streak target must be a whole number of at least 1");
   const weekStartsOn = options.weekStartsOn ?? 1;
   const todayNumber = toDayNumber(today);
