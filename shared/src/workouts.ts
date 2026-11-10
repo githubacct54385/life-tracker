@@ -59,31 +59,33 @@ export function workoutTotals(workouts: readonly Workout[], by: "week" | "month"
 }
 
 /**
- * Number of consecutive weeks, counting back, that each have at least `target` workouts (default 3).
- * The week containing `today` counts if it already meets the target, but while it is still short it does not
- * break the streak: the count then starts from last week. Workouts after `today` are ignored.
+ * Days in a row that the owner has been "on pace": at least `target` workouts (default 3) in the 7 days ending that day.
+ * The 7-day window rolls, so workouts on consecutive days never get split by a week boundary.
+ * Today counts if it is already on pace, and while it is not yet it does not break the streak (the day is not over).
+ * Workouts after `today` are ignored. Returns 0 when the owner is not on pace.
  */
-export function weeklyStreak(workouts: readonly Workout[], options: WeekOptions & { target?: number; today: string }): number {
-  const { today } = options;
+export function paceStreakDays(workouts: readonly Workout[], options: { target?: number; today: string }): number {
   const target = options.target ?? DEFAULT_WEEKLY_WORKOUT_TARGET;
   if (!Number.isInteger(target) || target < 1) throw new Error("Streak target must be a whole number of at least 1");
-  const weekStartsOn = options.weekStartsOn ?? 1;
-  const todayNumber = toDayNumber(today);
+  const todayNumber = toDayNumber(options.today);
 
-  const perWeek = new Map<number, number>();
+  const perDay = new Map<number, number>();
   for (const { date } of workouts) {
     const day = toDayNumber(date);
-    if (day > todayNumber) continue;
-    const start = weekStart(day, weekStartsOn);
-    perWeek.set(start, (perWeek.get(start) ?? 0) + 1);
+    if (day <= todayNumber) perDay.set(day, (perDay.get(day) ?? 0) + 1);
   }
+  const onPace = (day: number) => {
+    let count = 0;
+    for (let d = day - 6; d <= day; d++) count += perDay.get(d) ?? 0;
+    return count >= target;
+  };
 
-  let week = weekStart(todayNumber, weekStartsOn);
-  if ((perWeek.get(week) ?? 0) < target) week -= 7; // current week is not over yet
+  let day = todayNumber;
+  if (!onPace(day)) day -= 1;
   let streak = 0;
-  while ((perWeek.get(week) ?? 0) >= target) {
+  while (onPace(day)) {
     streak += 1;
-    week -= 7;
+    day -= 1;
   }
   return streak;
 }

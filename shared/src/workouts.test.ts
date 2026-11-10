@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WEEKLY_WORKOUT_TARGET, weeklyStreak, workoutTotals, type Workout } from "./workouts";
+import { DEFAULT_WEEKLY_WORKOUT_TARGET, paceStreakDays, workoutTotals, type Workout } from "./workouts";
 
 // Invented data. 2026-01-05 is a Monday.
 const w = (date: string, minutes: number): Workout => ({ date, minutes });
@@ -50,39 +50,47 @@ describe("workoutTotals", () => {
   });
 });
 
-describe("weeklyStreak", () => {
-  const today = "2026-01-21"; // Wednesday of the week starting 2026-01-19
+describe("paceStreakDays", () => {
+  const day = (offset: number) => new Date(Date.UTC(2026, 0, 1 + offset)).toISOString().slice(0, 10); // 2026-01-01 + offset
+  const at = (...offsets: number[]) => offsets.map((o) => w(day(o), 30));
 
-  it("[AC-HLT-04.3] counts consecutive weeks that meet the target, ending at the latest finished week", () => {
-    const list = [w("2026-01-05", 30), w("2026-01-07", 30), w("2026-01-12", 30), w("2026-01-14", 30), w("2026-01-13", 30)];
-    expect(weeklyStreak(list, { target: 2, today })).toBe(2); // weeks of 01-05 and 01-12; current week empty but not over
+  it("[AC-HLT-04.3] workouts on consecutive days are not split by a week boundary", () => {
+    // 2026-01-03 is a Saturday: workouts on Saturday, Sunday and Monday. A calendar week would split them.
+    expect(day(2)).toBe("2026-01-03");
+    expect(paceStreakDays(at(2, 3, 4), { target: 3, today: day(4) })).toBe(1); // on pace as of Monday
+    expect(paceStreakDays(at(2, 3, 4), { target: 3, today: day(5) })).toBe(2); // and still on pace on Tuesday
   });
 
-  it("[AC-HLT-04.3] the current week counts once it meets the target, and does not break the streak while it is short", () => {
-    const base = [w("2026-01-12", 30), w("2026-01-13", 30)];
-    expect(weeklyStreak(base, { target: 2, today })).toBe(1);
-    expect(weeklyStreak([...base, w("2026-01-19", 30), w("2026-01-20", 30)], { target: 2, today })).toBe(2);
-    expect(weeklyStreak([...base, w("2026-01-19", 30)], { target: 2, today })).toBe(1);
+  it("[AC-HLT-04.3] counts the days in a row that the last 7 days held at least the target", () => {
+    // Three workouts on days 0, 1, 2. On pace from day 2 through day 6 (the window still holds all three), off from day 7.
+    const list = at(0, 1, 2);
+    expect(paceStreakDays(list, { target: 3, today: day(2) })).toBe(1);
+    expect(paceStreakDays(list, { target: 3, today: day(6) })).toBe(5);
+    expect(paceStreakDays(list, { target: 3, today: day(7) })).toBe(5); // today off pace, but not yet over: counts back from yesterday
+    expect(paceStreakDays(list, { target: 3, today: day(8) })).toBe(0); // yesterday is off pace too
   });
 
-  it("[AC-HLT-04.3] a finished week below the target ends the streak, and an empty history is zero", () => {
-    const list = [w("2026-01-05", 30), w("2026-01-06", 30), w("2026-01-12", 30), w("2026-01-19", 30), w("2026-01-20", 30)];
-    expect(weeklyStreak(list, { target: 2, today })).toBe(1); // 01-12 week had one workout; current week has two
-    expect(weeklyStreak([], { target: 1, today })).toBe(0);
+  it("[AC-HLT-04.3] a day that is not on pace yet does not break the streak, but the next one does", () => {
+    const list = at(0, 2, 4, 6); // on pace from day 4 through day 8, off on day 9
+    expect(paceStreakDays(list, { target: 3, today: day(8) })).toBe(5);
+    expect(paceStreakDays(list, { target: 3, today: day(9) })).toBe(5);
+    expect(paceStreakDays(list, { target: 3, today: day(10) })).toBe(0);
   });
 
   it("[AC-HLT-04.3] the target defaults to three workouts a week", () => {
     expect(DEFAULT_WEEKLY_WORKOUT_TARGET).toBe(3);
-    const three = (monday: string) => [w(monday, 20), w(monday.replace(/\d\d$/, (d) => String(Number(d) + 1).padStart(2, "0")), 20), w(monday.replace(/\d\d$/, (d) => String(Number(d) + 2).padStart(2, "0")), 20)];
-    expect(weeklyStreak([...three("2026-01-05"), ...three("2026-01-12")], { today })).toBe(2);
-    expect(weeklyStreak([w("2026-01-12", 20), w("2026-01-13", 20)], { today })).toBe(0);
+    expect(paceStreakDays(at(0, 1, 2), { today: day(2) })).toBe(1);
+    expect(paceStreakDays(at(0, 1), { today: day(2) })).toBe(0);
   });
 
-  it("[AC-HLT-04.3] rejects a target below one", () => {
-    expect(() => weeklyStreak([], { target: 0, today })).toThrow(/target/i);
+  it("[AC-HLT-04.3] several workouts on one day each count, ignores workouts after today, and an empty history is zero", () => {
+    expect(paceStreakDays([...at(0), ...at(0), ...at(0)], { target: 3, today: day(0) })).toBe(1);
+    expect(paceStreakDays(at(1, 2, 3), { target: 3, today: day(0) })).toBe(0);
+    expect(paceStreakDays([], { today: day(0) })).toBe(0);
   });
 
-  it("[AC-HLT-04.3] ignores workouts dated after today", () => {
-    expect(weeklyStreak([w("2026-01-26", 30)], { target: 1, today })).toBe(0);
+  it("[AC-HLT-04.3] rejects a target below one and dates that are not real", () => {
+    expect(() => paceStreakDays([], { target: 0, today: day(0) })).toThrow(/target/i);
+    expect(() => paceStreakDays([w("2026-02-30", 5)], { today: day(0) })).toThrow(/date/i);
   });
 });
