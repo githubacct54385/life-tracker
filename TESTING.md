@@ -29,7 +29,7 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 | Area | Examples |
 |---|---|
 | Parsers | Mileage XLSX and CSV (Date and Start Miles columns, text dates, trailing empty rows, malformed rows reported with row numbers, re-import creates no duplicates), Apple Health workout extraction. All fixtures are built in code with invented values. |
-| Mileage | Friday interpolation, estimated flags, sanity warnings (ADR-0008) |
+| Mileage | weekly check-ins, late readings, missing weeks, sanity warnings (ADR-0008) |
 | Calculations | Weight moving average, workout streaks, giving totals by "for" month and special contributions |
 | Security logic | `ownerGuard` decision (pure function of header and setting), custom-header check, logger allow-list and redaction |
 | Schemas | zod request and response schemas, upload type and size checks |

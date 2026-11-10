@@ -129,11 +129,15 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 
 ## ADR-0008: Weekly mileage algorithm
 
-**Decision.** Weeks run **Friday to Thursday**. For each Friday in the history, compute an odometer value: the actual reading if one was taken that day, otherwise linear interpolation by date between the nearest readings on either side. Miles for a week are the difference between consecutive Friday values. A week is marked **estimated** if either of its two Friday values was interpolated. Readings on any date (not only Fridays) take part in the interpolation. No extrapolation past the last reading.
+> **Amended 2026-11-10 (owner decision, MIL-02).** The app no longer guesses a missing Friday. The original rule (interpolating a Friday value between the readings on either side, and marking such weeks "estimated") is replaced by the rule below. The original is kept at the end for history.
 
-**Why.** One rule covers skipped Fridays, off-day entries, and backfills. It also matches how the spreadsheet is laid out.
+**Decision.** Weeks run **Friday to Thursday**. Each week has at most one **check-in**: its earliest reading. A reading taken on Saturday (or any day up to Thursday) still counts for that week; the period since the last check-in is then simply longer (8 days instead of 7). Miles for a period are the difference between two consecutive check-in readings. A week with no reading at all is **missing**: the app shows it as a gap ("no reading") and the next period covers the longer gap. Readings are always dated when they are entered (the screen never asks for a date), so a late reading counts for the week it is entered in and an old gap stays a gap; history from before the app comes in through the spreadsheet import, which carries its own dates. Nothing is interpolated or extrapolated, so there are no "estimated" weeks. Two readings on one date keep the higher value, so the result never depends on the order readings were entered.
 
-**Consequences.** Needs property tests: spread miles sum to the total between readings, and results do not change when readings are added in a different order.
+**Why.** The owner wants the app to be forgiving about a late reading or a missed week but never to invent odometer values.
+
+**Consequences.** Periods can be 6, 7, 8 or more days long. Charts show each period's actual miles as they are, with no scaling to 7 days, so an 8-day period is drawn as an 8-day period (owner decision, 2026-11-10). Editing a reading keeps its date; deleting one removes it for good. Needs property tests: results do not change when readings are added in a different order, and periods join end to end so days and miles add up to the first-to-last change.
+
+**Original decision (superseded).** Each Friday got an odometer value: the actual reading if one was taken that day, otherwise linear interpolation by date between the nearest readings on either side. A week using an interpolated value was marked estimated. No extrapolation past the last reading.
 
 ## ADR-0009: Apple Health is parsed in the browser
 
