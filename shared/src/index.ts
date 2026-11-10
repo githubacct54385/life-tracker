@@ -4,3 +4,4 @@ export * from "./mileage.js";
 export * from "./weight.js";
 export * from "./readingChecks.js";
 export * from "./giving.js";
+export * from "./workouts.js";
