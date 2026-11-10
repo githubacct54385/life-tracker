@@ -97,7 +97,7 @@ describe("release workflow", () => {
     const summaryStep = steps.find((s) => s.run?.includes("GITHUB_STEP_SUMMARY") && s.run.includes("GITHUB_SHA"));
     expect(summaryStep).toBeDefined();
     const migrateStep = steps.find((s) => s.run?.includes("pnpm migrate"));
-    expect(text(migrateStep)).toContain("SQL_ADMIN_CONNECTION");
+    expect(text(migrateStep)).toContain("DATABASE_ADMIN_URL");
     const cli = readFileSync(path.join(root, "api/src/db/migrate-cli.ts"), "utf8");
     expect(cli).toContain("GITHUB_STEP_SUMMARY");
     expect(cli).toContain("Migrations applied");

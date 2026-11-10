@@ -30,7 +30,7 @@ fi
 if [ -d db/migrations ]; then
   for f in db/migrations/*.sql; do
     [ -e "$f" ] || continue
-    if grep -E -i -q '\b(DROP[[:space:]]+(TABLE|COLUMN|INDEX|CONSTRAINT|VIEW)|sp_rename|TRUNCATE[[:space:]]+TABLE|ALTER[[:space:]]+COLUMN)\b' "$f" \
+    if grep -E -i -q '\b(DROP[[:space:]]+(TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|SCHEMA|TYPE|SEQUENCE|FUNCTION|TRIGGER|EXTENSION|ROLE)|RENAME[[:space:]]+(TO|COLUMN|CONSTRAINT)|TRUNCATE|ALTER[[:space:]]+COLUMN|ALTER[[:space:]]+[A-Za-z0-9_"]+[[:space:]]+(SET[[:space:]]+DATA[[:space:]]+)?TYPE)\b' "$f" \
        && ! grep -q -- '-- allow-destructive' "$f"; then
       fail "$f has a destructive statement but no '-- allow-destructive' marker"
     fi

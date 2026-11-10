@@ -15,7 +15,7 @@ export default tseslint.config(
   },
   {
     // AC-FND-03.3: SQL text may appear only in api/src/repositories, api/src/db and tests.
-    // Convention: write SQL keywords in UPPER CASE. Importing mssql elsewhere is also banned by depcruise.
+    // Convention: write SQL keywords in UPPER CASE. Importing pg elsewhere is also banned by depcruise.
     files: ["**/*.ts", "**/*.tsx"],
     ignores: ["api/src/repositories/**", "api/src/db/**", "**/*.test.ts", "**/*.test.tsx"],
     rules: {

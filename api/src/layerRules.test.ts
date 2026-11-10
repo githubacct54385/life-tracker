@@ -67,7 +67,7 @@ describe("layer rules", () => {
     ["a service imports db", { "api/src/services/s.ts": 'import "../db/connection";', "api/src/db/connection.ts": "export {};" }, "services-not-skip-layers"],
     ["a repository imports a service", { "api/src/repositories/r.ts": 'import "../services/s";', "api/src/services/s.ts": "export {};" }, "repositories-not-up"],
     ["db imports a repository", { "api/src/db/c.ts": 'import "../repositories/r";', "api/src/repositories/r.ts": "export {};" }, "db-is-bottom"],
-    ["a handler imports mssql", { "api/src/handlers/h.ts": 'import "mssql";', "node_modules/mssql/index.js": "" }, "sql-only-in-repositories"],
+    ["a handler imports pg", { "api/src/handlers/h.ts": 'import "pg";', "node_modules/pg/index.js": "" }, "sql-only-in-repositories"],
     ["the api client imports a page", { "web/src/api/client.ts": 'import "../pages/P";', "web/src/pages/P.ts": "export {};" }, "web-client-not-up"],
   ];
 

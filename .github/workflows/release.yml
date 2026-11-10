@@ -8,7 +8,7 @@ name: Release
 # Environment secrets needed (set on the `production` environment, never in the repo):
 #   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   (OIDC login, no password)
 #   AZURE_RESOURCE_GROUP, AZURE_SQL_SERVER                     (for the temporary firewall rule)
-#   SQL_ADMIN_CONNECTION                                       (admin login, used only to migrate)
+#   DATABASE_ADMIN_URL                                       (admin login, used only to migrate)
 #   AZURE_STATIC_WEB_APPS_API_TOKEN                            (deploy token)
 
 on:
@@ -115,7 +115,7 @@ jobs:
 
       - name: Apply SQL migrations
         env:
-          SQL_ADMIN_CONNECTION: ${{ secrets.SQL_ADMIN_CONNECTION }}
+          DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
         # `pnpm migrate` (api/src/db/migrate-cli.ts) appends the list of applied migrations to $GITHUB_STEP_SUMMARY (AC-FND-06.6).
         run: pnpm migrate
 

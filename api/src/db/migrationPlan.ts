@@ -28,14 +28,6 @@ export function checksum(sql: string): string {
   return createHash("sha256").update(normalizeSql(sql)).digest("hex");
 }
 
-/** Split a script into batches on lines that contain only `GO`. */
-export function splitBatches(sql: string): string[] {
-  return normalizeSql(sql)
-    .split(/^[ \t]*GO[ \t]*$/gim)
-    .map((batch) => batch.trim())
-    .filter((batch) => batch.length > 0);
-}
-
 /**
  * Decide which migrations still need to run. Pure: no database, no disk.
  * Throws MigrationError (nothing should run) when the history and the files disagree.

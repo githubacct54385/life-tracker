@@ -30,9 +30,16 @@ describe("destructive migration check", () => {
     "DROP TABLE dbo.Thing;",
     "ALTER TABLE dbo.Thing DROP COLUMN Old;",
     "ALTER TABLE dbo.Thing ALTER COLUMN Name NVARCHAR(10) NOT NULL;",
-    "EXEC sp_rename 'dbo.Thing', 'Other';",
     "TRUNCATE TABLE dbo.Thing;",
-  ])("[AC-FND-06.5] fails on a destructive statement without the marker: %s", (sql) => {
+    // Postgres spellings (AC-MIG-02.5)
+    "ALTER TABLE public.thing RENAME TO other;",
+    "ALTER TABLE public.thing RENAME COLUMN old TO new;",
+    "ALTER TABLE public.thing ALTER COLUMN name TYPE varchar(10);",
+    "ALTER TABLE public.thing ALTER name SET DATA TYPE varchar(10);",
+    "TRUNCATE public.thing;",
+    "DROP SCHEMA reporting CASCADE;",
+    "ALTER TABLE public.thing DROP COLUMN IF EXISTS old;",
+  ])("[AC-FND-06.5][AC-MIG-02.5] fails on a destructive statement without the marker: %s", (sql) => {
     const result = runWithMigration(`${sql}\n`);
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("allow-destructive");
@@ -45,6 +52,14 @@ describe("destructive migration check", () => {
 
   it("[AC-FND-06.5] passes for an additive migration", () => {
     const result = runWithMigration("ALTER TABLE dbo.Thing ADD Extra INT NULL;\n");
+    expect(result.status).toBe(0);
+  });
+
+  it("[AC-MIG-02.5] passes for additive Postgres migrations", () => {
+    const result = runWithMigration(
+      "CREATE TABLE public.thing (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, amount numeric(12,2) NOT NULL);\n" +
+        "ALTER TABLE public.thing ADD COLUMN note text;\nCREATE INDEX thing_amount_idx ON public.thing (amount);\n",
+    );
     expect(result.status).toBe(0);
   });
 });

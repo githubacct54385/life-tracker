@@ -24,10 +24,10 @@ export default {
     },
     {
       name: "sql-only-in-repositories",
-      comment: "Only repositories/ and db/ may import the mssql package",
+      comment: "Only repositories/ and db/ may import the pg package",
       severity: "error",
       from: { pathNot: "^api/src/(repositories|db)/" },
-      to: { path: "node_modules/mssql" },
+      to: { path: "node_modules/pg" },
     },
     {
       name: "layers-point-down",

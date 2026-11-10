@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { checksum, MigrationError, planMigrations, splitBatches } from "./migrationPlan.js";
+import { checksum, MigrationError, planMigrations } from "./migrationPlan.js";
 
 const file = (name: string, sql = "SELECT 1;") => ({ name, sql });
 const done = (f: { name: string; sql: string }) => ({ name: f.name, checksum: checksum(f.sql) });
@@ -54,16 +54,5 @@ describe("planMigrations", () => {
         expect(checksum(text)).not.toBe(checksum(text + extra));
       }),
     );
-  });
-});
-
-describe("splitBatches", () => {
-  it("[AC-FND-03.1] splits on GO lines and drops empty batches", () => {
-    const script = "CREATE TABLE a (id int);\nGO\n\nCREATE VIEW v AS SELECT 1 AS x;\r\ngo\nGO\n";
-    expect(splitBatches(script)).toEqual(["CREATE TABLE a (id int);", "CREATE VIEW v AS SELECT 1 AS x;"]);
-  });
-
-  it("[AC-FND-03.1] does not split on GO inside a line", () => {
-    expect(splitBatches("SELECT 'GO' AS word;")).toEqual(["SELECT 'GO' AS word;"]);
   });
 });

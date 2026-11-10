@@ -3,17 +3,17 @@ import { useConnection } from "../db/connection.js";
 import { configFor } from "../db/testDatabase.js";
 import { ping } from "./connectivityRepository.js";
 
-const server = inject("sqlServer");
+const server = inject("postgres");
 
 describe.skipIf(!server)("connectivityRepository", () => {
   beforeAll(async () => {
-    await useConnection(configFor(server!, "master"));
+    await useConnection(configFor(server!, "postgres"));
   });
   afterAll(async () => {
     await useConnection(undefined);
   });
 
-  it("[AC-FND-03.4] ping reaches a throwaway SQL Server through the pooled connection", async () => {
+  it("[AC-FND-03.4] ping reaches a throwaway Postgres through the pooled connection", async () => {
     expect(await ping()).toBe(true);
   });
 });
