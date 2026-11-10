@@ -13,7 +13,7 @@ Everything here fits the Neon free plan. Check the plan's current limits on neon
 ## Steps (you do these; they need your Neon account)
 
 1. Create a Neon project on the free plan. Pick the region closest to where the Worker will run (US East or US Central for you). Postgres 17 is fine.
-2. In the Neon dashboard, open Connect, turn **Connection pooling off**, and copy the **direct** connection string of the default role. This is the admin URL. Migrations take a session-level lock and run multi-statement scripts, which a pooler can break. The app's own connection (step 5) uses the pooled string. Do not paste either string into chat, a file in this repo, or an issue.
+2. In the Neon dashboard, open Connect, turn **Connection pooling off**, and copy the **direct** connection string of the default role. This is the admin URL. Migrations take a session-level lock and run multi-statement scripts, which a pooler can break. The app's own connection (step 5) uses the pooled string. Do not paste either string into chat, a file in this repo, or an issue. Neon's strings end in `sslmode=require`; the `pg` driver currently treats that as `verify-full` and prints a warning about a coming change. Write `sslmode=verify-full` instead to keep today's strict behavior and silence it (Neon's certificates are publicly trusted).
 3. Store it as the GitHub `production` environment secret `DATABASE_ADMIN_URL`, and keep it in a shell variable for the next steps. Neither command below puts the value in your shell history:
 
    ```bash
