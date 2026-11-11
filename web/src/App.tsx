@@ -9,6 +9,8 @@ import { CarPage } from "./pages/car/CarPage";
 import { ImportMileagePage } from "./pages/car/ImportMileagePage";
 import { LogOdometerPage } from "./pages/car/LogOdometerPage";
 import { MileageStatsPage } from "./pages/car/MileageStatsPage";
+import { HealthPage } from "./pages/health/HealthPage";
+import { LogWorkoutPage } from "./pages/health/LogWorkoutPage";
 import { Page } from "./pages/Page";
 import { SettingsPage } from "./settings/SettingsPage";
 
@@ -24,7 +26,8 @@ export function App() {
         <Route index element={<Page title={APP_NAME} />} />
         <Route path="giving" element={<GivingPage />} />
         <Route path="giving/log" element={<LogGiftPage />} />
-        <Route path="health" element={<Page title="Health" />} />
+        <Route path="health" element={<HealthPage />} />
+        <Route path="health/workouts" element={<LogWorkoutPage />} />
         <Route path="car" element={<CarPage />} />
         <Route path="car/log" element={<LogOdometerPage />} />
         <Route path="car/stats" element={<MileageStatsPage />} />

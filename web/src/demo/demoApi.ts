@@ -8,7 +8,10 @@ import {
   readingListResponseSchema,
   saveReadingResultSchema,
   type GiftRecord,
+  workoutListResponseSchema,
+  workoutRecordSchema,
   type OdometerReadingRecord,
+  type WorkoutRecord,
 } from "@life-tracker/shared";
 import type { Api } from "../api/types";
 
@@ -59,6 +62,15 @@ function seedGifts(): GiftRecord[] {
   ];
 }
 
+/** Synthetic workouts, one from the watch and two by hand, so the demo screen shows both sources. */
+function seedWorkouts(): WorkoutRecord[] {
+  return [
+    { id: 3, date: "2026-11-06", type: "Yoga", minutes: 40, note: "Evening class", source: "manual" },
+    { id: 2, date: "2026-11-05", type: "Run", minutes: 32, note: null, source: "apple_watch" },
+    { id: 1, date: "2026-11-03", type: "Strength", minutes: 45, note: null, source: "manual" },
+  ];
+}
+
 /**
  * Stand-in for `api/client.ts`: the same interface, answered from fake data held in the browser.
  * It must never call `fetch` or any other network function (hard rule 7, AC-DEM-01.2).
@@ -70,6 +82,9 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   let nextId = 200;
   let gifts = seedGifts();
   let nextGiftId = 5;
+  let workouts = seedWorkouts();
+  let nextWorkoutId = 4;
+  const newestWorkouts = () => [...workouts].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
   const newestFirst = () => [...readings].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
 
   return {
@@ -137,6 +152,28 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
       const fresh = unique.filter((row) => !readings.some((r) => r.date === row.date && r.miles === row.miles));
       for (const row of fresh) readings = [...readings, { id: nextId++, ...row }];
       return importMileageResultSchema.parse({ imported: fresh.length, duplicates: rows.length - fresh.length });
+    },
+
+    async listWorkouts() {
+      return workoutListResponseSchema.parse({ workouts: newestWorkouts().slice(0, 100) });
+    },
+
+    async logWorkout({ type, minutes, note }) {
+      const workout = workoutRecordSchema.parse({ id: nextWorkoutId++, date: localDate(now()), type, minutes, note: note?.trim() || null, source: "manual" });
+      workouts = [...workouts, workout];
+      return workout;
+    },
+
+    async editWorkout(id, { type, minutes, note }) {
+      const current = workouts.find((w) => w.id === id);
+      if (!current) throw new Error("Workout not found");
+      const workout = workoutRecordSchema.parse({ ...current, type, minutes, note: note?.trim() || null });
+      workouts = workouts.map((w) => (w.id === id ? workout : w));
+      return workout;
+    },
+
+    async deleteWorkout(id) {
+      workouts = workouts.filter((w) => w.id !== id);
     },
   };
 }

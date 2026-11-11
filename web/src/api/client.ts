@@ -7,6 +7,8 @@ import {
   REQUEST_GUARD_HEADER,
   REQUEST_GUARD_VALUE,
   saveReadingResultSchema,
+  workoutListResponseSchema,
+  workoutRecordSchema,
 } from "@life-tracker/shared";
 import type { Api } from "./types";
 import { setWaking } from "./wakeStatus";
@@ -29,6 +31,12 @@ export interface ClientOptions {
   retryDelayMs?: number;
   onWaking?: (waking: boolean) => void;
 }
+
+const jsonBody = (method: "POST" | "PUT", body: unknown): RequestInit => ({
+  method,
+  body: JSON.stringify(body),
+  headers: { "content-type": "application/json" },
+});
 
 /** The only place the UI talks to the real API. The fetch function is a parameter so tests can mock the network edge. */
 export function createClient(
@@ -96,6 +104,19 @@ export function createClient(
     async importReadings(rows) {
       const init = { method: "POST", body: JSON.stringify({ rows }), headers: { "content-type": "application/json" } };
       return importMileageResultSchema.parse(await (await send("/api/odometer/import", init)).json());
+    },
+
+    async listWorkouts() {
+      return workoutListResponseSchema.parse(await request("/api/workouts"));
+    },
+    async logWorkout(workout) {
+      return workoutRecordSchema.parse(await request("/api/workouts", jsonBody("POST", workout)));
+    },
+    async editWorkout(id, workout) {
+      return workoutRecordSchema.parse(await request(`/api/workouts/${id}`, jsonBody("PUT", workout)));
+    },
+    async deleteWorkout(id) {
+      await send(`/api/workouts/${id}`, { method: "DELETE" });
     },
   };
 }
