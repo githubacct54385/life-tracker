@@ -19,7 +19,7 @@ export function detectTimeZone(): string {
 }
 
 export function timeZones(current: string): string[] {
-  let zones: string[] = [];
+  let zones: string[];
   try {
     zones = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
   } catch {
