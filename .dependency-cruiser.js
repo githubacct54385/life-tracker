@@ -71,6 +71,13 @@ export default {
       to: { path: "^web/src/(pages|components)/" },
     },
     {
+      name: "demo-not-client",
+      comment: "demo mode never reaches the real API (hard rule 7): demo/ must not import api/client",
+      severity: "error",
+      from: { path: "^web/src/demo/" },
+      to: { path: "^web/src/api/client" },
+    },
+    {
       name: "repositories-not-up",
       severity: "error",
       from: { path: "^api/src/repositories/" },
