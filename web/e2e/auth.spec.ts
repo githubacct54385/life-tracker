@@ -42,7 +42,7 @@ test("[AC-MIG-04.2][AC-MIG-04.6] an expired token is refused, as is a token that
   expect((await request.get("/api/health", { headers: { [ACCESS_HEADER]: tampered } })).status()).toBe(401);
 });
 
-test("[AC-DEM-01.6] the demo path is served by the static files, not the API", { tag: "@AC-DEM-01.6" }, async ({ request }) => {
+test("[AC-DEM-01.1] the demo path is served by the static files, not the API", { tag: "@AC-DEM-01.1" }, async ({ request }) => {
   const response = await request.get("/demo/api/health");
   expect(response.headers()["content-type"] ?? "").not.toContain("application/json");
 });
