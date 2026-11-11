@@ -5,6 +5,7 @@ import type { AccessSettings } from "./auth/accessConfig.js";
 import { httpsRedirect } from "./http/httpsOnly.js";
 import { withSecurityHeaders } from "./http/securityHeaders.js";
 import { databaseReachable } from "./services/healthService.js";
+import { giftService } from "./services/giftService.js";
 import { odometerService } from "./services/odometerService.js";
 import { runWithDatabase } from "./services/requestScope.js";
 import { logger } from "./telemetry/logger.js";
@@ -35,4 +36,4 @@ export function createWorker(deps: AppDeps) {
   };
 }
 
-export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService });
+export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService });

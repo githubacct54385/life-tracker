@@ -4,7 +4,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "v
 import { createApp } from "./app.js";
 import { odometerRepository } from "./repositories/odometerRepository.js";
 import { clearOdometerReadings, connectFreshAppDatabase, disconnectAppDatabase, seedOdometerReading } from "./repositories/odometerTestDatabase.js";
+import { createGiftService } from "./services/giftService.js";
 import { createOdometerService } from "./services/odometerService.js";
+import { fakeGiftRepo } from "./testing/fakeGiftRepository.js";
 import { createLogger } from "./telemetry/logger.js";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens.js";
 
@@ -22,7 +24,7 @@ describe.skipIf(!server)("/api/odometer (real Postgres)", () => {
     const logger = createLogger((_level, line) => logged.push(line));
     // Friday 2026-11-13, 04:00 in Los Angeles.
     const odometer = createOdometerService(odometerRepository, { now: () => new Date("2026-11-13T12:00:00Z") });
-    const app = createApp({ logger, checkDatabase: async () => true, odometer, keys: issuer.keys });
+    const app = createApp({ logger, checkDatabase: async () => true, odometer, gifts: createGiftService(fakeGiftRepo()), keys: issuer.keys });
     call = async (method, url, body, token = ownerToken, guard = true) => {
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (token) headers["cf-access-jwt-assertion"] = token;

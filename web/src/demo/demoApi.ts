@@ -1,8 +1,12 @@
 import {
   checkReading,
+  giftListResponseSchema,
+  giftSchema,
+  groupGiftsByMonth,
   healthResponseSchema,
   readingListResponseSchema,
   saveReadingResultSchema,
+  type GiftRecord,
   type OdometerReadingRecord,
 } from "@life-tracker/shared";
 import type { Api } from "../api/types";
@@ -44,6 +48,16 @@ function seedReadings(): OdometerReadingRecord[] {
   return [...recent, ...older];
 }
 
+/** Synthetic gifts: one for each of the last few months, one paid late, so the demo screen is not empty. */
+function seedGifts(): GiftRecord[] {
+  return [
+    { id: 4, dateGiven: "2026-11-02", forMonth: "2026-11", cents: 15_000, method: "card" },
+    { id: 3, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 15_000, method: "check" },
+    { id: 2, dateGiven: "2026-10-28", forMonth: "2026-10", cents: 5_000, method: "card" },
+    { id: 1, dateGiven: "2026-10-03", forMonth: "2026-09", cents: 15_000, method: "check" },
+  ];
+}
+
 /**
  * Stand-in for `api/client.ts`: the same interface, answered from fake data held in the browser.
  * It must never call `fetch` or any other network function (hard rule 7, AC-DEM-01.2).
@@ -53,6 +67,8 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   const now = options.now ?? (() => new Date());
   let readings = seedReadings();
   let nextId = 200;
+  let gifts = seedGifts();
+  let nextGiftId = 5;
   const newestFirst = () => [...readings].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
 
   return {
@@ -92,6 +108,27 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteReading(id) {
       readings = readings.filter((r) => r.id !== id);
+    },
+
+    async listGifts() {
+      return giftListResponseSchema.parse({ gifts: groupGiftsByMonth(gifts).flatMap((m) => m.gifts) });
+    },
+
+    async logGift(gift) {
+      const saved = giftSchema.parse({ id: nextGiftId++, ...gift });
+      gifts = [...gifts, saved];
+      return saved;
+    },
+
+    async editGift(id, gift) {
+      if (!gifts.some((g) => g.id === id)) throw new Error("Gift not found");
+      const saved = giftSchema.parse({ id, ...gift });
+      gifts = gifts.map((g) => (g.id === id ? saved : g));
+      return saved;
+    },
+
+    async deleteGift(id) {
+      gifts = gifts.filter((g) => g.id !== id);
     },
   };
 }
