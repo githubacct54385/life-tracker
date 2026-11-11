@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#2f6b4f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Life Tracker" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- use-credentials: the site sits behind Cloudflare Access, which would otherwise answer the manifest request with a sign-in redirect. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Life Tracker</title>
   </head>
   <body>
