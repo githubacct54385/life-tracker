@@ -85,15 +85,23 @@ jobs:
         if: steps.app.outputs.present == 'true'
         timeout-minutes: 5
         run: pnpm --filter web exec playwright install chromium
-      - name: Install browser system libraries (retried, never fails the job)
+      # Most runners already have the libraries Chromium needs, so first just try to start it. Only if it cannot
+      # start do we reach for apt, which then gets 2 hard-limited attempts. The end-to-end tests are the final check.
+      - name: Check the browser can start
+        id: launch
         if: steps.app.outputs.present == 'true'
+        timeout-minutes: 2
+        continue-on-error: true
+        run: pnpm --filter web exec node -e "import('@playwright/test').then(async ({ chromium }) => { const browser = await chromium.launch(); await browser.close(); })"
+      - name: Install browser system libraries (only if the browser cannot start)
+        if: steps.app.outputs.present == 'true' && steps.launch.outcome == 'failure'
         timeout-minutes: 5
         continue-on-error: true
         run: |
-          for attempt in 1 2 3; do
-            if timeout 90 pnpm --filter web exec playwright install-deps chromium; then exit 0; fi
-            echo "::warning::System library install failed (attempt $attempt of 3)."
-            sleep 10
+          for attempt in 1 2; do
+            if timeout -k 10 60 pnpm --filter web exec playwright install-deps chromium; then exit 0; fi
+            echo "::warning::System library install failed (attempt $attempt of 2)."
+            sleep 5
           done
           echo "::warning::System libraries were not installed. If the end-to-end tests cannot start the browser, this is why."
           exit 0

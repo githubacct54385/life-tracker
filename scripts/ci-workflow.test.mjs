@@ -12,6 +12,7 @@ const job = ci.jobs.test;
 const steps = job.steps;
 const find = (pattern) => steps.find((step) => pattern.test(step.run ?? ""));
 const download = find(/playwright install chromium/);
+const launch = steps.find((step) => step.id === "launch");
 const libraries = find(/playwright install-deps chromium/);
 const e2e = find(/test:e2e/);
 const index = (step) => steps.indexOf(step);
@@ -19,7 +20,7 @@ const index = (step) => steps.indexOf(step);
 describe("CI browser install", () => {
   it("[AC-OPS-03.1][AC-OPS-03.5] each browser install step stops after 5 minutes at most, and the test job after 30", () => {
     expect(job["timeout-minutes"]).toBeLessThanOrEqual(30);
-    for (const step of [download, libraries]) {
+    for (const step of [download, launch, libraries]) {
       expect(step, "install step exists").toBeDefined();
       expect(step["timeout-minutes"]).toBeLessThanOrEqual(5);
     }
@@ -31,11 +32,21 @@ describe("CI browser install", () => {
     expect(index(download)).toBeLessThan(index(libraries));
   });
 
-  it("[AC-OPS-03.3][AC-OPS-03.5] the system libraries install is a separate step that retries 3 times, each attempt time-limited, and cannot fail the job", () => {
-    expect(libraries).not.toBe(download);
+  it("[AC-OPS-03.6][AC-OPS-03.5] a short step tries to start the browser, between the download and the libraries, and its failure does not fail the job", () => {
+    expect(launch, "launch check exists").toBeDefined();
+    expect(launch.run).toMatch(/chromium\.launch\(\)/);
+    expect(launch["continue-on-error"]).toBe(true);
+    expect(index(download)).toBeLessThan(index(launch));
+    expect(index(launch)).toBeLessThan(index(libraries));
+  });
+
+  it("[AC-OPS-03.3][AC-OPS-03.6][AC-OPS-03.5] the libraries install runs only if the browser could not start, retries twice, is hard-killed after 60 s each, and cannot fail the job", () => {
+    expect(libraries["if"]).toMatch(/steps\.launch\.outcome == 'failure'/);
     expect(libraries["continue-on-error"]).toBe(true);
-    expect(libraries.run).toMatch(/for attempt in 1 2 3/);
-    expect(libraries.run).toMatch(/timeout \d+ pnpm/);
+    expect(libraries.run).toMatch(/for attempt in 1 2;/);
+    expect(libraries.run).toMatch(/timeout -k \d+ \d+ pnpm/);
+    const seconds = Number(/timeout -k \d+ (\d+) pnpm/.exec(libraries.run)[1]);
+    expect(2 * (seconds + 10 + 5)).toBeLessThan(libraries["timeout-minutes"] * 60); // both attempts fit inside the step limit
   });
 
   it("[AC-OPS-03.4][AC-OPS-03.5] the end-to-end tests still run after the installs, so missing libraries fail there", () => {
