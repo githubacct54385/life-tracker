@@ -6,10 +6,11 @@ name: Release
 # Order matters: migrations first, then deploy. A failed migration stops everything.
 #
 # Environment secrets needed (set on the `production` environment, never in the repo):
-#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   (OIDC login, no password)
-#   AZURE_RESOURCE_GROUP, AZURE_SQL_SERVER                     (for the temporary firewall rule)
-#   DATABASE_ADMIN_URL                                       (admin login, used only to migrate)
-#   AZURE_STATIC_WEB_APPS_API_TOKEN                            (deploy token)
+#   DATABASE_ADMIN_URL      (Neon admin login, used only to migrate)
+#   CLOUDFLARE_API_TOKEN    (scoped to editing Workers on this one account, used only to deploy)
+#   CLOUDFLARE_ACCOUNT_ID   (which account the Worker lives in)
+# The Worker's own runtime settings (DATABASE_URL, ACCESS_TEAM_DOMAIN, ACCESS_AUD, OWNER_EMAIL) are set once in
+# Cloudflare and are not touched by this workflow. See docs/cloudflare-access-setup.md.
 
 on:
   workflow_dispatch:
@@ -21,7 +22,6 @@ concurrency:
 permissions:
   contents: read
   checks: read
-  id-token: write
 
 jobs:
   release:
@@ -88,61 +88,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Prebuilt API folder with production dependencies and the compiled `shared` package.
-      # Loading it with plain Node proves the deployed code can start (CI runs the same check).
-      - name: Stage and verify the API
-        run: |
-          node scripts/stage-api.mjs
-          node scripts/verify-api-bundle.mjs
-
-      - name: Azure login (OIDC)
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      # Needed only if "allow Azure services" does not let GitHub runners reach the database (ADR-0003, Verify).
-      - name: Open database firewall for this runner
-        id: firewall
-        run: |
-          ip=$(curl -fsS https://checkip.amazonaws.com | tr -d '[:space:]')
-          az sql server firewall-rule create \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --server "${{ secrets.AZURE_SQL_SERVER }}" \
-            --name "release-${GITHUB_RUN_ID}" \
-            --start-ip-address "$ip" --end-ip-address "$ip"
-
       - name: Apply SQL migrations
         env:
           DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
         # `pnpm migrate` (api/src/db/migrate-cli.ts) appends the list of applied migrations to $GITHUB_STEP_SUMMARY (AC-FND-06.6).
         run: pnpm migrate
 
-      - name: Deploy site and API
-        uses: Azure/static-web-apps-deploy@v1
-        # With no Oryx build, the deploy client cannot detect the API language, and fails with
-        # "Function language info isn't provided". These variables tell it (first Release run, 2026-11-09).
+      # `wrangler` is a dev dependency of the API package. It uploads the Worker and the built site (web/dist) together.
+      # --keep-vars leaves the settings and secrets already stored in Cloudflare alone.
+      - name: Deploy the Worker
         env:
-          FUNCTION_LANGUAGE: node
-          FUNCTION_LANGUAGE_VERSION: "22"
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: upload
-          # Prebuilt: Azure uploads these folders as they are and runs no build of its own.
-          # (The v1 action has no `skip_api_build` input. Leaving `api_build_command` unset skips the API build.)
-          skip_app_build: true
-          app_location: web/dist
-          api_location: .stage/api
-
-      - name: Close database firewall
-        if: always() && steps.firewall.outcome == 'success'
-        run: |
-          az sql server firewall-rule delete \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --server "${{ secrets.AZURE_SQL_SERVER }}" \
-            --name "release-${GITHUB_RUN_ID}"
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @life-tracker/api exec wrangler deploy --keep-vars
 
       - name: Summary
         if: success()
-        run: echo "**Result:** site and API deployed." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "**Result:** Worker deployed." >> "$GITHUB_STEP_SUMMARY"

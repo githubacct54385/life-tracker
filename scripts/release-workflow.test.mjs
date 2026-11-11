@@ -14,44 +14,42 @@ const indexOf = (predicate) => steps.findIndex(predicate);
 const text = (step) => JSON.stringify(step);
 
 describe("release workflow", () => {
-  it("[AC-FND-06.1] runs only when started by hand, and only from main", () => {
+  it("[AC-MIG-05.1][AC-FND-06.1] runs only when started by hand, and only from main", () => {
     expect(Object.keys(release.on)).toEqual(["workflow_dispatch"]);
     expect(steps[0].run).toContain("refs/heads/main");
   });
 
-  it("[AC-FND-06.1] no other workflow can deploy the site or API", () => {
+  it("[AC-MIG-05.1][AC-FND-06.1] no other workflow can deploy the Worker or read the deploy secrets", () => {
     for (const file of readdirSync(workflowsDir).filter((name) => name !== "release.yml")) {
       const body = read(file);
-      expect(body, file).not.toMatch(/static-web-apps-deploy|AZURE_STATIC_WEB_APPS_API_TOKEN|azure\/login/);
+      expect(body, file).not.toMatch(/CLOUDFLARE_API_TOKEN|DATABASE_ADMIN_URL/);
+      // A dry run (the size check) uploads nothing, so it is allowed.
+      expect(body.replace(/wrangler deploy --dry-run/g, ""), file).not.toMatch(/wrangler(-action)?\b.*\bdeploy|wrangler deploy/);
     }
   });
 
-  it("[AC-FND-06.2] the job uses the production environment, which holds the owner's approval gate", () => {
+  it("[AC-MIG-05.1][AC-FND-06.2] the job uses the production environment, which holds the owner's approval gate", () => {
     expect(job.environment).toBe("production");
   });
 
-  it("[AC-FND-06.2] production secrets are read only inside the job that uses the environment", () => {
+  it("[AC-MIG-05.1][AC-FND-06.2] production secrets are read only inside the job that uses the environment", () => {
     const { jobs, ...outsideJobs } = release;
     expect(JSON.stringify(outsideJobs)).not.toContain("secrets.");
     expect(Object.keys(jobs)).toEqual(["release"]);
     expect(JSON.stringify({ ...job, steps: undefined })).not.toContain("secrets.");
   });
 
-  it("[AC-FND-06.3] checks that CI passed on this exact commit before login, migration, or deploy", () => {
+  it("[AC-MIG-05.1][AC-FND-06.3] checks that CI passed on this exact commit before any secret is used", () => {
     const ci = indexOf((s) => s.run?.includes("check-runs") && s.run.includes("GITHUB_SHA"));
     expect(ci).toBeGreaterThan(-1);
     expect(steps[ci].run).toContain("hygiene test");
-    expect(steps[ci].run).toContain("check-runs");
-    for (const later of [
-      indexOf((s) => s.uses?.startsWith("azure/login")),
-      indexOf((s) => s.run?.includes("pnpm migrate")),
-      indexOf((s) => s.uses?.startsWith("Azure/static-web-apps-deploy")),
-    ]) {
+    steps.slice(0, ci + 1).forEach((step) => expect(text(step), step.name ?? step.uses).not.toContain("secrets."));
+    for (const later of [indexOf((s) => s.run?.includes("pnpm migrate")), indexOf((s) => s.run?.includes("wrangler deploy"))]) {
       expect(later).toBeGreaterThan(ci);
     }
   });
 
-  it("[AC-FND-06.3] waits while CI is still running, stops at once on a failure, and gives up after a limit", () => {
+  it("[AC-MIG-05.1][AC-FND-06.3] waits while CI is still running, stops at once on a failure, and gives up after a limit", () => {
     const ci = steps.find((s) => s.run?.includes("check-runs"));
     expect(ci["timeout-minutes"]).toBeGreaterThan(0);
     expect(ci.run).toContain("sleep");
@@ -60,40 +58,27 @@ describe("release workflow", () => {
     expect(ci["continue-on-error"]).toBeUndefined();
   });
 
-  it("[AC-FND-06.4] migrations run before the deploy, and neither step may fail silently", () => {
+  it("[AC-MIG-05.2][AC-FND-06.4] migrations run first with the admin login, and nothing before the deploy may fail silently", () => {
     const migrate = indexOf((s) => s.run?.includes("pnpm migrate"));
-    const deploy = indexOf((s) => s.uses?.startsWith("Azure/static-web-apps-deploy"));
+    const deploy = indexOf((s) => s.run?.includes("wrangler deploy"));
     expect(migrate).toBeGreaterThan(-1);
     expect(deploy).toBeGreaterThan(migrate);
+    expect(steps[migrate].env.DATABASE_ADMIN_URL).toBe("${{ secrets.DATABASE_ADMIN_URL }}");
     for (const step of steps.slice(0, deploy + 1)) {
       expect(step["continue-on-error"], step.name ?? step.uses).toBeUndefined();
     }
   });
 
-  it("[AC-FND-06.4] the database firewall rule is removed even when the release fails", () => {
-    const close = steps.find((s) => s.run?.includes("firewall-rule delete"));
-    expect(close.if).toContain("always()");
+  it("[AC-MIG-05.3] the deploy runs wrangler with a scoped token from the production secrets, and keeps the settings stored in Cloudflare", () => {
+    const deploy = steps.find((s) => s.run?.includes("wrangler deploy"));
+    expect(deploy.run).toContain("--keep-vars");
+    expect(deploy.run).not.toContain("--dry-run");
+    expect(deploy.env.CLOUDFLARE_API_TOKEN).toBe("${{ secrets.CLOUDFLARE_API_TOKEN }}");
+    expect(deploy.env.CLOUDFLARE_ACCOUNT_ID).toBe("${{ secrets.CLOUDFLARE_ACCOUNT_ID }}");
+    expect(deploy["continue-on-error"]).toBeUndefined();
   });
 
-  it("[AC-FND-06.4] the deploy uploads prebuilt folders and does not rebuild", () => {
-    const deploy = steps.find((s) => s.uses?.startsWith("Azure/static-web-apps-deploy"));
-    expect(deploy.with.skip_app_build).toBe(true);
-    expect(deploy.with.skip_api_build).toBeUndefined(); // not an input of the v1 action
-    expect(deploy.with.api_build_command).toBeUndefined();
-    expect(deploy.env.FUNCTION_LANGUAGE).toBe("node");
-    expect(deploy.env.FUNCTION_LANGUAGE_VERSION).toBe("22");
-    expect(deploy.with.app_location).toBe("web/dist");
-    expect(deploy.with.api_location).toBe(".stage/api");
-  });
-
-  it("[AC-FND-06.4] the API is staged and loaded under plain Node before anything is deployed", () => {
-    const verify = indexOf((s) => s.run?.includes("verify-api-bundle"));
-    const login = indexOf((s) => s.uses?.startsWith("azure/login"));
-    expect(verify).toBeGreaterThan(-1);
-    expect(verify).toBeLessThan(login);
-  });
-
-  it("[AC-FND-06.6] the run summary names the commit, and the migration step reports what it applied", () => {
+  it("[AC-MIG-05.4][AC-FND-06.6] the run summary names the commit, and the migration step reports what it applied", () => {
     const summaryStep = steps.find((s) => s.run?.includes("GITHUB_STEP_SUMMARY") && s.run.includes("GITHUB_SHA"));
     expect(summaryStep).toBeDefined();
     const migrateStep = steps.find((s) => s.run?.includes("pnpm migrate"));
@@ -103,11 +88,8 @@ describe("release workflow", () => {
     expect(cli).toContain("Migrations applied");
   });
 
-  it("[AC-FND-06.7] Azure login uses OIDC with no stored password", () => {
-    expect(release.permissions["id-token"]).toBe("write");
-    const login = steps.find((s) => s.uses?.startsWith("azure/login"));
-    expect(Object.keys(login.with).sort()).toEqual(["client-id", "subscription-id", "tenant-id"]);
-    expect(JSON.stringify(login.with)).not.toMatch(/client-secret|creds|password/i);
+  it("[AC-MIG-05.5] the workflow has no Azure steps, secrets, firewall rule or login", () => {
+    expect(readFileSync(path.join(workflowsDir, "release.yml"), "utf8")).not.toMatch(/azure|firewall|static-web-apps|id-token/i);
   });
 });
 
