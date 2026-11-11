@@ -4,10 +4,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app";
 import { createGiftService } from "./services/giftService";
 import { createOdometerService } from "./services/odometerService";
+import { createWorkoutService } from "./services/workoutService";
 import { createLogger } from "./telemetry/logger";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens";
 import { fakeGiftRepo } from "./testing/fakeGiftRepository";
 import { fakeRepo } from "./testing/fakeOdometerRepository";
+import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository";
 
 const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" };
 
@@ -22,6 +24,7 @@ describe("/api/gifts", () => {
       checkDatabase: async () => true,
       odometer: createOdometerService(fakeRepo()),
       gifts: createGiftService(fakeGiftRepo()),
+      workouts: createWorkoutService(fakeWorkoutRepo()),
       keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {

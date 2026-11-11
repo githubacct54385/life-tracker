@@ -1,4 +1,4 @@
-import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult } from "@life-tracker/shared";
+import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveWorkoutRequest, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -27,4 +27,12 @@ export interface Api {
   deleteGift(id: number): Promise<void>;
   /** Adds readings parsed from the owner's spreadsheet (MIL-04). Rows already stored are skipped, so importing twice adds nothing. */
   importReadings(rows: ImportRow[]): Promise<ImportMileageResult>;
+  /** Recent workouts, newest first (HLT-02). */
+  listWorkouts(): Promise<WorkoutListResponse>;
+  /** Saves a manual workout, dated when it is saved. There is no date to send. */
+  logWorkout(workout: SaveWorkoutRequest): Promise<WorkoutRecord>;
+  /** Changes a workout's type, duration and note. Its date and source stay. */
+  editWorkout(id: number, workout: SaveWorkoutRequest): Promise<WorkoutRecord>;
+  /** Removes a workout for good. */
+  deleteWorkout(id: number): Promise<void>;
 }

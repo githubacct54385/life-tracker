@@ -6,9 +6,11 @@ import { giftRepository } from "./repositories/giftRepository.js";
 import { clearGifts, connectFreshAppDatabase, disconnectAppDatabase } from "./repositories/giftTestDatabase.js";
 import { createGiftService } from "./services/giftService.js";
 import { createOdometerService } from "./services/odometerService.js";
+import { createWorkoutService } from "./services/workoutService.js";
 import { createLogger } from "./telemetry/logger.js";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens.js";
 import { fakeRepo } from "./testing/fakeOdometerRepository.js";
+import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
 
 const server = inject("postgres");
 const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" };
@@ -28,6 +30,7 @@ describe.skipIf(!server)("/api/gifts (real Postgres)", () => {
       checkDatabase: async () => true,
       odometer: createOdometerService(fakeRepo()),
       gifts: createGiftService(giftRepository),
+      workouts: createWorkoutService(fakeWorkoutRepo()),
       keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {

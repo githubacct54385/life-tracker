@@ -9,6 +9,8 @@ const SAVED = { status: "saved", reading: { id: 9, date: "2026-11-13", miles: 48
 const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" };
 const WARNING = { status: "needs_confirmation", warnings: [{ kind: "lower_than_previous", previous: { date: "2026-11-06", miles: 48_550 } }] };
 
+const WORKOUT = { id: 7, date: "2026-11-13", type: "Run", minutes: 30, note: null, source: "manual" };
+
 function fakeNetwork(sent: { method?: string; body?: string; guard?: string | null; url: string }[] = []): typeof fetch {
   return (async (input: string, init?: RequestInit) => {
     sent.push({ url: input, method: init?.method, body: init?.body as string | undefined, guard: new Headers(init?.headers).get("x-life-tracker") });
@@ -24,6 +26,10 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     if (input === "/api/gifts" && init?.method === "POST") return Response.json(GIFT, { status: 201 });
     if (input === "/api/gifts/7" && init?.method === "PUT") return Response.json(GIFT);
     if (input === "/api/gifts/7" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === "/api/workouts" && init?.method === "GET") return Response.json({ workouts: [WORKOUT] });
+    if (input === "/api/workouts" && init?.method === "POST") return Response.json(WORKOUT, { status: 201 });
+    if (input === "/api/workouts/7" && init?.method === "PUT") return Response.json(WORKOUT);
+    if (input === "/api/workouts/7" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/odometer/9" && init?.method === "DELETE") return new Response(null, { status: 204 });
     return Response.json({ error: "not found" }, { status: 404 });
   }) as typeof fetch;
@@ -34,7 +40,7 @@ const implementations: Array<[string, () => Api]> = [
   ["demoApi.ts", () => createDemoApi()],
 ];
 
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "importReadings"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -142,6 +148,53 @@ describe("demo import", () => {
     const rows = [{ date: "2026-01-02", miles: 1000 }, { date: "2026-01-09", miles: 1120 }];
     expect(await api.importReadings(rows)).toEqual({ imported: 2, duplicates: 0 });
     expect(await api.importReadings(rows)).toEqual({ imported: 0, duplicates: 2 });
+  });
+});
+
+describe.each(implementations)("[AC-HLT-02.1][AC-HLT-02.2][AC-HLT-02.3] workout contract: %s", (_name, make) => {
+  it("lists, saves, edits and deletes with the shared record shape, source included", async () => {
+    const api = make();
+    const list = await api.listWorkouts();
+    expect(list.workouts.length).toBeGreaterThan(0);
+    expect(["manual", "apple_watch"]).toContain(list.workouts[0]!.source);
+    expect(await api.logWorkout({ type: "Run", minutes: 30 })).toMatchObject({ type: "Run", minutes: 30, source: "manual" });
+    const first = list.workouts[0]!;
+    expect(await api.editWorkout(first.id, { type: "Walk", minutes: 20 })).toMatchObject({ source: expect.stringMatching(/manual|apple_watch/) });
+    await expect(api.deleteWorkout(first.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("demo workout behaviour", () => {
+  const friday = () => new Date(2026, 10, 13, 9, 0, 0);
+
+  it("[AC-HLT-02.1][AC-HLT-02.3] dates a new workout today, marks it manual, and sends no date", async () => {
+    const api = createDemoApi({ now: friday });
+    expect(await api.logWorkout({ type: "Swim", minutes: 25, note: "pool" })).toMatchObject({ date: "2026-11-13", source: "manual", note: "pool" });
+    expect((await api.listWorkouts()).workouts[0]).toMatchObject({ date: "2026-11-13", type: "Swim" });
+  });
+
+  it("[AC-HLT-02.2] edit keeps the date and source, delete removes the workout", async () => {
+    const api = createDemoApi({ now: friday });
+    const watch = (await api.listWorkouts()).workouts.find((w) => w.source === "apple_watch")!;
+    expect(await api.editWorkout(watch.id, { type: "Hike", minutes: 60 })).toMatchObject({ date: watch.date, source: "apple_watch", type: "Hike" });
+    await api.deleteWorkout(watch.id);
+    expect((await api.listWorkouts()).workouts.map((w) => w.id)).not.toContain(watch.id);
+  });
+});
+
+describe("client.ts workout requests", () => {
+  it("[AC-HLT-02.1][AC-HLT-02.2] sends only type, minutes and note with the custom header", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    const api = createClient(fakeNetwork(sent));
+    await api.logWorkout({ type: "Run", minutes: 30 });
+    await api.editWorkout(7, { type: "Run", minutes: 35, note: "hills" });
+    await api.deleteWorkout(7);
+    expect(sent.map((r) => [r.method, r.url, r.body])).toEqual([
+      ["POST", "/api/workouts", '{"type":"Run","minutes":30}'],
+      ["PUT", "/api/workouts/7", '{"type":"Run","minutes":35,"note":"hills"}'],
+      ["DELETE", "/api/workouts/7", undefined],
+    ]);
+    expect(sent.every((r) => r.guard === "1")).toBe(true);
   });
 });
 

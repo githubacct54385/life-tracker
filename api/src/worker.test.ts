@@ -1,5 +1,7 @@
 import { createGiftService } from "./services/giftService";
 import { createOdometerService } from "./services/odometerService";
+import { createWorkoutService } from "./services/workoutService";
+import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository";
 import { fakeRepo } from "./testing/fakeOdometerRepository";
 import { fakeGiftRepo } from "./testing/fakeGiftRepository";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -27,7 +29,7 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true, seed: A
       },
     },
   };
-  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo(seed)), gifts: createGiftService(fakeGiftRepo()), keys: issuer.keys });
+  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo(seed)), gifts: createGiftService(fakeGiftRepo()), workouts: createWorkoutService(fakeWorkoutRepo()), keys: issuer.keys });
   // Signed in as the owner unless a test says otherwise: the same header Cloudflare Access adds at the edge.
   const call = (path: string, init: RequestInit = {}, token: string | null = ownerToken) => {
     const headers = new Headers(init.headers);
