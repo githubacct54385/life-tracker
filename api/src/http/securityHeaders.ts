@@ -3,7 +3,7 @@
 /**
  * Content Security Policy for the built web app.
  * `style-src` allows inline styles because React writes style attributes and the plain HTML pages carry a <style> block.
- * SET-03 can tighten this once those are gone. Scripts stay strictly same-origin.
+ * Scripts stay strictly same-origin; inline styles are the only relaxation (SET-03 reviewed it and keeps it for that reason).
  */
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",

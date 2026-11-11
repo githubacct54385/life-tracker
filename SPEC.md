@@ -192,7 +192,7 @@ Three breakpoints: **mobile** (under 640 px, the default, bottom tabs), **tablet
 - HTTPS only, security headers, and a Content Security Policy.
 - Two database roles: a least-privilege one for the app, and an admin one used only for migrations (ADR-0003 idea, ADR-0021 platform). Encryption at rest and in transit. Neon's free plan has no IP allow-list, so credentials are long and random and live only in secrets.
 - No raw file storage. No health, odometer, or giving values in logs or telemetry.
-- Upload limits on file size and type.
+- Upload limits on file size and type, enforced in the Worker by `api/src/http/uploadLimits.ts` (SET-03). Plain http is redirected to https by `api/src/http/httpsOnly.ts`.
 - Backups through Neon point-in-time restore (window depends on the plan), plus a documented `pg_dump` export.
 - Usage alerts on Cloudflare and Neon, and free plans only so a limit stops service instead of billing.
 
