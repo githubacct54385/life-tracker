@@ -11,6 +11,7 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 - [DECISIONS.md](DECISIONS.md): why each technical choice was made (ADRs). Check here before changing a choice.
 - [TESTING.md](TESTING.md): the test pyramid, what goes at which level, CI jobs
 - [OBSERVABILITY.md](OBSERVABILITY.md): logging rules
+- [docs/cloudflare-release-setup.md](docs/cloudflare-release-setup.md): the Cloudflare token and secrets the Release workflow needs
 - [docs/azure-setup.md](docs/azure-setup.md): one-time Azure resource setup. **Obsolete after MIG-07**; the app is moving to Cloudflare + Neon (ADR-0021)
 - [docs/ac-ids.txt](docs/ac-ids.txt): the list of valid acceptance-criterion IDs. The stories and criteria text are in Linear.
 - [wireframes-suite.html](wireframes-suite.html): every MVP screen at mobile, tablet, and desktop widths
