@@ -43,3 +43,10 @@ describe("demo API", () => {
     }
   });
 });
+
+describe("client.ts failure path", () => {
+  it("[AC-DEM-01.5] throws ApiError when the API answers with an error status", async () => {
+    const denied = (async () => Response.json({ error: "unauthorized" }, { status: 401 })) as typeof fetch;
+    await expect(createClient(denied).health()).rejects.toMatchObject({ status: 401 });
+  });
+});
