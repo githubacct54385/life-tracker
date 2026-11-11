@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // No sign-in token is added anywhere in this file: demo mode must work as a signed-out visitor.
-// Cloudflare Access itself is not in front of the local server, so that part is the manual check AC-DEM-01.6.
+// Cloudflare Access is not in front of the local server. The demo is owner-only behind Access in production (a public bypass would need a custom domain, which the owner chose not to buy).
 
 const widths = [
   { name: "mobile", width: 360, height: 740 },
