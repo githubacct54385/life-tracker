@@ -316,3 +316,15 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 - Rewrite needed for `ownerGuard`, handler wiring, the SQL repositories, the Release workflow, the logger sink, and the setup docs. Until MIG-02 to MIG-07 land, the code in the repo still targets Azure.
 
 **Order of work.** MIG-01 (docs and scope) then MIG-02 (database), MIG-03 (Worker API), MIG-04 (Access), MIG-05 (release), MIG-06 (logging), MIG-07 (decommission Azure). Resume FND-04, FND-05, SET-03, and Mileage work after MIG-05 passes.
+
+## ADR-0022: Spreadsheet reader for the mileage import
+
+**Decision.** `web/src/importers/` reads the owner's mileage history in the browser (MIL-04). CSV goes through a small in-house reader (standard quoting, byte-order mark, Windows line endings). `.xlsx` goes through the `read-excel-file` package (MIT, browser build). The sheet's rows are turned into readings by a pure function (`mileageGrid.ts`) that finds the header row by its column names, reads Date (ISO, US month/day/year, or a date cell) and Start Miles, ignores the sheet's Miles Driven except to compare, and reports a bad row by its row number while the rest still import. Limits follow ADR-0016: 5 MB, 5,000 rows, and 50 MB uncompressed (checked from the zip's central directory before parsing). `write-excel-file` is a dev dependency used only to build `.xlsx` test fixtures in code (no spreadsheet is ever committed).
+
+**Why.** Parsing in the browser keeps the file off the server (hard rule 5) and off the Worker's CPU limit (ADR-0009, ADR-0021). `read-excel-file` is small, maintained, MIT-licensed and reads date cells as dates. SheetJS `xlsx` on npm is no longer published there. Writing our own `.xlsx` reader would mean hand-parsing zip, shared strings and date styles for no gain.
+
+**Duplicates.** A reading is a duplicate when a stored reading has the same date and the same miles. The server skips duplicates in one statement and also within one request, so importing the same file twice adds nothing and the unique-index change is not needed (an old build that logs two equal readings on one day keeps working).
+
+**Miles Driven.** A row's Miles Driven is read as the miles driven in the week that starts on that row (the next Start Miles minus this one). This is the assumption that decides which rows are flagged; confirm it against the real sheet.
+
+**Note.** ADR-0016 (bank layout) is withdrawn, so no finance import will reuse this reader here.

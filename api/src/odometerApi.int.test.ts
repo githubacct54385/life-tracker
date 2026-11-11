@@ -99,4 +99,36 @@ describe.skipIf(!server)("/api/odometer (real Postgres)", () => {
     await call("GET", "/api/odometer");
     expect(logged.join("\n")).not.toContain("123456");
   });
+
+  it("[AC-MIL-04.1][AC-MIL-04.4] imports rows with their own dates, and importing the same rows again adds nothing", async () => {
+    const rows = [
+      { date: "2026-01-02", miles: 1000 },
+      { date: "2026-01-09", miles: 1120 },
+    ];
+    const first = await call("POST", "/api/odometer/import", { rows });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ imported: 2, duplicates: 0 });
+    expect(await (await call("POST", "/api/odometer/import", { rows })).json()).toEqual({ imported: 0, duplicates: 2 });
+    expect((await (await call("GET", "/api/odometer")).json()).readings).toHaveLength(2);
+  });
+
+  it("[AC-MIL-04.1] validates every row the browser sends and refuses the whole request if one is bad", async () => {
+    for (const rows of [[{ date: "2026-02-30", miles: 1 }], [{ date: "2026-01-02", miles: -5 }], [{ date: "2026-01-02", miles: 1, milesDriven: 3 }], []]) {
+      expect((await call("POST", "/api/odometer/import", { rows })).status).toBe(400);
+    }
+    expect((await call("POST", "/api/odometer/import", { rows: [{ date: "2026-01-02", miles: 1 }, { date: "bad", miles: 1 }] })).status).toBe(400);
+    expect((await (await call("GET", "/api/odometer")).json()).readings).toEqual([]);
+  });
+
+  it("[AC-MIL-04.5] accepts only JSON rows, never a file", async () => {
+    const res = await call("POST", "/api/odometer/import", "PK\u0003\u0004 pretend spreadsheet bytes");
+    expect(res.status).toBe(400);
+    expect((await (await call("GET", "/api/odometer")).json()).readings).toEqual([]);
+  });
+
+  it("[AC-MIL-04.1] needs the owner and the request header like every other write", async () => {
+    const rows = [{ date: "2026-01-02", miles: 1000 }];
+    expect((await call("POST", "/api/odometer/import", { rows }, null)).status).toBe(401);
+    expect((await call("POST", "/api/odometer/import", { rows }, undefined, false)).status).toBe(403);
+  });
 });

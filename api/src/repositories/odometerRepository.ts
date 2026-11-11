@@ -27,6 +27,8 @@ export interface OdometerRepository {
   updateMiles(id: number, miles: number): Promise<StoredReading | undefined>;
   /** True when a reading was removed. */
   remove(id: number): Promise<boolean>;
+  /** Adds the rows that are not already stored (same date and same miles) in one statement. Returns how many were added. */
+  insertMissing(rows: ReadonlyArray<{ date: string; miles: number }>): Promise<number>;
 }
 
 export const odometerRepository: OdometerRepository = {
@@ -54,5 +56,16 @@ export const odometerRepository: OdometerRepository = {
   async remove(id) {
     const result = await getPool().query("DELETE FROM odometer_readings WHERE id = $1", [id]);
     return (result.rowCount ?? 0) > 0;
+  },
+
+  async insertMissing(rows) {
+    if (rows.length === 0) return 0;
+    const result = await getPool().query(
+      `INSERT INTO odometer_readings (reading_date, miles)
+       SELECT t.d, t.m FROM unnest($1::date[], $2::integer[]) AS t(d, m)
+       WHERE NOT EXISTS (SELECT 1 FROM odometer_readings o WHERE o.reading_date = t.d AND o.miles = t.m)`,
+      [rows.map((row) => row.date), rows.map((row) => row.miles)],
+    );
+    return result.rowCount ?? 0;
   },
 };

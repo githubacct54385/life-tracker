@@ -122,3 +122,32 @@ describe("properties", () => {
     );
   });
 });
+
+describe("importReadings", () => {
+  const rows = [
+    { date: "2026-01-02", miles: 1000 },
+    { date: "2026-01-09", miles: 1120 },
+  ];
+
+  it("[AC-MIL-04.1] saves the rows with the dates the file gave them", async () => {
+    const repo = fakeRepo();
+    const result = await createOdometerService(repo).importReadings(rows);
+    expect(result).toEqual({ imported: 2, duplicates: 0 });
+    expect(repo.rows.map((r) => [r.date, r.miles])).toEqual([["2026-01-02", 1000], ["2026-01-09", 1120]]);
+  });
+
+  it("[AC-MIL-04.4] importing the same rows again creates no duplicates", async () => {
+    const repo = fakeRepo();
+    const service = createOdometerService(repo);
+    await service.importReadings(rows);
+    expect(await service.importReadings(rows)).toEqual({ imported: 0, duplicates: 2 });
+    expect(repo.rows).toHaveLength(2);
+  });
+
+  it("[AC-MIL-04.4] a row repeated inside one file, or already logged by hand, is added once", async () => {
+    const repo = fakeRepo([{ date: "2026-01-09", miles: 1120 }]);
+    const result = await createOdometerService(repo).importReadings([...rows, rows[0]!]);
+    expect(result).toEqual({ imported: 1, duplicates: 2 });
+    expect(repo.rows).toHaveLength(2);
+  });
+});

@@ -4,6 +4,7 @@ import {
   giftSchema,
   groupGiftsByMonth,
   healthResponseSchema,
+  importMileageResultSchema,
   readingListResponseSchema,
   saveReadingResultSchema,
   type GiftRecord,
@@ -129,6 +130,13 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteGift(id) {
       gifts = gifts.filter((g) => g.id !== id);
+    },
+
+    async importReadings(rows) {
+      const unique = [...new Map(rows.map((row) => [`${row.date}|${row.miles}`, row])).values()];
+      const fresh = unique.filter((row) => !readings.some((r) => r.date === row.date && r.miles === row.miles));
+      for (const row of fresh) readings = [...readings, { id: nextId++, ...row }];
+      return importMileageResultSchema.parse({ imported: fresh.length, duplicates: rows.length - fresh.length });
     },
   };
 }
