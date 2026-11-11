@@ -4,6 +4,7 @@ import { AppShell } from "./nav/AppShell";
 import { useNavKind } from "./nav/useNavKind";
 import { MorePage } from "./pages/MorePage";
 import { Page } from "./pages/Page";
+import { SettingsPage } from "./settings/SettingsPage";
 
 // More exists only where Settings is hidden inside it (phone and tablet). On desktop Settings is in the sidebar.
 function More() {
@@ -19,7 +20,7 @@ export function App() {
         <Route path="health" element={<Page title="Health" />} />
         <Route path="car" element={<Page title="Car" />} />
         <Route path="more" element={<More />} />
-        <Route path="settings" element={<Page title="Settings" />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

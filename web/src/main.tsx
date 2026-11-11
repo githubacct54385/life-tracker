@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { DemoApp, isDemoPath } from "./demo/DemoApp";
+import { applyTheme, loadPreferences } from "./settings/preferences";
 import "./index.css";
+
+applyTheme(loadPreferences().theme);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
