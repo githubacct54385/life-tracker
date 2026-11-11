@@ -6,6 +6,7 @@ import type { Api } from "./types";
 // One suite, two implementations (ADR-0014). `client.ts` runs against a fake network edge that answers the way
 // the Worker does; `demoApi.ts` runs as is. Add each new method to `contract` so the two cannot drift.
 const SAVED = { status: "saved", reading: { id: 9, date: "2026-11-13", miles: 48_402 } };
+const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" };
 const WARNING = { status: "needs_confirmation", warnings: [{ kind: "lower_than_previous", previous: { date: "2026-11-06", miles: 48_550 } }] };
 
 function fakeNetwork(sent: { method?: string; body?: string; guard?: string | null; url: string }[] = []): typeof fetch {
@@ -18,6 +19,10 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
       return JSON.parse(init.body as string).miles === 100 ? Response.json(WARNING, { status: 409 }) : Response.json(SAVED, { status: 201 });
     }
     if (input === "/api/odometer/9" && init?.method === "PUT") return Response.json(SAVED);
+    if (input === "/api/gifts" && init?.method === "GET") return Response.json({ gifts: [GIFT] });
+    if (input === "/api/gifts" && init?.method === "POST") return Response.json(GIFT, { status: 201 });
+    if (input === "/api/gifts/7" && init?.method === "PUT") return Response.json(GIFT);
+    if (input === "/api/gifts/7" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/odometer/9" && init?.method === "DELETE") return new Response(null, { status: 204 });
     return Response.json({ error: "not found" }, { status: 404 });
   }) as typeof fetch;
@@ -28,7 +33,7 @@ const implementations: Array<[string, () => Api]> = [
   ["demoApi.ts", () => createDemoApi()],
 ];
 
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -69,6 +74,57 @@ describe.each(implementations)("[AC-MIL-01.1][AC-MIL-01.4] odometer contract: %s
       expect((await api.listReadings()).readings).toHaveLength(before.length);
       expect((await api.logReading(100, true)).status).toBe("saved");
     }
+  });
+});
+
+describe.each(implementations)("[AC-GIV-01.1][AC-GIV-01.4] gift contract: %s", (_name, make) => {
+  const input = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" } as const;
+
+  it("lists, saves, edits and deletes gifts with the shared shapes", async () => {
+    const api = make();
+    const { gifts } = await api.listGifts();
+    expect(gifts.length).toBeGreaterThan(0);
+    expect(await api.logGift(input)).toMatchObject({ id: expect.any(Number), ...input });
+    expect(await api.editGift(gifts[0]!.id, input)).toMatchObject(input);
+    await expect(api.deleteGift(gifts[0]!.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("demo gift behaviour", () => {
+  const input = { dateGiven: "2026-12-03", forMonth: "2026-11", cents: 2_500, method: "card" } as const;
+
+  it("[AC-GIV-01.2][AC-GIV-01.3] keeps the month it is for apart from the date given, and several gifts can share a month", async () => {
+    const api = createDemoApi();
+    const before = (await api.listGifts()).gifts.filter((g) => g.forMonth === "2026-11").length;
+    const saved = await api.logGift(input);
+    expect(saved).toMatchObject({ dateGiven: "2026-12-03", forMonth: "2026-11" });
+    expect((await api.listGifts()).gifts.filter((g) => g.forMonth === "2026-11")).toHaveLength(before + 1);
+  });
+
+  it("[AC-GIV-01.4] edit replaces the gift and delete removes it", async () => {
+    const api = createDemoApi();
+    const [first] = (await api.listGifts()).gifts;
+    expect(await api.editGift(first!.id, input)).toEqual({ id: first!.id, ...input });
+    await api.deleteGift(first!.id);
+    expect((await api.listGifts()).gifts.map((g) => g.id)).not.toContain(first!.id);
+    await expect(api.editGift(first!.id, input)).rejects.toThrow();
+  });
+});
+
+describe("client.ts gift requests", () => {
+  it("[AC-GIV-01.1][AC-GIV-01.4] sends the gift as JSON with the custom header on every write", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    const api = createClient(fakeNetwork(sent));
+    const input = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" } as const;
+    await api.logGift(input);
+    await api.editGift(7, input);
+    await api.deleteGift(7);
+    expect(sent.map((r) => [r.method, r.url, r.body])).toEqual([
+      ["POST", "/api/gifts", JSON.stringify(input)],
+      ["PUT", "/api/gifts/7", JSON.stringify(input)],
+      ["DELETE", "/api/gifts/7", undefined],
+    ]);
+    expect(sent.every((r) => r.guard === "1")).toBe(true);
   });
 });
 

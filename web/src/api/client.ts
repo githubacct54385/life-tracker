@@ -1,4 +1,6 @@
 import {
+  giftListResponseSchema,
+  giftSchema,
   healthResponseSchema,
   readingListResponseSchema,
   REQUEST_GUARD_HEADER,
@@ -17,6 +19,7 @@ export class ApiError extends Error {
 }
 
 /** Neon Free suspends an idle database; the first request after that can fail with 503 while it wakes (ADR-0021). */
+const JSON_HEADERS = { "content-type": "application/json" };
 const WAKE_STATUS = 503;
 const DEFAULT_RETRY_DELAY_MS = 3000;
 
@@ -75,6 +78,18 @@ export function createClient(
     editReading: (id, miles, confirmed) => save(`/api/odometer/${id}`, "PUT", miles, confirmed),
     async deleteReading(id) {
       await send(`/api/odometer/${id}`, { method: "DELETE" });
+    },
+    async listGifts() {
+      return giftListResponseSchema.parse(await request("/api/gifts"));
+    },
+    async logGift(gift) {
+      return giftSchema.parse(await (await send("/api/gifts", { method: "POST", body: JSON.stringify(gift), headers: JSON_HEADERS })).json());
+    },
+    async editGift(id, gift) {
+      return giftSchema.parse(await (await send(`/api/gifts/${id}`, { method: "PUT", body: JSON.stringify(gift), headers: JSON_HEADERS })).json());
+    },
+    async deleteGift(id) {
+      await send(`/api/gifts/${id}`, { method: "DELETE" });
     },
   };
 }
