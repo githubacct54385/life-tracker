@@ -2,7 +2,7 @@
 
 A private, single-user web app (installable PWA) for health, mileage, and giving. Finance is not part of this app. The code is public. The data and the login are private. A demo with fake data runs entirely in the browser.
 
-**Status:** planning and foundation. Moving hosting from Azure to Cloudflare Workers + Neon Postgres (ADR-0021). Stories are tracked in Linear.
+**Status:** planning and foundation. Hosted on Cloudflare Workers + Neon Postgres (ADR-0021). Stories are tracked in Linear.
 
 ## Read first
 
@@ -13,7 +13,7 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 | [DECISIONS.md](DECISIONS.md) | Why each technical choice was made |
 | [TESTING.md](TESTING.md) | The test pyramid and CI |
 | [OBSERVABILITY.md](OBSERVABILITY.md) | Logging rules |
-| [docs/azure-setup.md](docs/azure-setup.md) | One-time Azure setup (obsolete once the migration finishes) |
+| [docs/setup.md](docs/setup.md) | Set up Neon, Cloudflare and GitHub from scratch |
 | [docs/ac-ids.txt](docs/ac-ids.txt) | Valid acceptance-criterion IDs (the stories and criteria text are in Linear) |
 | [AGENTS.md](AGENTS.md) | Working rules for contributors and AI coding agents |
 

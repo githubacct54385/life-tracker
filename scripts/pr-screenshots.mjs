@@ -2,15 +2,17 @@
 // Takes before/after screenshots of changed screens at 360, 768, and 1280 px, uploads them as release
 // assets, and fills the Screenshots table in the pull request. No manual steps (ADR-0019, AGENTS.md).
 //
-//   pnpm pr-screenshots --pr 10 --screen "Access denied=/access-denied.html" [--screen "Name=/path" ...]
+//   pnpm pr-screenshots --pr 10 --screen "Home=/" [--screen "Name=/path" ...]
 //   Options: --no-before  (skip building main; every screen is shown as new)
 //            --dry-run    (write images to a local folder only; no upload, no pull request edit)
 //
-// Only synthetic data may ever be on screen: the app is served in its built form with a synthetic
-// owner identity, and the repo is public so the uploaded images are public too.
+// Only synthetic data may ever be on screen: the app is served by `wrangler dev` with a synthetic owner
+// token signed by a throwaway key (the same approach as the end-to-end tests), and the repo is public so
+// the uploaded images are public too.
 
 import { execFileSync, spawn } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -35,9 +37,33 @@ function parseArgs(argv) {
   return out;
 }
 
-const OWNER_COOKIE = Buffer.from(
-  JSON.stringify({ identityProvider: "github", userId: "synthetic-owner-id-0001", userDetails: "synthetic-owner", userRoles: ["anonymous", "authenticated", "owner"], claims: [] }),
-).toString("base64");
+const KEY_PORT = 9098;
+const AUDIENCE = "screenshots-synthetic-aud";
+const OWNER_EMAIL = "owner@example.test";
+const ACCESS_HEADER = "cf-access-jwt-assertion";
+
+/** A throwaway key pair and a tiny server that publishes the public half where the Worker looks for Access's keys. */
+async function startKeyServer(jose) {
+  const { publicKey, privateKey } = await jose.generateKeyPair("RS256");
+  const kid = "screenshots-key";
+  const publicJwk = { ...(await jose.exportJWK(publicKey)), kid, alg: "RS256", use: "sig" };
+  const server = createServer((req, res) => {
+    if (req.url === "/cdn-cgi/access/certs") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ keys: [publicJwk] }));
+    } else res.writeHead(404).end();
+  });
+  await new Promise((resolve) => server.listen(KEY_PORT, "127.0.0.1", resolve));
+  const sign = () =>
+    new jose.SignJWT({ email: OWNER_EMAIL })
+      .setProtectedHeader({ alg: "RS256", kid })
+      .setIssuer(`http://localhost:${KEY_PORT}`)
+      .setAudience(AUDIENCE)
+      .setIssuedAt()
+      .setExpirationTime(Math.floor(Date.now() / 1000) + 900)
+      .sign(privateKey);
+  return { sign, close: () => server.close() };
+}
 
 async function waitFor(url, ms = 60_000) {
   const stop = Date.now() + ms;
@@ -52,13 +78,16 @@ async function waitFor(url, ms = 60_000) {
   throw new Error(`Server did not start: ${url}`);
 }
 
-/** Serves a built site with the Static Web Apps CLI, runs `fn(baseUrl)`, then stops the server. */
-async function withSite(distDir, port, fn) {
-  const swa = path.join(root, "web/node_modules/.bin/swa");
-  const child = spawn(swa, ["start", distDir, "--port", String(port)], { cwd: path.join(root, "web"), detached: true, stdio: "ignore" });
+/** Serves a checked-out copy of the app with `wrangler dev`, runs `fn(baseUrl)`, then stops the server. */
+async function withSite(treeRoot, port, fn) {
+  const args = [
+    "--filter", "@life-tracker/api", "exec", "wrangler", "dev", "--port", String(port),
+    "--var", `ACCESS_TEAM_DOMAIN:localhost:${KEY_PORT}`, "--var", `ACCESS_AUD:${AUDIENCE}`, "--var", `OWNER_EMAIL:${OWNER_EMAIL}`,
+  ];
+  const child = spawn("pnpm", args, { cwd: treeRoot, detached: true, stdio: "ignore" });
   try {
-    await waitFor(`http://localhost:${port}/access-denied.html`).catch(() => waitFor(`http://localhost:${port}/`));
-    return await fn(`http://localhost:${port}`);
+    await waitFor(`http://127.0.0.1:${port}/`);
+    return await fn(`http://127.0.0.1:${port}`);
   } finally {
     try {
       process.kill(-child.pid);
@@ -68,7 +97,7 @@ async function withSite(distDir, port, fn) {
   }
 }
 
-async function shoot(chromium, baseUrl, screens, outDir, pr, phase) {
+async function shoot(chromium, baseUrl, token, screens, outDir, pr, phase) {
   const browser = await chromium.launch();
   const found = {};
   try {
@@ -76,12 +105,12 @@ async function shoot(chromium, baseUrl, screens, outDir, pr, phase) {
       found[screen.name] = {};
       for (const vp of VIEWPORTS) {
         const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
-        await context.addCookies([{ name: "StaticWebAppsAuthCookie", value: OWNER_COOKIE, url: baseUrl }]);
+        await context.setExtraHTTPHeaders({ [ACCESS_HEADER]: token });
         const page = await context.newPage();
         const response = await page.goto(baseUrl + screen.path, { waitUntil: "commit" }).catch(() => null);
         await page.waitForLoadState("domcontentloaded").catch(() => {});
-        // A missing page or a bounce to sign-in means the screen is not there in this build.
-        const missing = !response || response.status() >= 400 || page.url().includes("/.auth/login");
+        // A missing page or a refusal means the screen is not there in this build.
+        const missing = !response || response.status() >= 400;
         if (!missing) {
           const file = assetName(pr, screen.name, vp.key, phase);
           await page.screenshot({ path: path.join(outDir, file) });
@@ -105,12 +134,11 @@ function buildBefore() {
   try {
     execFileSync("pnpm", ["install", "--frozen-lockfile"], { cwd: tree, stdio: "ignore" });
     execFileSync("pnpm", ["--filter", "web", "build"], { cwd: tree, stdio: "ignore" });
-    const dist = path.join(work, "dist");
-    cpSync(path.join(tree, "web/dist"), dist, { recursive: true });
-    return { dist, work };
-  } finally {
+  } catch (error) {
     run("git", ["worktree", "remove", "--force", tree]);
+    throw error;
   }
+  return { tree, work };
 }
 
 async function main() {
@@ -121,18 +149,25 @@ async function main() {
 
   console.log("Building this branch for the after screenshots...");
   run("pnpm", ["--filter", "web", "build"]);
-  const afterDist = path.join(outDir, "after-dist");
-  cpSync(path.join(root, "web/dist"), afterDist, { recursive: true });
 
-  let beforeDist;
-  if (args.before) {
-    const built = buildBefore();
-    beforeDist = built.dist;
-    cleanup.push(built.work);
+  const jose = createRequire(path.join(root, "web/package.json"))("jose");
+  const keys = await startKeyServer(jose);
+  const token = await keys.sign();
+
+  let before = {};
+  let after;
+  let built;
+  try {
+    if (args.before) {
+      built = buildBefore();
+      cleanup.push(built.work);
+      before = await withSite(built.tree, 4281, (url) => shoot(chromium, url, token, args.screens, outDir, args.pr, "before"));
+    }
+    after = await withSite(root, 4282, (url) => shoot(chromium, url, token, args.screens, outDir, args.pr, "after"));
+  } finally {
+    keys.close();
+    if (built) run("git", ["worktree", "remove", "--force", built.tree]);
   }
-
-  const before = beforeDist ? await withSite(beforeDist, 4281, (url) => shoot(chromium, url, args.screens, outDir, args.pr, "before")) : {};
-  const after = await withSite(afterDist, 4282, (url) => shoot(chromium, url, args.screens, outDir, args.pr, "after"));
 
   const missingAfter = args.screens.filter((s) => VIEWPORTS.some((v) => !after[s.name]?.[v.key]));
   if (missingAfter.length) throw new Error(`These screens did not load in this branch: ${missingAfter.map((s) => `${s.name} (${s.path})`).join(", ")}`);
@@ -140,7 +175,7 @@ async function main() {
   if (args.dryRun) {
     const keep = path.join(root, "web/test-results/pr-screenshots");
     mkdirSync(keep, { recursive: true });
-    cpSync(outDir, keep, { recursive: true, filter: (src) => !src.includes("-dist") });
+    cpSync(outDir, keep, { recursive: true });
     console.log(`Dry run: images are in ${keep}. Nothing uploaded and the pull request was not changed.`);
     return;
   }

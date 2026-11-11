@@ -235,7 +235,7 @@ Answered (see DECISIONS.md): navigation, wireframes, and accent color (forest gr
 
 ## 12. Suggested phases
 
-0. **Platform migration:** move from Azure to Cloudflare Workers + Access and Neon Postgres (ADR-0021).
+0. **Platform migration (done):** moved from Azure to Cloudflare Workers + Access and Neon Postgres (ADR-0021).
 1. **Foundation:** hosting, login lock, database and migrations, PWA shell, CI and protected `main`, manual release pipeline, logging, security headers, demo skeleton.
 2. **Mileage MVP:** odometer entry, Excel import, weekly stats and graphs, cost and backup safeguards. This is a small module and a good first end-to-end test of the whole stack, including the first real release.
 3. **(Removed) Finance MVP:** out of scope, moved to a separate private repository (ADR-0021).

@@ -113,8 +113,8 @@ cat <<DONE
 Done: https://github.com/${REPO}
 
 Still to do by hand (see DECISIONS.md ADR-0003 and ADR-0004):
-  - Create the Azure resources. When creating the Static Web App, choose deployment source "Other".
-    Do NOT let Azure add its own GitHub workflow: it deploys on every push and would bypass the release gate.
+  - Follow docs/setup.md for Neon and Cloudflare. Only the Release workflow may deploy: do not connect Cloudflare's own
+    Git integration to this repository, because it would deploy on every push and bypass the release gate.
   - Add the secrets listed at the top of .github/workflows/release.yml to the 'production' environment
     (Settings > Environments > production). Never put them in the repo.
   - Confirm in Settings > Branches that main shows: require pull request, require status checks, no bypass.

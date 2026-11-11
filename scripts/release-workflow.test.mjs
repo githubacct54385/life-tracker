@@ -92,12 +92,3 @@ describe("release workflow", () => {
     expect(readFileSync(path.join(workflowsDir, "release.yml"), "utf8")).not.toMatch(/azure|firewall|static-web-apps|id-token/i);
   });
 });
-
-describe("CI workflow", () => {
-  it("[AC-FND-06.4] CI loads the deployable API under plain Node, so a broken package fails the pull request", () => {
-    const ci = parse(read("ci.yml"));
-    const names = ci.jobs.test.steps.map((s) => s.run ?? "").join("\n");
-    expect(names).toContain("scripts/stage-api.mjs");
-    expect(names).toContain("scripts/verify-api-bundle.mjs");
-  });
-});
