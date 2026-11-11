@@ -4,7 +4,7 @@ All diagrams are [Mermaid](https://mermaid.js.org/) code blocks, so they render 
 
 **Stack.** Decided in [DECISIONS.md](DECISIONS.md) (ADR-0021): a React app (Vite, PWA) served by a Cloudflare Worker that also runs the API (TypeScript, Hono), Cloudflare Access for the owner-only login, and Neon Postgres. A `shared/` package holds the zod schemas used by both sides. File names below are proposals. If a name changes, the structure still holds.
 
-> **Migration in progress.** The data layer is on Postgres (MIG-02). The API runtime is a Cloudflare Worker (Hono) as of MIG-03: `api/src/worker.ts` routes `/api/*` to `api/src/app.ts` and everything else to the static assets. Login is Cloudflare Access with the owner re-checked in the API as of MIG-04. The release workflow deploys to Cloudflare (MIG-05) and logs go to Workers Logs (MIG-06). Only the Azure cleanup (MIG-07) remains. These diagrams show the target. Finance and transaction tracking are **not part of this app** (ADR-0021); they live in a separate private repository.
+> **Migration complete (ADR-0021).** The data layer is on Postgres (MIG-02). The API runtime is a Cloudflare Worker (Hono) as of MIG-03: `api/src/worker.ts` routes `/api/*` to `api/src/app.ts` and everything else to the static assets. Login is Cloudflare Access with the owner re-checked in the API as of MIG-04. The release workflow deploys to Cloudflare (MIG-05) and logs go to Workers Logs (MIG-06). Azure is retired (MIG-07). These diagrams match the running system. Finance and transaction tracking are **not part of this app** (ADR-0021); they live in a separate private repository.
 
 ## 1. Deployment overview
 
