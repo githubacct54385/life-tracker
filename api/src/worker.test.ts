@@ -33,6 +33,17 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true) {
   return { call, lines, assetCalls, env, worker };
 }
 
+describe("https only", () => {
+  it("[AC-SET-03.1] redirects http to https with security headers, before the API or assets run", async () => {
+    const { worker, env, assetCalls } = setup();
+    const res = await worker.fetch(new Request("http://app.example.test/api/health"), env);
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("https://app.example.test/api/health");
+    expect(res.headers.get("strict-transport-security")).toContain("max-age=");
+    expect(assetCalls).toEqual([]);
+  });
+});
+
 describe("routing", () => {
   it("[AC-MIG-03.2] sends /api/* to the API and everything else to the static assets", async () => {
     const { call, assetCalls } = setup();

@@ -2,6 +2,7 @@
 // `/api/*` goes to the Hono app. Everything else is a static file from the ASSETS binding (single-page-app fallback).
 import { createApp, type AppDeps } from "./app.js";
 import type { AccessSettings } from "./auth/accessConfig.js";
+import { httpsRedirect } from "./http/httpsOnly.js";
 import { withSecurityHeaders } from "./http/securityHeaders.js";
 import { databaseReachable } from "./services/healthService.js";
 import { logger } from "./telemetry/logger.js";
@@ -19,6 +20,8 @@ export function createWorker(deps: AppDeps) {
   const app = createApp(deps);
   return {
     async fetch(request: Request, env: Env): Promise<Response> {
+      const redirect = httpsRedirect(request);
+      if (redirect) return withSecurityHeaders(redirect, { api: false });
       const api = isApiPath(new URL(request.url).pathname);
       const response = api ? await app.fetch(request, env) : await env.ASSETS.fetch(request);
       return withSecurityHeaders(response, { api });
