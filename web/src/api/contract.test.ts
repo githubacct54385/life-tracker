@@ -50,3 +50,24 @@ describe("client.ts failure path", () => {
     await expect(createClient(denied).health()).rejects.toMatchObject({ status: 401 });
   });
 });
+
+describe("client.ts database wake-up", () => {
+  const noWait = { retryDelayMs: 0 };
+
+  it("[AC-FND-05.4] retries a 503 once and shows the waking state meanwhile", async () => {
+    const states: boolean[] = [];
+    const calls = vi.fn()
+      .mockResolvedValueOnce(Response.json({ error: "waking" }, { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ status: "ok" }));
+    const api = createClient(calls as unknown as typeof fetch, { ...noWait, onWaking: (w) => states.push(w) });
+    await expect(api.health()).resolves.toEqual({ status: "ok" });
+    expect(calls).toHaveBeenCalledTimes(2);
+    expect(states).toEqual([true, false]);
+  });
+
+  it("[AC-FND-05.4] gives up after one retry", async () => {
+    const calls = vi.fn(async () => Response.json({ error: "down" }, { status: 503 }));
+    await expect(createClient(calls as unknown as typeof fetch, { ...noWait, onWaking: () => {} }).health()).rejects.toMatchObject({ status: 503 });
+    expect(calls).toHaveBeenCalledTimes(2);
+  });
+});

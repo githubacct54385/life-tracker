@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { DemoApp, isDemoPath } from "./demo/DemoApp";
+import { registerServiceWorker } from "./pwa/registerServiceWorker";
 import { applyTheme, loadPreferences } from "./settings/preferences";
 import "./index.css";
 
@@ -19,3 +20,5 @@ createRoot(document.getElementById("root")!).render(
     )}
   </StrictMode>,
 );
+
+registerServiceWorker();

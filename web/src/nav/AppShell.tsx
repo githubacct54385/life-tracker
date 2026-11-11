@@ -1,6 +1,9 @@
 import { Link, Outlet, useLocation } from "react-router";
 import { APP_NAME } from "@life-tracker/shared";
 import { COMPACT_NAV, WIDE_NAV, isActive, type Destination, type NavKind } from "./destinations";
+import { useWaking } from "../api/wakeStatus";
+import { OfflineNotice } from "../pwa/OfflineNotice";
+import { useOnline } from "../pwa/useOnline";
 import { useNavKind } from "./useNavKind";
 
 function Icon({ active }: { active: boolean }) {
@@ -51,11 +54,18 @@ function Nav({ kind, items }: { kind: NavKind; items: Destination[] }) {
 
 export function AppShell() {
   const kind = useNavKind();
+  const online = useOnline();
+  const waking = useWaking();
   return (
     <div className={`min-h-dvh bg-bg text-ink ${kind === "tabs" ? "" : "flex"}`}>
       <Nav kind={kind} items={kind === "sidebar" ? WIDE_NAV : COMPACT_NAV} />
       <main className={`min-w-0 flex-1 p-5 ${kind === "tabs" ? "pb-24" : ""}`}>
-        <Outlet />
+        {waking && online && (
+          <p role="status" className="mx-auto mb-4 max-w-3xl rounded-xl bg-g100 px-4 py-3 text-sm text-g900">
+            Waking up the database. This can take a few seconds…
+          </p>
+        )}
+        {online ? <Outlet /> : <OfflineNotice />}
       </main>
     </div>
   );
