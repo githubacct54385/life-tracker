@@ -12,7 +12,7 @@ Nothing in this guide goes into the repository. The values are Worker settings. 
 1. In GitHub: Settings, Developer settings, OAuth Apps, New. Callback URL: `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`. Generate a client secret (shown once).
 2. Zero Trust, **Integrations**, **Identity providers**, Add, GitHub. Paste the client ID and secret.
 
-## 3. Deploy the Worker once (until MIG-05 does it)
+## 3. Deploy the Worker once
 The Worker needs a hostname before Access can protect it. From `api/`: `pnpm exec wrangler login`, then `pnpm exec wrangler deploy`. The address is `life-tracker.<subdomain>.workers.dev`. The "Self-hosted application" form is not used: it only accepts websites added to Cloudflare, not `workers.dev` addresses.
 
 ## 4. Create the owner policy

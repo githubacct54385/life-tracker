@@ -75,11 +75,6 @@ jobs:
       - name: Build
         if: steps.app.outputs.present == 'true'
         run: pnpm build
-      - name: Deployable API starts under plain Node
-        if: steps.app.outputs.present == 'true'
-        run: |
-          node scripts/stage-api.mjs
-          node scripts/verify-api-bundle.mjs
       - name: Worker bundle size (AC-MIG-03.6)
         if: steps.app.outputs.present == 'true'
         run: pnpm check:worker-size

@@ -12,7 +12,7 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 - [TESTING.md](TESTING.md): the test pyramid, what goes at which level, CI jobs
 - [OBSERVABILITY.md](OBSERVABILITY.md): logging rules
 - [docs/cloudflare-release-setup.md](docs/cloudflare-release-setup.md): the Cloudflare token and secrets the Release workflow needs
-- [docs/azure-setup.md](docs/azure-setup.md): one-time Azure resource setup. **Obsolete after MIG-07**; the app is moving to Cloudflare + Neon (ADR-0021)
+- [docs/setup.md](docs/setup.md): set up Neon, Cloudflare and GitHub from scratch (Cloudflare + Neon, ADR-0021)
 - [docs/ac-ids.txt](docs/ac-ids.txt): the list of valid acceptance-criterion IDs. The stories and criteria text are in Linear.
 - [wireframes-suite.html](wireframes-suite.html): every MVP screen at mobile, tablet, and desktop widths
 
@@ -21,7 +21,7 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 ## Hard rules
 
 1. **No personal data in the repo.** No bank or financial data of any kind, no account numbers, names, birthdates, photos, odometer history, or health values. Not in code, tests, fixtures, comments, or commit messages. Use synthetic data only. Any child in the demo is fictional.
-2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub, Cloudflare Access, or Static Web Apps) in any file. Use GitHub secrets and Cloudflare or Azure app settings.
+2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub or Cloudflare Access) in any file. Use GitHub secrets and Cloudflare Worker secrets.
 3. **Never commit** `*.csv`, `*.xlsx`, Apple Health exports, or local settings. Test and demo fixtures are generated in code, not stored as data files.
 4. **Fail closed.** If the owner cannot be confirmed, the API returns nothing.
 5. **Do not store uploaded files.** Parse (in the browser where possible), keep the parsed rows, discard the file.

@@ -68,7 +68,7 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 
 ### 3. End-to-end tests (Playwright)
 
-**What they are.** The real built app in a real browser, served locally (the SWA CLI until MIG-03, then `wrangler dev`), talking to the real API and a test database. Slow, so we keep the set small and only for journeys that cross every layer.
+**What they are.** The real built app in a real browser, served locally (`wrangler dev`), talking to the real API and a test database. Slow, so we keep the set small and only for journeys that cross every layer.
 
 **Starting set (about 10 to 15 tests)**
 
@@ -86,7 +86,7 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 **How**
 - Only layout tests use the three-width matrix. Other tests run at one width (mobile for quick actions).
 - Prefer role-based locators (`getByRole`). Avoid sleeps; wait for conditions.
-- Auth uses a synthetic owner and a synthetic non-owner (SWA CLI emulator until MIG-04, then synthetic signed Access tokens). There is no bypass in the app.
+- Auth uses a synthetic owner and a synthetic non-owner (synthetic signed Access tokens). There is no bypass in the app.
 - Every test creates its own data through the API or a seed script and cleans up.
 
 ### Manual checks
