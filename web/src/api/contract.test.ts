@@ -13,6 +13,7 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     sent.push({ url: input, method: init?.method, body: init?.body as string | undefined, guard: new Headers(init?.headers).get("x-life-tracker") });
     if (input === "/api/health") return Response.json({ status: "ok" });
     if (input === "/api/odometer" && init?.method === "GET") return Response.json({ readings: [SAVED.reading] });
+    if (input === "/api/odometer?all=1" && init?.method === "GET") return Response.json({ readings: [SAVED.reading] });
     if (input === "/api/odometer" && init?.method === "POST") {
       return JSON.parse(init.body as string).miles === 100 ? Response.json(WARNING, { status: 409 }) : Response.json(SAVED, { status: 201 });
     }
@@ -27,7 +28,7 @@ const implementations: Array<[string, () => Api]> = [
   ["demoApi.ts", () => createDemoApi()],
 ];
 
-const METHODS = ["health", "listReadings", "logReading", "editReading", "deleteReading"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -51,6 +52,12 @@ describe.each(implementations)("[AC-MIL-01.1][AC-MIL-01.4] odometer contract: %s
     const id = list.readings[0]!.id;
     expect((await api.editReading(id, list.readings[0]!.miles)).status).toBe("saved");
     await expect(api.deleteReading(id)).resolves.toBeUndefined();
+  });
+
+  it("[AC-MIL-03.2] lists the whole reading history with the shared response shape", async () => {
+    const { readings } = await make().listAllReadings();
+    expect(readings.length).toBeGreaterThan(0);
+    expect(readings[0]).toMatchObject({ id: expect.any(Number), date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), miles: expect.any(Number) });
   });
 
   it("[AC-MIL-01.2] a reading lower than the previous one comes back as a warning, not saved, until confirmed", async () => {

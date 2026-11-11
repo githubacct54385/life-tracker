@@ -12,7 +12,7 @@ beforeAll(async () => {
   ownerToken = await issuer.sign(TEST_SETTINGS.OWNER_EMAIL);
 });
 
-function setup(checkDatabase: () => Promise<boolean> = async () => true) {
+function setup(checkDatabase: () => Promise<boolean> = async () => true, seed: Array<{ date: string; miles: number }> = []) {
   const lines: { level: string; entry: Record<string, unknown> }[] = [];
   const logger = createLogger((level, line) => lines.push({ level, entry: JSON.parse(line) }));
   const assetCalls: string[] = [];
@@ -25,7 +25,7 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true) {
       },
     },
   };
-  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo()), keys: issuer.keys });
+  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo(seed)), keys: issuer.keys });
   // Signed in as the owner unless a test says otherwise: the same header Cloudflare Access adds at the edge.
   const call = (path: string, init: RequestInit = {}, token: string | null = ownerToken) => {
     const headers = new Headers(init.headers);
@@ -211,5 +211,15 @@ describe("owner guard on the Worker", () => {
     expect(assetCalls).toEqual(["/demo/index.html"]);
     expect((await call("/demo/api/health", {}, null)).status).toBe(200); // still a static file request, never the API
     expect(assetCalls).toContain("/demo/api/health");
+  });
+});
+
+describe("odometer history", () => {
+  const history = Array.from({ length: 40 }, (_, i) => ({ date: new Date(Date.UTC(2026, 0, 2 + i * 7)).toISOString().slice(0, 10), miles: 1000 + i * 100 }));
+
+  it("[AC-MIL-03.2] the list holds the latest 30 readings, and ?all=1 returns the whole history for the stats", async () => {
+    const { call } = setup(async () => true, history);
+    expect((await (await call("/api/odometer")).json()).readings).toHaveLength(30);
+    expect((await (await call("/api/odometer?all=1")).json()).readings).toHaveLength(40);
   });
 });

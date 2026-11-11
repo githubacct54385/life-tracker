@@ -5,6 +5,7 @@ import { useNavKind } from "./nav/useNavKind";
 import { MorePage } from "./pages/MorePage";
 import { CarPage } from "./pages/car/CarPage";
 import { LogOdometerPage } from "./pages/car/LogOdometerPage";
+import { MileageStatsPage } from "./pages/car/MileageStatsPage";
 import { Page } from "./pages/Page";
 import { SettingsPage } from "./settings/SettingsPage";
 
@@ -22,6 +23,7 @@ export function App() {
         <Route path="health" element={<Page title="Health" />} />
         <Route path="car" element={<CarPage />} />
         <Route path="car/log" element={<LogOdometerPage />} />
+        <Route path="car/stats" element={<MileageStatsPage />} />
         <Route path="more" element={<More />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

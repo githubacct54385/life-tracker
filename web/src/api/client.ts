@@ -68,6 +68,9 @@ export function createClient(
     async listReadings() {
       return readingListResponseSchema.parse(await request("/api/odometer"));
     },
+    async listAllReadings() {
+      return readingListResponseSchema.parse(await request("/api/odometer?all=1"));
+    },
     logReading: (miles, confirmed) => save("/api/odometer", "POST", miles, confirmed),
     editReading: (id, miles, confirmed) => save(`/api/odometer/${id}`, "PUT", miles, confirmed),
     async deleteReading(id) {

@@ -7,3 +7,4 @@ export * from "./giving.js";
 export * from "./workouts.js";
 export * from "./health.js";
 export * from "./odometer.js";
+export * from "./mileageStats.js";
