@@ -191,7 +191,7 @@ describe("owner guard on the Worker", () => {
     for (const secret of [TEST_SETTINGS.OWNER_EMAIL, "someone-else", TEST_SETTINGS.ACCESS_AUD, "eyJ"]) expect(text).not.toContain(secret);
   });
 
-  it("[AC-MIG-04.5] paths outside /api, such as the demo, are not answered by the API", async () => {
+  it("[AC-DEM-01.6] paths outside /api, such as the demo, are not answered by the API", async () => {
     const { call, assetCalls } = setup();
     const res = await call("/demo/index.html", {}, null);
     expect(res.status).toBe(200);
