@@ -1,12 +1,13 @@
-// Server-side size and type limits for upload endpoints (AC-SET-03.2, hard rule 5: files are parsed, never stored).
-// Every endpoint that accepts a file calls `readUpload` with its own policy before parsing anything.
+// Server-side size and type limits for endpoints that take an upload (AC-SET-03.2, hard rule 5: files are never stored).
+// Every such endpoint calls `readUpload` with its own policy before parsing anything. The spreadsheet itself is read in
+// the browser (ADR-0009), so the mileage import endpoint receives validated JSON rows and uses IMPORT_JSON_UPLOAD.
 
 export interface UploadPolicy {
   /** Largest body accepted, in bytes. */
   maxBytes: number;
   /** Accepted Content-Type values, without parameters. */
   contentTypes: readonly string[];
-  /** The file must start with one of these byte sequences (so a renamed file of another type is refused). */
+  /** The body must start with one of these byte sequences (so a renamed file of another type is refused). Empty means no check. */
   signatures: readonly (readonly number[])[];
 }
 
@@ -14,13 +15,14 @@ export type UploadResult =
   | { ok: true; bytes: Uint8Array }
   | { ok: false; status: 411 | 413 | 415; error: "length_required" | "too_large" | "unsupported_type" };
 
-const ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04];
-
-/** Excel workbooks (.xlsx) are zip files. The mileage import (MIL-04) uses this policy. */
-export const SPREADSHEET_UPLOAD: UploadPolicy = {
-  maxBytes: 5 * 1024 * 1024,
-  contentTypes: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream"],
-  signatures: [ZIP_SIGNATURE],
+/**
+ * The mileage import (MIL-04): a JSON body of parsed rows. The most rows allowed is 5,000 (MAX_IMPORT_ROWS), about 200 KB
+ * of JSON, so 512 KB leaves room for formatting and nothing larger is ever read.
+ */
+export const IMPORT_JSON_UPLOAD: UploadPolicy = {
+  maxBytes: 512 * 1024,
+  contentTypes: ["application/json"],
+  signatures: [],
 };
 
 function startsWith(bytes: Uint8Array, signature: readonly number[]): boolean {
@@ -62,6 +64,6 @@ export async function readUpload(request: Request, policy: UploadPolicy): Promis
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  if (!policy.signatures.some((s) => startsWith(bytes, s))) return { ok: false, status: 415, error: "unsupported_type" };
+  if (policy.signatures.length > 0 && !policy.signatures.some((s) => startsWith(bytes, s))) return { ok: false, status: 415, error: "unsupported_type" };
   return { ok: true, bytes };
 }
