@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/* Colour tokens from wireframes-suite.html. Light by default, dark when the system asks for it or data-theme="dark"
+   is set (SET-01 adds the switch; data-theme="light" forces light). */
+:root {
+  --g900: #1f3d2e; --g700: #2f6b4f; --g500: #4c9a74; --g300: #9ccbb1; --g100: #e3f1e8;
+  --bg: #f7f6f1; --card: #ffffff; --ink: #1e2a24; --muted: #6b7a71; --line: #e1e5df; --sunk: #e9ebe4;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --g900: #cfe8da; --g700: #3e8663; --g500: #4c9a74; --g300: #2f6b4f; --g100: #1f3a2d;
+    --bg: #131916; --card: #1b2420; --ink: #e6eee9; --muted: #9aa9a0; --line: #2b3630; --sunk: #26302b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --g900: #cfe8da; --g700: #3e8663; --g500: #4c9a74; --g300: #2f6b4f; --g100: #1f3a2d;
+  --bg: #131916; --card: #1b2420; --ink: #e6eee9; --muted: #9aa9a0; --line: #2b3630; --sunk: #26302b;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-g900: var(--g900); --color-g700: var(--g700); --color-g500: var(--g500);
+  --color-g300: var(--g300); --color-g100: var(--g100);
+  --color-bg: var(--bg); --color-card: var(--card); --color-ink: var(--ink);
+  --color-muted: var(--muted); --color-line: var(--line); --color-sunk: var(--sunk);
+}
+
+html, body { margin: 0; background: var(--bg); color: var(--ink); overflow-x: hidden; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
