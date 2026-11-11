@@ -35,5 +35,8 @@ GitHub, Actions, **Release**, Run workflow on `main`, then approve the `producti
 ## 5. Check it
 Work through the entries in [manual-checks.md](manual-checks.md) for MIG-04, MIG-05 and OPS-01. They record what was checked and when.
 
+## 6. Backups and cost safeguards
+Before loading real data, follow [backup-and-restore.md](backup-and-restore.md) (restore and `pg_dump` export) and do the OPS-02 entries in [manual-checks.md](manual-checks.md).
+
 ## Costs to watch
 All free plans: Cloudflare Workers and Zero Trust (50 users), Neon, GitHub. Do not turn on paid add-ons. Workers Logs keeps 3 days of history (see [OBSERVABILITY.md](../OBSERVABILITY.md)).
