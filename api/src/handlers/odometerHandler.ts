@@ -24,7 +24,8 @@ export function odometerRoutes({ logger, odometer }: OdometerDeps): Hono {
   };
 
   routes.get("/", async (c) => {
-    const readings = await odometer.list();
+    // `?all=1` returns the whole history for the stats screen (MIL-03); otherwise the latest 30.
+    const readings = await odometer.list(c.req.query("all") === "1" ? Number.MAX_SAFE_INTEGER : undefined);
     logger.info("odometer.list", { rowCount: readings.length });
     return c.json(readingListResponseSchema.parse({ readings }));
   });

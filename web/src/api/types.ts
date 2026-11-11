@@ -9,6 +9,8 @@ export interface Api {
   health(): Promise<HealthResponse>;
   /** Recent odometer readings, newest first (MIL-01). */
   listReadings(): Promise<ReadingListResponse>;
+  /** Every odometer reading, newest first, for the stats screen (MIL-03). */
+  listAllReadings(): Promise<ReadingListResponse>;
   /** Saves a new reading, dated when it is saved. Without `confirmed`, a reading that trips a sanity check is not saved and comes back as warnings. */
   logReading(miles: number, confirmed?: boolean): Promise<SaveReadingResult>;
   /** Changes a reading's value and keeps its date. Same confirmation rule as `logReading`. */
