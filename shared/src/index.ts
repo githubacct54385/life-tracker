@@ -6,3 +6,4 @@ export * from "./readingChecks.js";
 export * from "./giving.js";
 export * from "./workouts.js";
 export * from "./health.js";
+export * from "./odometer.js";

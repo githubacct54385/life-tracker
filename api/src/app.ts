@@ -5,11 +5,14 @@ import { authenticate, remoteKeys, type KeySource } from "./auth/accessGuard.js"
 import type { AccessSettings } from "./auth/accessConfig.js";
 import { requestGuard } from "./auth/requestGuard.js";
 import { healthRoutes } from "./handlers/healthHandler.js";
+import { odometerRoutes } from "./handlers/odometerHandler.js";
+import type { OdometerService } from "./services/odometerService.js";
 import { errorTypeOf, type Logger } from "./telemetry/logger.js";
 
 export interface AppDeps {
   logger: Logger;
   checkDatabase: () => Promise<boolean>;
+  odometer: OdometerService;
   /** Where to get Access's public keys. Defaults to the published ones; tests pass their own. */
   keys?: KeySource;
 }
@@ -53,6 +56,7 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
   });
 
   app.route("/health", healthRoutes(deps));
+  app.route("/odometer", odometerRoutes(deps));
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {
