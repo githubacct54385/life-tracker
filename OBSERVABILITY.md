@@ -44,9 +44,9 @@ The spec says: *no health, mileage, or giving data in logs or telemetry.* Worker
 
 ## Alerts
 
-Cloudflare does not offer an email alert on log contents or status codes on the free plan, so there is no automatic "spike of 403s" alert. See the open item on AC-MIG-06.3 in Linear. Until that is settled, check the Access log and Workers Logs by hand (see `docs/manual-checks.md`).
+There is no automatic alert. Cloudflare does not offer an email alert on log contents or status codes on the free plan, and strangers are stopped by Access before they reach the Worker, so a spike of 403s from the Worker would not show who was trying. The owner retired the old "email on a spike of 403s" criterion (AC-MIG-06.3) for this reason. If something seems wrong, look at the Access log and Workers Logs by hand (see "What to watch").
 
 ## Open items to verify
 
-- Whether Zero Trust can email on denied sign-ins on the free plan. I did not find it in the documentation.
+- Whether Zero Trust can email on denied sign-ins on the free plan. I did not find it in the documentation. If it can, add it and say so here.
 - The exact free-plan log limits, which I took from Cloudflare's Workers Logs page (200,000 events a day, 3 days) and which may change.
