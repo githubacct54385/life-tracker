@@ -41,6 +41,10 @@ Everything here fits the Neon free plan. Check the plan's current limits on neon
 
 To rotate the app password, repeat steps 4 and 5; `app-role.sql` changes the password when the role already exists.
 
+## Backups
+
+Point-in-time restore and the manual `pg_dump` export procedure: [docs/backup-and-restore.md](../docs/backup-and-restore.md).
+
 ## Verify (manual checks, `docs/manual-checks.md`)
 
 - AC-MIG-02.1: connect once as `lt_app` and confirm `CREATE TABLE x (id int)` is denied while `SELECT` on an app table works.
