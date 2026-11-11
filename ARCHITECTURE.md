@@ -67,7 +67,7 @@ flowchart TD
     end
 
     subgraph fn["API: api/src (Worker)"]
-        handlers["handlers/: HTTP entry points (mileage, giving, health)"]
+        handlers["handlers/: HTTP entry points (odometer, mileage, giving, health)"]
         guard["auth/ownerGuard.ts: validates the Access token, checks the owner identity, fails closed, no bypass"]
         reqguard["auth/requestGuard.ts: requires the custom header on non-GET calls"]
         services["services/: business rules (mileageService, givingService, workoutService)"]
@@ -128,6 +128,8 @@ flowchart TD
 | `pnpm migrate` (`api/src/db/migrate-cli.ts`, runner in `api/src/db/`) | Apply SQL migrations with the admin role (`DATABASE_ADMIN_URL`). `db/` is the only place besides `repositories/` that imports the Postgres driver | Run inside the app |
 
 A dependency check (dependency-cruiser) enforces these arrows in CI (AC-FND-03.6): handlers may not skip to repositories or `db`, services may not import `db`, only `repositories/` may use `db/`, and `db/` imports nothing above it. An ESLint rule rejects SQL text outside `repositories/`, `db/`, and tests (AC-FND-03.3; write SQL keywords in UPPER CASE so the rule can see them).
+
+On the Worker, `services/requestScope.ts` (backed by `repositories/requestDatabase.ts`) gives each `/api/*` request its own small connection pool built from the `DATABASE_URL` secret and closes it afterwards, because a Worker cannot reuse a network connection across requests (MIL-01). The URL is never logged.
 
 **Where each test level plugs in** (details in [TESTING.md](TESTING.md))
 

@@ -1,3 +1,5 @@
+import { createOdometerService } from "./services/odometerService";
+import { fakeRepo } from "./testing/fakeOdometerRepository";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens";
 import { ALLOWED_LOG_FIELDS, createLogger } from "./telemetry/logger";
@@ -23,7 +25,7 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true) {
       },
     },
   };
-  const worker = createWorker({ logger, checkDatabase, keys: issuer.keys });
+  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo()), keys: issuer.keys });
   // Signed in as the owner unless a test says otherwise: the same header Cloudflare Access adds at the edge.
   const call = (path: string, init: RequestInit = {}, token: string | null = ownerToken) => {
     const headers = new Headers(init.headers);

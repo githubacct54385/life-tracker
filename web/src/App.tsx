@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router";
 import { AppShell } from "./nav/AppShell";
 import { useNavKind } from "./nav/useNavKind";
 import { MorePage } from "./pages/MorePage";
+import { CarPage } from "./pages/car/CarPage";
+import { LogOdometerPage } from "./pages/car/LogOdometerPage";
 import { Page } from "./pages/Page";
 import { SettingsPage } from "./settings/SettingsPage";
 
@@ -18,7 +20,8 @@ export function App() {
         <Route index element={<Page title={APP_NAME} />} />
         <Route path="giving" element={<Page title="Giving" />} />
         <Route path="health" element={<Page title="Health" />} />
-        <Route path="car" element={<Page title="Car" />} />
+        <Route path="car" element={<CarPage />} />
+        <Route path="car/log" element={<LogOdometerPage />} />
         <Route path="more" element={<More />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
