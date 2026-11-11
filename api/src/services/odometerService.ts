@@ -1,6 +1,6 @@
 // Business rules for odometer readings (MIL-01, ADR-0008). The sanity checks themselves are in shared/readingChecks.ts
 // (limit 300 miles a day), so the same code could warn the screen and guard the API. Nothing here touches SQL.
-import { checkReading, type ReadingWarning } from "@life-tracker/shared";
+import { checkReading, type ImportMileageResult, type ImportRow, type ReadingWarning } from "@life-tracker/shared";
 import { odometerRepository, type OdometerRepository, type StoredReading } from "../repositories/odometerRepository.js";
 
 /**
@@ -28,6 +28,11 @@ export interface OdometerService {
   edit(id: number, miles: number, confirmed: boolean): Promise<SaveOutcome>;
   /** Removes a reading for good. False when it does not exist. */
   remove(id: number): Promise<boolean>;
+  /**
+   * Adds readings from a spreadsheet import (MIL-04). A row whose date and miles already exist, or that repeats earlier
+   * in the same list, is skipped, so importing the same file twice adds nothing (AC-MIL-04.4). Dates come from the file.
+   */
+  importReadings(rows: readonly ImportRow[]): Promise<ImportMileageResult>;
 }
 
 export interface OdometerServiceOptions {
@@ -64,6 +69,12 @@ export function createOdometerService(repo: OdometerRepository, options: Odomete
     },
 
     remove: (id) => repo.remove(id),
+
+    async importReadings(rows) {
+      const unique = [...new Map(rows.map((row) => [`${row.date}|${row.miles}`, row])).values()];
+      const imported = await repo.insertMissing(unique);
+      return { imported, duplicates: rows.length - imported };
+    },
   };
 }
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { readingListResponseSchema, saveReadingRequestSchema, saveReadingResultSchema } from "@life-tracker/shared";
+import { importMileageRequestSchema, importMileageResultSchema, readingListResponseSchema, saveReadingRequestSchema, saveReadingResultSchema } from "@life-tracker/shared";
 import type { OdometerService, SaveOutcome } from "../services/odometerService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
@@ -34,6 +34,15 @@ export function odometerRoutes({ logger, odometer }: OdometerDeps): Hono {
     const body = saveReadingRequestSchema.safeParse(await c.req.json().catch(() => undefined));
     if (!body.success) return c.json({ error: "invalid_request" }, 400);
     return respond(c, await odometer.log(body.data.miles, body.data.confirmed === true), true);
+  });
+
+  // MIL-04: rows the browser parsed from the owner's spreadsheet. The file itself never arrives and is never stored (AC-MIL-04.5).
+  routes.post("/import", async (c) => {
+    const body = importMileageRequestSchema.safeParse(await c.req.json().catch(() => undefined));
+    if (!body.success) return c.json({ error: "invalid_request" }, 400);
+    const result = await odometer.importReadings(body.data.rows);
+    logger.info("odometer.import", { rowCount: body.data.rows.length });
+    return c.json(importMileageResultSchema.parse(result));
   });
 
   routes.put("/:id", async (c) => {

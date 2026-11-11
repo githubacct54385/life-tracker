@@ -1,4 +1,4 @@
-import type { GiftListResponse, GiftRecord, HealthResponse, ReadingListResponse, SaveGiftRequest, SaveReadingResult } from "@life-tracker/shared";
+import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult } from "@life-tracker/shared";
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -25,4 +25,6 @@ export interface Api {
   editGift(id: number, gift: SaveGiftRequest): Promise<GiftRecord>;
   /** Removes a gift for good. */
   deleteGift(id: number): Promise<void>;
+  /** Adds readings parsed from the owner's spreadsheet (MIL-04). Rows already stored are skipped, so importing twice adds nothing. */
+  importReadings(rows: ImportRow[]): Promise<ImportMileageResult>;
 }

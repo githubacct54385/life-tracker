@@ -10,6 +10,10 @@ export function CarPage() {
       <Link to="/car/stats" className="mt-3 block rounded-xl border border-line bg-card p-4 text-ink">
         Mileage stats
       </Link>
+
+      <Link to="/car/import" className="mt-3 block rounded-xl border border-line bg-card p-4 text-ink">
+        Import history
+      </Link>
     </Page>
   );
 }

@@ -2,6 +2,7 @@ import {
   giftListResponseSchema,
   giftSchema,
   healthResponseSchema,
+  importMileageResultSchema,
   readingListResponseSchema,
   REQUEST_GUARD_HEADER,
   REQUEST_GUARD_VALUE,
@@ -90,6 +91,11 @@ export function createClient(
     },
     async deleteGift(id) {
       await send(`/api/gifts/${id}`, { method: "DELETE" });
+    },
+
+    async importReadings(rows) {
+      const init = { method: "POST", body: JSON.stringify({ rows }), headers: { "content-type": "application/json" } };
+      return importMileageResultSchema.parse(await (await send("/api/odometer/import", init)).json());
     },
   };
 }

@@ -6,6 +6,7 @@ import { MorePage } from "./pages/MorePage";
 import { GivingPage } from "./pages/giving/GivingPage";
 import { LogGiftPage } from "./pages/giving/LogGiftPage";
 import { CarPage } from "./pages/car/CarPage";
+import { ImportMileagePage } from "./pages/car/ImportMileagePage";
 import { LogOdometerPage } from "./pages/car/LogOdometerPage";
 import { MileageStatsPage } from "./pages/car/MileageStatsPage";
 import { Page } from "./pages/Page";
@@ -27,6 +28,7 @@ export function App() {
         <Route path="car" element={<CarPage />} />
         <Route path="car/log" element={<LogOdometerPage />} />
         <Route path="car/stats" element={<MileageStatsPage />} />
+        <Route path="car/import" element={<ImportMileagePage />} />
         <Route path="more" element={<More />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

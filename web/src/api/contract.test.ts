@@ -18,6 +18,7 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     if (input === "/api/odometer" && init?.method === "POST") {
       return JSON.parse(init.body as string).miles === 100 ? Response.json(WARNING, { status: 409 }) : Response.json(SAVED, { status: 201 });
     }
+    if (input === "/api/odometer/import" && init?.method === "POST") return Response.json({ imported: 1, duplicates: 0 });
     if (input === "/api/odometer/9" && init?.method === "PUT") return Response.json(SAVED);
     if (input === "/api/gifts" && init?.method === "GET") return Response.json({ gifts: [GIFT] });
     if (input === "/api/gifts" && init?.method === "POST") return Response.json(GIFT, { status: 201 });
@@ -33,7 +34,7 @@ const implementations: Array<[string, () => Api]> = [
   ["demoApi.ts", () => createDemoApi()],
 ];
 
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "importReadings"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -128,6 +129,22 @@ describe("client.ts gift requests", () => {
   });
 });
 
+describe.each(implementations)("[AC-MIL-04.1] import contract: %s", (_name, make) => {
+  it("returns the shared result shape", async () => {
+    const result = await make().importReadings([{ date: "2026-01-02", miles: 1000 }]);
+    expect(result).toEqual({ imported: 1, duplicates: 0 });
+  });
+});
+
+describe("demo import", () => {
+  it("[AC-MIL-04.4] importing the same rows twice adds each reading once", async () => {
+    const api = createDemoApi();
+    const rows = [{ date: "2026-01-02", miles: 1000 }, { date: "2026-01-09", miles: 1120 }];
+    expect(await api.importReadings(rows)).toEqual({ imported: 2, duplicates: 0 });
+    expect(await api.importReadings(rows)).toEqual({ imported: 0, duplicates: 2 });
+  });
+});
+
 describe("demo odometer behaviour", () => {
   const friday = () => new Date(2026, 10, 13, 9, 0, 0); // local time, so the local calendar date is 2026-11-13
 
@@ -150,6 +167,14 @@ describe("demo odometer behaviour", () => {
     expect(edited).toMatchObject({ status: "saved", reading: { id: newest!.id, date: newest!.date, miles: newest!.miles + 5 } });
     await api.deleteReading(newest!.id);
     expect((await api.listReadings()).readings.map((r) => r.id)).not.toContain(newest!.id);
+  });
+});
+
+describe("client.ts import request", () => {
+  it("[AC-MIL-04.5] sends only the parsed rows as JSON, with the custom header, never the file", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    await createClient(fakeNetwork(sent)).importReadings([{ date: "2026-01-02", miles: 1000 }]);
+    expect(sent).toEqual([{ url: "/api/odometer/import", method: "POST", body: '{"rows":[{"date":"2026-01-02","miles":1000}]}', guard: "1" }]);
   });
 });
 

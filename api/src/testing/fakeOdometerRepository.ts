@@ -25,5 +25,14 @@ export function fakeRepo(seed: Array<{ date: string; miles: number }> = []): Odo
       if (index >= 0) rows.splice(index, 1);
       return index >= 0;
     },
+    async insertMissing(incoming) {
+      let added = 0;
+      for (const row of incoming) {
+        if (rows.some((r) => r.date === row.date && r.miles === row.miles)) continue;
+        rows.push({ id: nextId++, ...row });
+        added++;
+      }
+      return added;
+    },
   };
 }

@@ -56,4 +56,16 @@ describe.skipIf(!server)("odometerRepository (real Postgres, real migration, app
   it("[AC-MIL-01.4] the database itself refuses a negative reading", async () => {
     await expect(repo.insert({ date: "2026-10-30", miles: -1 })).rejects.toThrow();
   });
+
+  it("[AC-MIL-04.4] insertMissing adds only rows that are not already stored", async () => {
+    const rows = [
+      { date: "2026-01-02", miles: 1000 },
+      { date: "2026-01-09", miles: 1120 },
+    ];
+    expect(await repo.insertMissing(rows)).toBe(2);
+    expect(await repo.insertMissing(rows)).toBe(0);
+    expect(await repo.insertMissing([...rows, { date: "2026-01-16", miles: 1150 }])).toBe(1);
+    expect(await repo.listAll()).toHaveLength(3);
+    expect(await repo.insertMissing([])).toBe(0);
+  });
 });
