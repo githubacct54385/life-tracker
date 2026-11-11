@@ -22,7 +22,8 @@ const eventNamePattern = /^[a-z][a-z0-9_.]{0,63}$/;
 
 export type LogSink = (level: LogLevel, line: string) => void;
 
-// Azure Functions forwards stdout/stderr to Application Insights as traces.
+// Cloudflare Workers Logs (api/wrangler.jsonc, "observability") records everything written to the console.
+// The sink is the only place in the API that touches console.
 const consoleSink: LogSink = (level, line) => {
   (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(line);
 };

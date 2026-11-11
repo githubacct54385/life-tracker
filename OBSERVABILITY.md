@@ -1,64 +1,52 @@
-# Logging and Observability (Draft v0.2)
+# Logging and Observability (v1.0)
 
-> **Platform change (ADR-0021, 2026-11-10).** The app is moving from Azure to Cloudflare Workers + Neon. Everything below about Application Insights, Log Analytics, and Azure budgets stays true until MIG-06, which replaces it with Workers Logs (optionally Sentry's free tier) and rewrites this file. The privacy rules in "Privacy control" apply on any platform and do not change.
+> **Platform change (ADR-0021, MIG-06).** Logs now go to Cloudflare **Workers Logs**. Application Insights, Log Analytics, and the Azure budget alert are gone. The privacy rules below did not change.
 
-## Recommendation
+## What we use
 
-Use **Azure Application Insights** (workspace-based), with three cost controls and one privacy control. For a single-user app this should stay inside the free allowance.
+**Workers Logs**, switched on with the `observability` block in `api/wrangler.jsonc`. Every line the Worker writes to the console is kept and can be searched in the Cloudflare dashboard (Workers & Pages, the Worker, **Logs**). Cloudflare also records one entry per request (an "invocation log") with the status code and timing.
 
-## Why Application Insights
+- **Cost:** $0. The free plan allows 200,000 log events a day with 3 days of history. One user stays far below that. If the limit were ever passed, Cloudflare stops keeping logs for the rest of the day; it does not bill.
+- **Sampling:** every request is kept (`head_sampling_rate: 1`). Lower it only if volume ever becomes a problem.
+- **History is short.** 3 days is enough to look into a problem you notice, not to audit last month. Do not rely on logs as a record.
 
-- It is already in the Azure account, so there is nothing extra to sign up for.
-- Microsoft's FAQ says the default Pay-as-you-go tier includes **5 GB of free data per month per billing account**. A one-user app will produce a tiny fraction of that.
-- Beyond the free allowance, third-party sources quote roughly $2.30 to $2.76 per GB, depending on region. Check the Azure pricing page for your region before launch.
-- Application Insights tables keep 90 days of data free of retention charges.
-- It gives you what a portfolio reviewer likes to see: request traces, failures, dependency timings (the SQL calls), and a live metrics view.
+## Why not something else
 
-## Alternatives considered
+| Option | Verdict |
+|---|---|
+| **Workers Logs** | **Chosen.** Built in, no account or code to add, free. |
+| Sentry (free tier) | Optional later for browser errors. Another account and another place data could leak, so not added now. |
+| Logpush, Tail Workers, OpenTelemetry export | Need a paid plan or another service. Not needed for one user. |
+| Self-hosted Loki or Grafana | Needs a server. Fails the $0 goal. |
 
-| Option | Cost | Verdict |
-|---|---|---|
-| **Application Insights** | Free to start, small beyond 5 GB | **Recommended.** Native to Azure and no extra accounts. |
-| Plain Azure Functions logs only | Free | Too thin. Hard to search, and no traces across calls. |
-| Sentry (free developer tier) | Free, with limits | Good for error tracking in the browser. Optional addition, but it is another account and another place for data to leak. |
-| Grafana Cloud free tier | Free, with limits | Nice dashboards, but more setup, and no benefit over App Insights here. |
-| Self-hosted (Loki, Prometheus) | Needs a VM, which costs more than the app | Poor fit for the $0 to $2 per month goal. |
-
-I did not verify the Sentry and Grafana free-tier limits against their current pricing pages, so check them if you want to go that way.
-
-## Cost controls
-
-1. **Sampling.** Turn on adaptive sampling in the Functions telemetry settings, so volume is capped automatically. At one user, you may not need it, but it is a cheap safety net.
-2. **Daily cap.** Set a daily data cap on the Log Analytics workspace (for example 0.1 GB per day). If something loops and floods logs, ingestion stops instead of billing. The tradeoff is that you lose logs for the rest of that day.
-3. **Budget alert.** The spec already calls for an Azure budget alert at about $5. Keep that, and scope it to the whole subscription.
-4. **Do not log chatty things.** Debug-level logs stay off in production.
+I did not check Sentry's current free-tier limits.
 
 ## Privacy control (the important one)
 
-The spec says: *no health, mileage, or giving data in logs or telemetry.* Application Insights captures request URLs, exception messages, and SQL command text by default, so this needs to be enforced in code, not just intended.
+The spec says: *no health, mileage, or giving data in logs or telemetry.* Workers Logs records whatever is written to the console, so this is enforced in code, not just intended.
 
-- All logging goes through `telemetry/logger.ts`. Handlers and services never call `console.log` or the SDK directly.
-- The logger takes only an event name and a small allow-list of fields: request ID, route name, status code, duration, row counts, and error type.
-- Never log: gift amounts, notes, descriptions, weights, workout details, odometer values, names, or request bodies.
-- Add a telemetry initializer that strips query strings and turns SQL command text off.
-- Add a unit test with fake data that fails if a banned field name or a known fake gift amount or weight appears in captured output.
-- The browser side: skip the Application Insights JavaScript SDK at first. It records page URLs and user behavior, which adds privacy surface for little gain.
+- All logging goes through `api/src/telemetry/logger.ts`. Handlers and services never call `console` directly. A test fails if any Worker source file other than the logger's own sink uses `console` (AC-MIG-06.2).
+- The logger takes an event name and a small allow-list of fields: request ID, route name, status code, duration, row count, and error type. Anything else is dropped and only counted.
+- Never log: gift amounts, notes, descriptions, weights, workout details, odometer values, names, email addresses, tokens, or request bodies.
+- Errors log the error class name only, never the message, which can contain data.
+- A test captures all log output while a request handles fake data and fails if a fake gift amount, weight, workout, or odometer value appears (AC-OPS-01.3).
+- Do not add the Cloudflare Web Analytics script or a browser telemetry SDK. They record page URLs and behavior for little gain.
 
 ## What to watch
 
-| Signal | Why |
-|---|---|
-| Failed requests and exceptions | Bugs, and probes against the API |
-| 401 and 403 count | Someone other than the owner trying to get in |
-| Import duration and row counts | Catches slow parsing or a changed spreadsheet format |
-| SQL dependency duration | Serverless database cold starts |
-| Availability ping on the home page | Free, and tells you if the site is down |
+| Signal | Where | Why |
+|---|---|---|
+| `api.unhandled_error` events | Workers Logs, search the event name | A bug. The `errorType` field says which kind. |
+| Requests with `statusCode` 500 and up | Workers Logs | Same |
+| Slow requests (`durationMs`) | Workers Logs | Cold database or a slow query |
+| Denied sign-ins | Zero Trust, **Logs**, **Access** | Someone other than the owner trying to get in. Non-owners are stopped by Access before they reach the Worker, so the Worker's own logs rarely show them. |
+| `statusCode` 401 or 403 from the Worker | Workers Logs | Should be near zero. A request got past Access without a valid owner token. |
 
-Set up two alerts: a spike in 403s, and a failed availability test. Send them to email.
+## Alerts
+
+Cloudflare does not offer an email alert on log contents or status codes on the free plan, so there is no automatic "spike of 403s" alert. See the open item on AC-MIG-06.3 in Linear. Until that is settled, check the Access log and Workers Logs by hand (see `docs/manual-checks.md`).
 
 ## Open items to verify
 
-- Confirm that Application Insights is supported for the managed API in Static Web Apps in your setup. If it is not, a separate small Function App would be needed, which affects the cost estimate in the spec.
-- Confirm the current free allowance and per-GB price in the Azure pricing calculator for your region.
-
-Sources: [Application Insights FAQ](https://learn.microsoft.com/en-us/azure/azure-monitor/app/application-insights-faq), [Application Insights pricing](https://azure.microsoft.com/en-au/pricing/details/application-insights/)
+- Whether Zero Trust can email on denied sign-ins on the free plan. I did not find it in the documentation.
+- The exact free-plan log limits, which I took from Cloudflare's Workers Logs page (200,000 events a day, 3 days) and which may change.

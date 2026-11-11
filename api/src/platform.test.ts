@@ -52,4 +52,25 @@ describe("platform", () => {
     const readers = authFiles.filter((file) => /process\.env|import\.meta\.env|NODE_ENV/.test(readFileSync(file, "utf8")));
     expect(readers).toEqual([]);
   });
+
+  it("[AC-MIG-06.1] Workers Logs is on, and no Application Insights package is a dependency anywhere", () => {
+    const text = readFileSync(path.join(apiRoot, "wrangler.jsonc"), "utf8");
+    const config = JSON.parse(text.replace(/^\s*\/\/.*$/gm, "")) as { observability?: { enabled?: boolean; head_sampling_rate?: number } };
+    expect(config.observability?.enabled).toBe(true);
+    const root = path.resolve(apiRoot, "..");
+    for (const dir of [root, apiRoot, path.join(root, "web"), path.join(root, "shared")]) {
+      const pkg = readFileSync(path.join(dir, "package.json"), "utf8");
+      expect(pkg, dir).not.toMatch(/applicationinsights|opencensus|@microsoft\/applicationinsights/i);
+    }
+  });
+
+  it("[AC-MIG-06.2] nothing in the Worker writes to the console except the logger's own sink", () => {
+    // The migration command and the test database setup run on a developer machine or in GitHub Actions, never in the Worker.
+    const outsideWorker = ["migrate-cli.ts", "globalSetup.int.ts"];
+    const offenders = sourceFiles(path.join(apiRoot, "src"))
+      .filter((file) => !file.endsWith(`${path.sep}telemetry${path.sep}logger.ts`) && !file.includes(`${path.sep}testing${path.sep}`))
+      .filter((file) => !outsideWorker.some((name) => file.endsWith(name)))
+      .filter((file) => /\bconsole\./.test(readFileSync(file, "utf8")));
+    expect(offenders).toEqual([]);
+  });
 });
