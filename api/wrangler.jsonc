@@ -13,5 +13,11 @@
     // Run the Worker for every request so security headers reach static files too (AC-MIG-03.7).
     "run_worker_first": true,
     "not_found_handling": "single-page-application"
+  },
+  // Workers Logs (MIG-06): keeps the JSON lines written by telemetry/logger.ts, searchable in the dashboard.
+  // Free plan: 200,000 events a day, 3 days of history. One user stays far below that, so every request is kept.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
   }
 }

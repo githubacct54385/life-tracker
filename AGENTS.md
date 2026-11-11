@@ -171,7 +171,7 @@ Decided in [DECISIONS.md](DECISIONS.md):
 - Database: Neon Postgres, hand-written parameterized SQL through the `pg` package, numbered `.sql` migrations (`DATABASE_URL` for the app role, `DATABASE_ADMIN_URL` for migrations). Setup: [db/setup/README.md](db/setup/README.md).
 - Validation: zod, shared by client and API.
 - Tests: Vitest, Testing Library, fast-check, Testcontainers (Postgres), Playwright with a local server (`wrangler dev` after MIG-03).
-- Telemetry: Workers Logs after MIG-06 (Application Insights until then).
+- Telemetry: Workers Logs (MIG-06), written only through the allow-listed logger.
 - Source, CI, release, and login: GitHub (Actions, protected `main`, `production` environment).
 
 ## Cost
