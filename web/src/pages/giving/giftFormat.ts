@@ -8,6 +8,12 @@ export function monthLabel(month: string): string {
   return `${MONTHS[(m ?? 1) - 1]} ${year}`;
 }
 
+/** The description a regular gift starts with: "2026-11" -> "November tithe" (AC-GIV-02.3). The owner can change it. */
+export function defaultDescription(month: string): string {
+  const m = Number(month.split("-")[1]);
+  return MONTHS[m - 1] ? `${MONTHS[m - 1]} tithe` : "";
+}
+
 /** "2026-02-03" -> "Feb 3, 2026". */
 export function dateLabel(date: string): string {
   const [year, m, day] = date.split("-").map(Number);

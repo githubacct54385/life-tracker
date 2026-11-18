@@ -11,7 +11,7 @@ import { fakeGiftRepo } from "./testing/fakeGiftRepository";
 import { fakeRepo } from "./testing/fakeOdometerRepository";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository";
 
-const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" as const };
+const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" as const, description: null };
 
 describe("/api/gifts", () => {
   let call: (method: string, url: string, body?: unknown, token?: string | null, guard?: boolean) => Promise<Response>;
@@ -43,10 +43,18 @@ describe("/api/gifts", () => {
     const { gifts } = await (await call("GET", "/api/gifts")).json();
     expect(gifts).toHaveLength(2);
 
-    const changed = { dateGiven: "2026-03-02", forMonth: "2026-02", cents: 12_500, method: "card" };
+    const changed = { dateGiven: "2026-03-02", forMonth: "2026-02", cents: 12_500, method: "card", description: null };
     expect(await (await call("PUT", `/api/gifts/${id}`, changed)).json()).toEqual({ id, ...changed });
     expect((await call("DELETE", `/api/gifts/${id}`)).status).toBe(204);
     expect((await call("DELETE", `/api/gifts/${id}`)).status).toBe(404);
+  });
+
+  it("[AC-GIV-02.3] saves and returns a description, and treats a blank one as none", async () => {
+    const saved = await (await call("POST", "/api/gifts", { ...gift, description: "January tithe" })).json();
+    expect(saved.description).toBe("January tithe");
+    const blank = await (await call("POST", "/api/gifts", { ...gift, description: "  " })).json();
+    expect(blank.description).toBeNull();
+    expect((await call("POST", "/api/gifts", { ...gift, description: "x".repeat(81) })).status).toBe(400);
   });
 
   it("[AC-GIV-01.1] refuses a time, an unknown method, a zero amount and a bad id", async () => {

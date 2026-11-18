@@ -19,6 +19,10 @@ const dateSchema = z
     return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
   }, "Not a calendar date");
 
+/** The longest description the database accepts, for a regular gift or a special contribution. */
+export const MAX_DESCRIPTION_LENGTH = 80;
+const descriptionSchema = z.string().trim().min(1).max(MAX_DESCRIPTION_LENGTH);
+
 const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const centsSchema = z.number().int().min(1).max(MAX_GIFT_CENTS);
 
@@ -29,12 +33,21 @@ export const giftSchema = z.object({
   forMonth: monthSchema,
   cents: centsSchema,
   method: paymentMethodSchema,
+  /** What the gift is for, such as "November tithe". Null for a gift saved without one (AC-GIV-02.3). */
+  description: descriptionSchema.nullable(),
 });
 export type GiftRecord = z.infer<typeof giftSchema>;
 
 /** Body of POST /api/gifts and PUT /api/gifts/:id. */
 export const saveGiftRequestSchema = z
-  .object({ dateGiven: dateSchema, forMonth: monthSchema, cents: centsSchema, method: paymentMethodSchema })
+  .object({
+    dateGiven: dateSchema,
+    forMonth: monthSchema,
+    cents: centsSchema,
+    method: paymentMethodSchema,
+    /** Optional. Blank or missing is stored as no description. */
+    description: z.string().trim().max(MAX_DESCRIPTION_LENGTH).nullish(),
+  })
   .strict();
 export type SaveGiftRequest = z.infer<typeof saveGiftRequestSchema>;
 
@@ -67,7 +80,7 @@ export function groupGiftsByMonth(gifts: readonly GiftRecord[]): GiftMonth[] {
 // They are kept apart from regular gifts, so the monthly history stays clean (AC-GIV-02.2).
 
 /** The longest occasion name the database accepts. */
-export const MAX_OCCASION_LENGTH = 80;
+export const MAX_OCCASION_LENGTH = MAX_DESCRIPTION_LENGTH;
 
 const occasionSchema = z.string().trim().min(1).max(MAX_OCCASION_LENGTH);
 

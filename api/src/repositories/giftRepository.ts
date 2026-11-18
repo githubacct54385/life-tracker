@@ -7,6 +7,7 @@ export interface GiftInput {
   forMonth: string;
   cents: number;
   method: PaymentMethod;
+  description: string | null;
 }
 
 export type StoredSpecialContribution = SpecialContributionRecord;
@@ -41,6 +42,7 @@ interface Row {
   for_month: string;
   cents: string;
   method: PaymentMethod;
+  description: string | null;
 }
 
 const toGift = (row: Row): StoredGift => ({
@@ -49,13 +51,14 @@ const toGift = (row: Row): StoredGift => ({
   forMonth: row.for_month,
   cents: Number(row.cents),
   method: row.method,
+  description: row.description,
 });
 
 // Dates are formatted in SQL so the driver never turns a calendar date into a time-zone-shifted Date.
 // Money is decimal(12,2) in the database and integer cents in code (ADR-0007); it is converted only here.
 const COLUMNS = `id, to_char(given_on, 'YYYY-MM-DD') AS date_given, to_char(for_month, 'YYYY-MM') AS for_month,
-  round(amount * 100)::bigint AS cents, method`;
-const VALUES = "$1::date, ($2 || '-01')::date, $3::numeric / 100, $4";
+  round(amount * 100)::bigint AS cents, method, description`;
+const VALUES = "$1::date, ($2 || '-01')::date, $3::numeric / 100, $4, $5";
 
 /** SQL for regular gifts. No business rules: those live in services/giftService.ts. */
 export interface GiftRepository {
@@ -82,19 +85,19 @@ export const giftRepository: GiftRepository = {
     return result.rows.map(toGift);
   },
 
-  async insert({ dateGiven, forMonth, cents, method }) {
+  async insert({ dateGiven, forMonth, cents, method, description }) {
     const result = await getPool().query<Row>(
-      `INSERT INTO regular_gifts (given_on, for_month, amount, method) VALUES (${VALUES}) RETURNING ${COLUMNS}`,
-      [dateGiven, forMonth, cents, method],
+      `INSERT INTO regular_gifts (given_on, for_month, amount, method, description) VALUES (${VALUES}) RETURNING ${COLUMNS}`,
+      [dateGiven, forMonth, cents, method, description],
     );
     return toGift(result.rows[0]!);
   },
 
-  async update(id, { dateGiven, forMonth, cents, method }) {
+  async update(id, { dateGiven, forMonth, cents, method, description }) {
     const result = await getPool().query<Row>(
-      `UPDATE regular_gifts SET given_on = $2::date, for_month = ($3 || '-01')::date, amount = $4::numeric / 100, method = $5, updated_at = now()
+      `UPDATE regular_gifts SET given_on = $2::date, for_month = ($3 || '-01')::date, amount = $4::numeric / 100, method = $5, description = $6, updated_at = now()
        WHERE id = $1 RETURNING ${COLUMNS}`,
-      [id, dateGiven, forMonth, cents, method],
+      [id, dateGiven, forMonth, cents, method, description],
     );
     return result.rows[0] ? toGift(result.rows[0]) : undefined;
   },

@@ -6,7 +6,7 @@ import type { Api } from "./types";
 // One suite, two implementations (ADR-0014). `client.ts` runs against a fake network edge that answers the way
 // the Worker does; `demoApi.ts` runs as is. Add each new method to `contract` so the two cannot drift.
 const SAVED = { status: "saved", reading: { id: 9, date: "2026-11-13", miles: 48_402 } };
-const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" };
+const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check", description: null };
 const WARNING = { status: "needs_confirmation", warnings: [{ kind: "lower_than_previous", previous: { date: "2026-11-06", miles: 48_550 } }] };
 
 const WORKOUT = { id: 7, date: "2026-11-13", type: "Run", minutes: 30, note: null, source: "manual" };
@@ -90,7 +90,7 @@ describe.each(implementations)("[AC-MIL-01.1][AC-MIL-01.4] odometer contract: %s
 });
 
 describe.each(implementations)("[AC-GIV-01.1][AC-GIV-01.4] gift contract: %s", (_name, make) => {
-  const input = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" } as const;
+  const input = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check", description: null } as const;
 
   it("lists, saves, edits and deletes gifts with the shared shapes", async () => {
     const api = make();
@@ -138,7 +138,7 @@ describe("demo special contribution behaviour", () => {
 });
 
 describe("demo gift behaviour", () => {
-  const input = { dateGiven: "2026-12-03", forMonth: "2026-11", cents: 2_500, method: "card" } as const;
+  const input = { dateGiven: "2026-12-03", forMonth: "2026-11", cents: 2_500, method: "card", description: null } as const;
 
   it("[AC-GIV-01.2][AC-GIV-01.3] keeps the month it is for apart from the date given, and several gifts can share a month", async () => {
     const api = createDemoApi();
@@ -162,7 +162,7 @@ describe("client.ts gift requests", () => {
   it("[AC-GIV-01.1][AC-GIV-01.4] sends the gift as JSON with the custom header on every write", async () => {
     const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
     const api = createClient(fakeNetwork(sent));
-    const input = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" } as const;
+    const input = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check", description: null } as const;
     await api.logGift(input);
     await api.editGift(7, input);
     await api.deleteGift(7);

@@ -3,7 +3,7 @@
 // A special contribution has an occasion instead of a "for" month and is stored apart from regular gifts (GIV-02).
 // The totals are computed from the list (shared/gifts.ts). Nothing here touches SQL.
 import type { SaveGiftRequest, SaveSpecialContributionRequest } from "@life-tracker/shared";
-import { giftRepository, type GiftRepository, type StoredGift, type StoredSpecialContribution } from "../repositories/giftRepository.js";
+import { giftRepository, type GiftInput, type GiftRepository, type StoredGift, type StoredSpecialContribution } from "../repositories/giftRepository.js";
 
 export interface GiftService {
   list(): Promise<StoredGift[]>;
@@ -21,11 +21,14 @@ export interface GiftService {
   removeSpecial(id: number): Promise<boolean>;
 }
 
+/** What the owner typed, or null when it is blank (AC-GIV-02.3). */
+const toInput = (gift: SaveGiftRequest): GiftInput => ({ ...gift, description: gift.description?.trim() || null });
+
 export function createGiftService(repo: GiftRepository): GiftService {
   return {
     list: () => repo.listAll(),
-    create: (gift) => repo.insert(gift),
-    edit: (id, gift) => repo.update(id, gift),
+    create: (gift) => repo.insert(toInput(gift)),
+    edit: (id, gift) => repo.update(id, toInput(gift)),
     remove: (id) => repo.remove(id),
     listSpecial: () => repo.listSpecial(),
     createSpecial: (contribution) => repo.insertSpecial(contribution),

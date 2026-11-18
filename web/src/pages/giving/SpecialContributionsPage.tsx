@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
-  MAX_OCCASION_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
   PAYMENT_METHODS,
   specialContributionTotal,
   type PaymentMethod,
@@ -32,14 +32,14 @@ function toRequest(values: FormValues): SaveSpecialContributionRequest | undefin
   return { dateGiven: values.dateGiven, occasion, cents, method: values.method };
 }
 
-/** Name or occasion instead of a "for" month (AC-GIV-02.1). Used for both a new contribution and an edit. */
+/** A description instead of a "for" month, never pre-filled (AC-GIV-02.1, AC-GIV-02.4). Used for both a new contribution and an edit. */
 function Fields({ values, onChange, idPrefix }: { values: FormValues; onChange: (values: FormValues) => void; idPrefix: string }) {
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => onChange({ ...values, [key]: value });
   return (
     <div className="space-y-3">
       <label className="block font-bold text-ink" htmlFor={`${idPrefix}-occasion`}>
-        Name or occasion
-        <input id={`${idPrefix}-occasion`} className={`${inputClass} mt-1 font-normal`} maxLength={MAX_OCCASION_LENGTH} autoComplete="off" value={values.occasion} onChange={(e) => set("occasion", e.target.value)} />
+        Description
+        <input id={`${idPrefix}-occasion`} className={`${inputClass} mt-1 font-normal`} maxLength={MAX_DESCRIPTION_LENGTH} autoComplete="off" value={values.occasion} onChange={(e) => set("occasion", e.target.value)} />
       </label>
       <label className="block font-bold text-ink" htmlFor={`${idPrefix}-date`}>
         Date given
@@ -216,7 +216,7 @@ export function SpecialContributionsPage() {
           {list === null ? (
             <p className="mt-2 text-muted">Loading…</p>
           ) : list.length === 0 ? (
-            <p className="mt-2 text-muted">No special contributions yet. Add one with the form, using a name or occasion.</p>
+            <p className="mt-2 text-muted">No special contributions yet. Add one with the form, with a description.</p>
           ) : (
             <ul>
               {list.map((contribution) => (

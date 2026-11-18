@@ -10,7 +10,7 @@ const WIDTHS = [
 ];
 
 test(
-  "[AC-GIV-02.1][AC-GIV-02.2] special contributions have an occasion and no month, are totaled on their own, and nothing scrolls sideways at 360, 768 and 1280 px",
+  "[AC-GIV-02.1][AC-GIV-02.2] special contributions have a description and no month, are totaled on their own, and nothing scrolls sideways at 360, 768 and 1280 px",
   { tag: ["@AC-GIV-02.1", "@AC-GIV-02.2"] },
   async ({ page, context }) => {
     await page.route("**/api/gifts/special", (route) =>
@@ -27,7 +27,7 @@ test(
     for (const { width, height } of WIDTHS) {
       await page.setViewportSize({ width, height });
       await page.goto("/giving/special");
-      await expect(page.getByLabel("Name or occasion")).toBeVisible();
+      await expect(page.getByLabel("Description")).toBeVisible();
       await expect(page.getByLabel("Month it is for")).toHaveCount(0);
       await expect(page.getByLabel("Special contributions total")).toHaveText("$350.00");
       await expect(page.getByText("Building fund appeal")).toBeVisible();

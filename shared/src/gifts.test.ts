@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   groupGiftsByMonth,
+  MAX_DESCRIPTION_LENGTH,
   MAX_OCCASION_LENGTH,
   saveGiftRequestSchema,
   saveSpecialContributionRequestSchema,
@@ -11,7 +12,7 @@ import {
 } from "./gifts";
 
 // Invented amounts, in integer cents (ADR-0007).
-const gift = (id: number, dateGiven: string, forMonth: string, cents: number): GiftRecord => ({ id, dateGiven, forMonth, cents, method: "check" });
+const gift = (id: number, dateGiven: string, forMonth: string, cents: number): GiftRecord => ({ id, dateGiven, forMonth, cents, method: "check", description: null });
 
 describe("saveGiftRequestSchema", () => {
   const valid = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "card" };
@@ -104,5 +105,20 @@ describe("special contributions (GIV-02)", () => {
       { id: 3, ...base, dateGiven: "2026-03-29" },
     ];
     expect(sortSpecialContributions(list).map((c) => c.id)).toEqual([3, 2, 1]);
+  });
+});
+
+describe("regular gift description (GIV-02)", () => {
+  const valid = { dateGiven: "2026-11-02", forMonth: "2026-11", cents: 10_000, method: "check" as const };
+
+  it("[AC-GIV-02.3] accepts a description, a blank one, a null one, or none, and trims it", () => {
+    expect(saveGiftRequestSchema.parse({ ...valid, description: "  November tithe " }).description).toBe("November tithe");
+    expect(saveGiftRequestSchema.safeParse({ ...valid, description: "" }).success).toBe(true);
+    expect(saveGiftRequestSchema.safeParse({ ...valid, description: null }).success).toBe(true);
+    expect(saveGiftRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("[AC-GIV-02.3] refuses a description longer than the database accepts", () => {
+    expect(saveGiftRequestSchema.safeParse({ ...valid, description: "x".repeat(MAX_DESCRIPTION_LENGTH + 1) }).success).toBe(false);
   });
 });

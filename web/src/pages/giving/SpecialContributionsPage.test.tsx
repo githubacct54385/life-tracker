@@ -26,10 +26,10 @@ const setField = async (label: string, value: string) => {
 };
 
 describe("Special contributions screen", () => {
-  it("[AC-GIV-02.1] asks for a name or occasion and never for a month it is for", async () => {
+  it("[AC-GIV-02.1][AC-GIV-02.4] asks for a description that starts empty, and never for a month it is for", async () => {
     open();
     await screen.findByText("Building fund appeal");
-    expect(screen.getByLabelText("Name or occasion")).toBeTruthy();
+    expect((screen.getByLabelText("Description") as HTMLInputElement).value).toBe("");
     expect(screen.queryByLabelText("Month it is for")).toBeNull();
   });
 
@@ -38,7 +38,7 @@ describe("Special contributions screen", () => {
     await screen.findByText("Building fund appeal");
     await setField("Amount", "60.00");
     expect(screen.getByRole("button", { name: "Save special contribution" }).hasAttribute("disabled")).toBe(true);
-    await setField("Name or occasion", "Harvest offering");
+    await setField("Description", "Harvest offering");
     await userEvent.click(screen.getByRole("button", { name: "Save special contribution" }));
     expect((await screen.findByRole("status")).textContent).toContain("Saved $60.00 for Harvest offering");
     expect(await screen.findByText("Harvest offering", { selector: "b" })).toBeTruthy();
@@ -70,7 +70,7 @@ describe("Special contributions screen", () => {
     open();
     await userEvent.click(await screen.findByRole("button", { name: /Edit special contribution: Spring offering/ }));
     const item = screen.getByRole("button", { name: "Save change" }).closest("li")!;
-    const occasion = within(item).getByLabelText("Name or occasion") as HTMLInputElement;
+    const occasion = within(item).getByLabelText("Description") as HTMLInputElement;
     await userEvent.clear(occasion);
     await userEvent.type(occasion, "Easter offering");
     await userEvent.click(within(item).getByRole("button", { name: "Save change" }));

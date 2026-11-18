@@ -17,8 +17,8 @@ test(
       route.fulfill({
         json: {
           gifts: [
-            { id: 2, dateGiven: "2026-11-02", forMonth: "2026-10", cents: 15_000, method: "card" },
-            { id: 1, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 5_000, method: "check" },
+            { id: 2, dateGiven: "2026-11-02", forMonth: "2026-10", cents: 15_000, method: "card", description: "October tithe" },
+            { id: 1, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 5_000, method: "check", description: null },
           ],
         },
       }),

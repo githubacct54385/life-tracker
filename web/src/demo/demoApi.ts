@@ -59,10 +59,10 @@ function seedReadings(): OdometerReadingRecord[] {
 /** Synthetic gifts: one for each of the last few months, one paid late, so the demo screen is not empty. */
 function seedGifts(): GiftRecord[] {
   return [
-    { id: 4, dateGiven: "2026-11-02", forMonth: "2026-11", cents: 15_000, method: "card" },
-    { id: 3, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 15_000, method: "check" },
-    { id: 2, dateGiven: "2026-10-28", forMonth: "2026-10", cents: 5_000, method: "card" },
-    { id: 1, dateGiven: "2026-10-03", forMonth: "2026-09", cents: 15_000, method: "check" },
+    { id: 4, dateGiven: "2026-11-02", forMonth: "2026-11", cents: 15_000, method: "card", description: "November tithe" },
+    { id: 3, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 15_000, method: "check", description: "October tithe" },
+    { id: 2, dateGiven: "2026-10-28", forMonth: "2026-10", cents: 5_000, method: "card", description: null },
+    { id: 1, dateGiven: "2026-10-03", forMonth: "2026-09", cents: 15_000, method: "check", description: "September tithe" },
   ];
 }
 
@@ -145,14 +145,14 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
     },
 
     async logGift(gift) {
-      const saved = giftSchema.parse({ id: nextGiftId++, ...gift });
+      const saved = giftSchema.parse({ id: nextGiftId++, ...gift, description: gift.description?.trim() || null });
       gifts = [...gifts, saved];
       return saved;
     },
 
     async editGift(id, gift) {
       if (!gifts.some((g) => g.id === id)) throw new Error("Gift not found");
-      const saved = giftSchema.parse({ id, ...gift });
+      const saved = giftSchema.parse({ id, ...gift, description: gift.description?.trim() || null });
       gifts = gifts.map((g) => (g.id === id ? saved : g));
       return saved;
     },

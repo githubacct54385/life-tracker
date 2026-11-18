@@ -3,7 +3,7 @@ import { giftRepository as repo } from "./giftRepository.js";
 import { clearGifts, connectFreshAppDatabase, disconnectAppDatabase } from "./giftTestDatabase.js";
 
 const server = inject("postgres");
-const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_050, method: "check" as const };
+const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_050, method: "check" as const, description: null };
 
 describe.skipIf(!server)("giftRepository (real Postgres, real migration, app role)", () => {
   beforeAll(() => connectFreshAppDatabase(server!));
@@ -16,9 +16,15 @@ describe.skipIf(!server)("giftRepository (real Postgres, real migration, app rol
     expect(await repo.listAll()).toEqual([saved]);
   });
 
+  it("[AC-GIV-02.3] stores a description, allows none, and refuses a blank one at the database", async () => {
+    expect((await repo.insert({ ...gift, description: "January tithe" })).description).toBe("January tithe");
+    expect((await repo.insert({ ...gift, description: null })).description).toBeNull();
+    await expect(repo.insert({ ...gift, description: "   " })).rejects.toThrow();
+  });
+
   it("[AC-GIV-01.3] allows several gifts for one month, listed newest month first", async () => {
     await repo.insert({ ...gift, forMonth: "2026-01", dateGiven: "2026-01-05" });
-    await repo.insert({ ...gift, forMonth: "2026-01", dateGiven: "2026-01-20", cents: 5_000, method: "card" });
+    await repo.insert({ ...gift, forMonth: "2026-01", dateGiven: "2026-01-20", cents: 5_000, method: "card", description: null });
     await repo.insert({ ...gift, forMonth: "2026-02", dateGiven: "2026-02-10" });
     expect((await repo.listAll()).map((g) => [g.forMonth, g.dateGiven])).toEqual([
       ["2026-02", "2026-02-10"],
@@ -29,7 +35,7 @@ describe.skipIf(!server)("giftRepository (real Postgres, real migration, app rol
 
   it("[AC-GIV-01.4] edit changes every field, and returns undefined for a missing gift", async () => {
     const saved = await repo.insert(gift);
-    const changed = { dateGiven: "2026-03-02", forMonth: "2026-02", cents: 99, method: "card" as const };
+    const changed = { dateGiven: "2026-03-02", forMonth: "2026-02", cents: 99, method: "card" as const, description: null };
     expect(await repo.update(saved.id, changed)).toEqual({ id: saved.id, ...changed });
     expect(await repo.update(saved.id + 1000, changed)).toBeUndefined();
   });

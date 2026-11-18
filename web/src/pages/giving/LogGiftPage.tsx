@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { groupGiftsByMonth, PAYMENT_METHODS, type GiftRecord, type PaymentMethod, type SaveGiftRequest } from "@life-tracker/shared";
+import { groupGiftsByMonth, MAX_DESCRIPTION_LENGTH, PAYMENT_METHODS, type GiftRecord, type PaymentMethod, type SaveGiftRequest } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { Page } from "../Page";
-import { centsToInput, dateLabel, formatCents, METHOD_LABEL, monthLabel, parseDollars, todayLocal } from "./giftFormat";
+import { centsToInput, dateLabel, defaultDescription, formatCents, METHOD_LABEL, monthLabel, parseDollars, todayLocal } from "./giftFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 const primaryButton = "rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
@@ -13,23 +13,33 @@ interface FormValues {
   forMonth: string;
   amount: string;
   method: PaymentMethod;
+  description: string;
+  /** True once the owner has typed in the description. Until then it follows the month it is for. */
+  descriptionEdited: boolean;
 }
 
-const blankForm = (): FormValues => {
-  const today = todayLocal();
-  return { dateGiven: today, forMonth: today.slice(0, 7), amount: "", method: "check" };
-};
+const blankForm = (forMonth = todayLocal().slice(0, 7)): FormValues => ({
+  dateGiven: todayLocal(),
+  forMonth,
+  amount: "",
+  method: "check",
+  description: defaultDescription(forMonth),
+  descriptionEdited: false,
+});
 
 /** The request for a form, or undefined while a field is not usable yet. */
 function toRequest(values: FormValues): SaveGiftRequest | undefined {
   const cents = parseDollars(values.amount);
   if (cents === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(values.dateGiven) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(values.forMonth)) return undefined;
-  return { dateGiven: values.dateGiven, forMonth: values.forMonth, cents, method: values.method };
+  return { dateGiven: values.dateGiven, forMonth: values.forMonth, cents, method: values.method, description: values.description.trim() };
 }
 
 /** The four fields of a gift. A date only: there is no time field (AC-GIV-01.1). Used for both a new gift and an edit. */
 function GiftFields({ values, onChange, idPrefix }: { values: FormValues; onChange: (values: FormValues) => void; idPrefix: string }) {
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => onChange({ ...values, [key]: value });
+  // Choosing another month moves the default description with it, unless the owner has written their own (AC-GIV-02.3).
+  const setMonth = (forMonth: string) =>
+    onChange({ ...values, forMonth, ...(values.descriptionEdited ? {} : { description: defaultDescription(forMonth) }) });
   return (
     <div className="space-y-3">
       <label className="block font-bold text-ink" htmlFor={`${idPrefix}-date`}>
@@ -38,7 +48,18 @@ function GiftFields({ values, onChange, idPrefix }: { values: FormValues; onChan
       </label>
       <label className="block font-bold text-ink" htmlFor={`${idPrefix}-month`}>
         Month it is for
-        <input id={`${idPrefix}-month`} type="month" className={`${inputClass} mt-1 font-normal`} value={values.forMonth} onChange={(e) => set("forMonth", e.target.value)} />
+        <input id={`${idPrefix}-month`} type="month" className={`${inputClass} mt-1 font-normal`} value={values.forMonth} onChange={(e) => setMonth(e.target.value)} />
+      </label>
+      <label className="block font-bold text-ink" htmlFor={`${idPrefix}-description`}>
+        Description
+        <input
+          id={`${idPrefix}-description`}
+          className={`${inputClass} mt-1 font-normal`}
+          maxLength={MAX_DESCRIPTION_LENGTH}
+          autoComplete="off"
+          value={values.description}
+          onChange={(e) => onChange({ ...values, description: e.target.value, descriptionEdited: true })}
+        />
       </label>
       <div>
         <label className="block font-bold text-ink" htmlFor={`${idPrefix}-amount`}>
@@ -68,7 +89,14 @@ function GiftFields({ values, onChange, idPrefix }: { values: FormValues; onChan
 function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promise<void> }) {
   const api = useApi();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
-  const [values, setValues] = useState<FormValues>({ dateGiven: gift.dateGiven, forMonth: gift.forMonth, amount: centsToInput(gift.cents), method: gift.method });
+  const [values, setValues] = useState<FormValues>({
+    dateGiven: gift.dateGiven,
+    forMonth: gift.forMonth,
+    amount: centsToInput(gift.cents),
+    method: gift.method,
+    description: gift.description ?? "",
+    descriptionEdited: true,
+  });
   const [error, setError] = useState(false);
   const request = toRequest(values);
   const label = `${formatCents(gift.cents)} given ${dateLabel(gift.dateGiven)}`;
@@ -93,6 +121,7 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
     <li className="border-b border-line py-3 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="text-muted">{dateLabel(gift.dateGiven)}</span>
+        {gift.description && <span>{gift.description}</span>}
         <b>{formatCents(gift.cents)}</b>
         <span className="text-muted">{METHOD_LABEL[gift.method]}</span>
         {mode === "view" && (
@@ -175,8 +204,8 @@ export function LogGiftPage() {
     setMessage(null);
     try {
       const saved = await api.logGift(request);
-      // Keep the dates for the next gift; clear only the amount.
-      setValues({ ...values, amount: "" });
+      // Keep the dates for the next gift; clear the amount and start the description from the month again.
+      setValues({ ...values, amount: "", description: defaultDescription(values.forMonth), descriptionEdited: false });
       setMessage(`Saved ${formatCents(saved.cents)} for ${monthLabel(saved.forMonth)}.`);
       document.getElementById("new-gift-amount")?.focus();
     } catch {

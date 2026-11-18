@@ -115,4 +115,47 @@ describe("Log a gift screen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save gift" }));
     expect((await screen.findByRole("alert")).textContent).toContain("did not work");
   });
+
+  it("[AC-GIV-02.3] the description defaults to the month it is for, like November tithe", async () => {
+    open();
+    await screen.findByText("October 2026");
+    await setField("Month it is for", "2026-11");
+    expect((screen.getByLabelText("Description") as HTMLInputElement).value).toBe("November tithe");
+    await setField("Month it is for", "2026-02");
+    expect((screen.getByLabelText("Description") as HTMLInputElement).value).toBe("February tithe");
+  });
+
+  it("[AC-GIV-02.3] a description the owner wrote is kept when the month changes, and is saved with the gift", async () => {
+    open();
+    await screen.findByText("October 2026");
+    await setField("Month it is for", "2026-11");
+    await setField("Description", "Building fund");
+    await setField("Month it is for", "2026-12");
+    expect((screen.getByLabelText("Description") as HTMLInputElement).value).toBe("Building fund");
+    await setField("Amount", "20");
+    await userEvent.click(screen.getByRole("button", { name: "Save gift" }));
+    await screen.findByRole("status");
+    expect(within(await screen.findByRole("group", { name: "December 2026" })).getByText("Building fund")).toBeTruthy();
+    // The next gift starts from the month's default again.
+    expect((screen.getByLabelText("Description") as HTMLInputElement).value).toBe("December tithe");
+  });
+
+  it("[AC-GIV-02.3] saves the default description as shown, and the list shows it", async () => {
+    open();
+    await screen.findByText("October 2026");
+    await setField("Month it is for", "2026-11");
+    await setField("Amount", "30");
+    await userEvent.click(screen.getByRole("button", { name: "Save gift" }));
+    await screen.findByRole("status");
+    expect(within(await screen.findByRole("group", { name: "November 2026" })).getAllByText("November tithe").length).toBeGreaterThan(0);
+  });
+
+  it("[AC-GIV-02.3] edits the description of a saved gift", async () => {
+    open();
+    const october = await screen.findByRole("group", { name: "October 2026" });
+    await userEvent.click(within(october).getByRole("button", { name: "Edit gift: $150.00 given Oct 5, 2026" }));
+    await setField("Description", "Special thanks", within(screen.getByRole("group", { name: "October 2026" })));
+    await userEvent.click(screen.getByRole("button", { name: "Save change" }));
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "October 2026" })).getByText("Special thanks")).toBeTruthy());
+  });
 });

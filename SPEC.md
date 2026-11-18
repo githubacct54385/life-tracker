@@ -109,6 +109,7 @@ Notes:
 | Feature | Priority |
 |---|---|
 | Log a gift: date given (a date only, never a time), **month it is for**, amount, payment method, optional note. The "for" month can differ from the date given (for example, a January gift made in early February). | MVP |
+| A **description** on each regular gift. It starts as "<Month> tithe" for the month it is for (for example "November tithe") and can be changed. A special contribution has a description too, but it starts empty. | MVP |
 | Multiple gifts allowed for the same month. The month total is the sum. | MVP |
 | **Special contributions** as a separate type with their own name or occasion (for example, a once or twice a year offering). Listed and totaled separately from regular monthly giving, but shown together in the yearly summary. | MVP |
 | Monthly giving history (regular only), special contributions list, and year-to-date totals for each plus combined | MVP |
