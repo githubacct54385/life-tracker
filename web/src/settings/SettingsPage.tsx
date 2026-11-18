@@ -19,7 +19,7 @@ const THEMES: { value: Theme; label: string }[] = [
 
 const card = "rounded-xl border border-line bg-card p-4";
 const heading = "mb-3 text-sm font-bold text-ink";
-const select = "w-full rounded-lg border border-line bg-bg p-2.5 text-ink";
+const select = "min-h-11 w-full rounded-lg border border-line bg-bg p-2.5 text-ink";
 
 export function SettingsPage() {
   const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
@@ -44,7 +44,7 @@ export function SettingsPage() {
                 role="radio"
                 aria-checked={prefs.theme === t.value}
                 onClick={() => update({ theme: t.value })}
-                className={`flex-1 rounded-md px-3 py-2 text-sm ${prefs.theme === t.value ? "bg-card font-bold text-g700 shadow-sm" : "text-muted"}`}
+                className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm ${prefs.theme === t.value ? "bg-card font-bold text-gtext shadow-sm" : "text-muted"}`}
               >
                 {t.label}
               </button>

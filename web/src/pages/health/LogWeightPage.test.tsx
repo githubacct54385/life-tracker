@@ -93,7 +93,7 @@ describe("Weight screen", () => {
     const api = createDemoApi({ now: today });
     for (const entry of (await api.listWeights()).entries) await api.deleteWeight(entry.id);
     open(api);
-    expect(await screen.findByText(/No weights yet\. Enter today/)).toBeTruthy();
+    expect(await screen.findAllByText(/No weights yet\. Enter today/)).toHaveLength(2); // the chart and the entries list
     expect(screen.queryByRole("img", { name: /Line chart/ })).toBeNull();
   });
 

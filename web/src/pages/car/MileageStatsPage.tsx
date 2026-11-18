@@ -49,7 +49,7 @@ function WeeklyChart({ rows }: { rows: Row[] }) {
         <span><span aria-hidden className="mr-1 inline-block h-0.5 w-4 bg-ink align-middle" />Rolling 8-week average</span>
       </figcaption>
       <details className="mt-3">
-        <summary className="cursor-pointer text-ink">Show the numbers as a table</summary>
+        <summary className="min-h-11 cursor-pointer py-2 text-ink">Show the numbers as a table</summary>
         <div className="mt-2 max-h-72 overflow-y-auto">
           <table className="w-full text-left text-sm text-ink">
             <caption className="sr-only">Miles per period between weekly readings</caption>
@@ -110,7 +110,7 @@ export function MileageStatsPage() {
   return (
     <Page title="Mileage stats">
       <p>
-        <Link to="/car" className="text-ink underline">Back to Car</Link>
+        <Link to="/car" className="inline-flex min-h-11 items-center text-ink underline">Back to Car</Link>
       </p>
       {failed ? (
         <p role="alert" className={`${card} mt-4`}>The readings could not be loaded. Try again in a moment.</p>

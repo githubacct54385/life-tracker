@@ -91,7 +91,7 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
         <label className="block font-bold" htmlFor="mileage-file">
           Spreadsheet file
         </label>
-        <input id="mileage-file" type="file" accept=".xlsx,.csv" className="block w-full text-ink" onChange={(e) => void choose(e)} />
+        <input id="mileage-file" type="file" accept=".xlsx,.csv" className="block min-h-11 w-full text-ink" onChange={(e) => void choose(e)} />
         {problem && <p role="alert">{problem}</p>}
 
         {preview && (
@@ -145,7 +145,7 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
         )}
 
         {result && (
-          <p role="status" className="text-g700">
+          <p role="status" className="text-gtext">
             Imported {result.imported} readings. {result.duplicates} were already saved and skipped.
           </p>
         )}

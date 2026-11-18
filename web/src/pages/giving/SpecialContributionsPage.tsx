@@ -58,7 +58,7 @@ function Fields({ values, onChange, idPrefix }: { values: FormValues; onChange: 
         <legend className="font-bold text-ink">Payment method</legend>
         <div className="mt-1 flex flex-wrap gap-4 text-ink">
           {PAYMENT_METHODS.map((method) => (
-            <label key={method} className="flex items-center gap-2">
+            <label key={method} className="flex min-h-11 items-center gap-2">
               <input type="radio" name={`${idPrefix}-method`} checked={values.method === method} onChange={() => set("method", method)} />
               {METHOD_LABEL[method]}
             </label>
@@ -107,10 +107,10 @@ function Row({ contribution, onChanged }: { contribution: SpecialContributionRec
         <span className="text-muted">{METHOD_LABEL[contribution.method]}</span>
         {mode === "view" && (
           <span className="flex gap-3">
-            <button type="button" className="min-h-11 px-1 text-g700 underline" aria-label={`Edit special contribution: ${label}`} onClick={() => setMode("edit")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit special contribution: ${label}`} onClick={() => setMode("edit")}>
               Edit
             </button>
-            <button type="button" className="min-h-11 px-1 text-g700 underline" aria-label={`Delete special contribution: ${label}`} onClick={() => setMode("delete")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Delete special contribution: ${label}`} onClick={() => setMode("delete")}>
               Delete
             </button>
           </span>
@@ -204,7 +204,7 @@ export function SpecialContributionsPage() {
           <button type="submit" className={primaryButton} disabled={!request}>
             Save special contribution
           </button>
-          {message && <p role="status" className="text-g700">{message}</p>}
+          {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>
 
