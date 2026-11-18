@@ -1,4 +1,5 @@
 import { createGiftService } from "./services/giftService";
+import { IMPORT_JSON_UPLOAD } from "./http/uploadLimits";
 import { createOdometerService } from "./services/odometerService";
 import { createWorkoutService } from "./services/workoutService";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository";
@@ -225,5 +226,40 @@ describe("odometer history", () => {
     const { call } = setup(async () => true, history);
     expect((await (await call("/api/odometer")).json()).readings).toHaveLength(30);
     expect((await (await call("/api/odometer?all=1")).json()).readings).toHaveLength(40);
+  });
+});
+
+describe("odometer import request limits", () => {
+  const rowsOf = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ date: new Date(Date.UTC(2000, 0, 1 + i)).toISOString().slice(0, 10), miles: 1000 + i }));
+  const post = (call: ReturnType<typeof setup>["call"], body: string, type = "application/json") =>
+    call("/api/odometer/import", { method: "POST", body, headers: { "content-type": type, "x-life-tracker": "1" } });
+
+  it("[AC-SET-03.2] accepts an import of the most rows allowed (5,000) and refuses one more", async () => {
+    const { call } = setup();
+    const ok = await post(call, JSON.stringify({ rows: rowsOf(5000) }));
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ imported: 5000, duplicates: 0 });
+    const tooMany = await post(call, JSON.stringify({ rows: rowsOf(5001) }));
+    expect(tooMany.status).toBe(400);
+  });
+
+  it("[AC-SET-03.2] refuses a body that is not JSON by its type, before reading it", async () => {
+    const { call } = setup();
+    const res = await post(call, JSON.stringify({ rows: rowsOf(2) }), "text/plain");
+    expect(res.status).toBe(415);
+    expect(await res.json()).toEqual({ error: "unsupported_type" });
+  });
+
+  it("[AC-SET-03.2] refuses a body over the size limit, even though few rows are valid", async () => {
+    const { call } = setup();
+    const padded = JSON.stringify({ rows: rowsOf(2), padding: "x".repeat(600 * 1024) });
+    const res = await post(call, padded);
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: "too_large" });
+  });
+
+  it("[AC-SET-03.2] the largest valid import (5,000 rows) fits well inside the size limit", () => {
+    expect(JSON.stringify({ rows: rowsOf(5000) }).length).toBeLessThan(IMPORT_JSON_UPLOAD.maxBytes / 2);
   });
 });

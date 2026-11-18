@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { importMileageRequestSchema, importMileageResultSchema, readingListResponseSchema, saveReadingRequestSchema, saveReadingResultSchema } from "@life-tracker/shared";
+import { IMPORT_JSON_UPLOAD, readUpload } from "../http/uploadLimits.js";
 import type { OdometerService, SaveOutcome } from "../services/odometerService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
@@ -37,8 +38,17 @@ export function odometerRoutes({ logger, odometer }: OdometerDeps): Hono {
   });
 
   // MIL-04: rows the browser parsed from the owner's spreadsheet. The file itself never arrives and is never stored (AC-MIL-04.5).
+  // The size and type limits are checked before the body is parsed (AC-SET-03.2), so an oversized or wrongly typed body is never read in full.
   routes.post("/import", async (c) => {
-    const body = importMileageRequestSchema.safeParse(await c.req.json().catch(() => undefined));
+    const upload = await readUpload(c.req.raw, IMPORT_JSON_UPLOAD);
+    if (!upload.ok) return c.json({ error: upload.error }, upload.status);
+    let json: unknown;
+    try {
+      json = JSON.parse(new TextDecoder().decode(upload.bytes));
+    } catch {
+      json = undefined;
+    }
+    const body = importMileageRequestSchema.safeParse(json);
     if (!body.success) return c.json({ error: "invalid_request" }, 400);
     const result = await odometer.importReadings(body.data.rows);
     logger.info("odometer.import", { rowCount: body.data.rows.length });
