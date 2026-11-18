@@ -74,7 +74,7 @@ function GiftFields({ values, onChange, idPrefix }: { values: FormValues; onChan
         <legend className="font-bold text-ink">Payment method</legend>
         <div className="mt-1 flex flex-wrap gap-4 text-ink">
           {PAYMENT_METHODS.map((method) => (
-            <label key={method} className="flex items-center gap-2">
+            <label key={method} className="flex min-h-11 items-center gap-2">
               <input type="radio" name={`${idPrefix}-method`} checked={values.method === method} onChange={() => set("method", method)} />
               {METHOD_LABEL[method]}
             </label>
@@ -126,10 +126,10 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
         <span className="text-muted">{METHOD_LABEL[gift.method]}</span>
         {mode === "view" && (
           <span className="flex gap-3">
-            <button type="button" className="text-g700 underline" aria-label={`Edit gift: ${label}`} onClick={() => setMode("edit")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit gift: ${label}`} onClick={() => setMode("edit")}>
               Edit
             </button>
-            <button type="button" className="text-g700 underline" aria-label={`Delete gift: ${label}`} onClick={() => setMode("delete")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Delete gift: ${label}`} onClick={() => setMode("delete")}>
               Delete
             </button>
           </span>
@@ -227,7 +227,7 @@ export function LogGiftPage() {
           <button type="submit" className={primaryButton} disabled={!request}>
             Save gift
           </button>
-          {message && <p role="status" className="text-g700">{message}</p>}
+          {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>
 
@@ -238,7 +238,7 @@ export function LogGiftPage() {
           {months === null ? (
             <p className="mt-2 text-muted">Loading…</p>
           ) : months.length === 0 ? (
-            <p className="mt-2 text-muted">No gifts yet.</p>
+            <p className="mt-2 text-muted">No gifts yet. Fill in the form and save your first gift.</p>
           ) : (
             months.map((month) => (
               <div key={month.month} className="mt-4" role="group" aria-label={monthLabel(month.month)}>

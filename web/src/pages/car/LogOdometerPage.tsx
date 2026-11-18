@@ -78,10 +78,10 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
         <b>{formatMiles(reading.miles)} mi</b>
         {mode === "view" && (
           <span className="flex gap-2">
-            <button type="button" className="text-g700 underline" aria-label={`Edit reading from ${shortDate(reading.date)}`} onClick={() => { setText(String(reading.miles)); setMode("edit"); }}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit reading from ${shortDate(reading.date)}`} onClick={() => { setText(String(reading.miles)); setMode("edit"); }}>
               Edit
             </button>
-            <button type="button" className="text-g700 underline" aria-label={`Delete reading from ${shortDate(reading.date)}`} onClick={() => setMode("delete")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Delete reading from ${shortDate(reading.date)}`} onClick={() => setMode("delete")}>
               Delete
             </button>
           </span>
@@ -214,7 +214,7 @@ export function LogOdometerPage() {
               Save reading
             </button>
           )}
-          {message && <p role="status" className="text-g700">{message}</p>}
+          {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>
 
@@ -225,7 +225,7 @@ export function LogOdometerPage() {
           {readings === null ? (
             <p className="mt-2 text-muted">Loading…</p>
           ) : readings.length === 0 ? (
-            <p className="mt-2 text-muted">No readings yet.</p>
+            <p className="mt-2 text-muted">No readings yet. Enter this week&rsquo;s odometer reading above, then save.</p>
           ) : (
             <ul className="mt-2">
               {readings.map((reading) => (

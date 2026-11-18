@@ -80,10 +80,10 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
         <span className="rounded-full border border-line px-2 py-0.5 text-sm">{SOURCE_LABELS[workout.source]}</span>
         {mode === "view" && (
           <span className="flex gap-2">
-            <button type="button" className="text-g700 underline" aria-label={`Edit ${label}`} onClick={() => { setForm({ type: workout.type, minutes: String(workout.minutes), note: workout.note ?? "" }); setMode("edit"); }}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit ${label}`} onClick={() => { setForm({ type: workout.type, minutes: String(workout.minutes), note: workout.note ?? "" }); setMode("edit"); }}>
               Edit
             </button>
-            <button type="button" className="text-g700 underline" aria-label={`Delete ${label}`} onClick={() => setMode("delete")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Delete ${label}`} onClick={() => setMode("delete")}>
               Delete
             </button>
           </span>
@@ -178,7 +178,7 @@ export function LogWorkoutPage() {
           <button type="submit" className={primaryButton} disabled={minutes === undefined}>
             Save workout
           </button>
-          {message && <p role="status" className="text-g700">{message}</p>}
+          {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>
 
@@ -189,7 +189,7 @@ export function LogWorkoutPage() {
           {workouts === null ? (
             <p className="mt-2 text-muted">Loading…</p>
           ) : workouts.length === 0 ? (
-            <p className="mt-2 text-muted">No workouts yet.</p>
+            <p className="mt-2 text-muted">No workouts yet. Choose a type and a duration above, then save.</p>
           ) : (
             <ul className="mt-2">
               {workouts.map((workout) => (

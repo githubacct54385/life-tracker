@@ -105,10 +105,10 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
         <b>{formatWeight(entry.pounds, unit)}</b>
         {mode === "view" && (
           <span className="flex gap-2">
-            <button type="button" className="min-h-11 px-1 text-g700 underline" aria-label={`Edit ${label}`} onClick={() => { setValue(weightToInput(entry.pounds, unit)); setMode("edit"); }}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit ${label}`} onClick={() => { setValue(weightToInput(entry.pounds, unit)); setMode("edit"); }}>
               Edit
             </button>
-            <button type="button" className="min-h-11 px-1 text-g700 underline" aria-label={`Delete ${label}`} onClick={() => setMode("delete")}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Delete ${label}`} onClick={() => setMode("delete")}>
               Delete
             </button>
           </span>
@@ -217,7 +217,7 @@ export function LogWeightPage() {
           <button type="submit" className={primaryButton} disabled={pounds === undefined}>
             Save weight
           </button>
-          {message && <p role="status" className="text-g700">{message}</p>}
+          {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
           {replace && (
             <div role="alert" className="rounded-xl border border-line bg-sunk p-4">
@@ -256,7 +256,7 @@ export function LogWeightPage() {
           {entries === null ? (
             <p className="mt-2 text-muted">Loading…</p>
           ) : entries.length === 0 ? (
-            <p className="mt-2 text-muted">No weights yet.</p>
+            <p className="mt-2 text-muted">No weights yet. Enter today&rsquo;s weight above, then save.</p>
           ) : (
             <ul className="mt-2">
               {entries.map((entry) => (

@@ -16,11 +16,11 @@ function Icon({ active }: { active: boolean }) {
 }
 
 const itemClass: Record<NavKind, (active: boolean) => string> = {
-  tabs: (a) => `flex flex-1 flex-col items-center gap-1 py-2 text-[11px] ${a ? "font-bold text-g700" : "text-muted"}`,
+  tabs: (a) => `flex flex-1 flex-col items-center gap-1 py-2 text-[11px] ${a ? "font-bold text-gtext" : "text-muted"}`,
   rail: (a) =>
-    `flex w-[68px] flex-col items-center gap-[3px] rounded-xl py-2 text-[11px] ${a ? "bg-g100 font-bold text-g700" : "text-muted"}`,
+    `flex w-[68px] flex-col items-center gap-[3px] rounded-xl py-2 text-[11px] ${a ? "bg-g100 font-bold text-gtext" : "text-muted"}`,
   sidebar: (a) =>
-    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${a ? "bg-g100 font-bold text-g700" : "text-muted"}`,
+    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${a ? "bg-g100 font-bold text-gtext" : "text-muted"}`,
 };
 
 const containerClass: Record<NavKind, string> = {
