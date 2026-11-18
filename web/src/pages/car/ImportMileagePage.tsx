@@ -6,7 +6,7 @@ import type { RowError } from "../../importers/mileageGrid";
 import { Page } from "../Page";
 import { formatMiles, shortDate } from "./readingFormat";
 
-const primaryButton = "rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
+const primaryButton = "min-h-11 rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
 
 const PROBLEMS: Record<string, string> = {
   missing_columns: "The file needs a Date column and a Start Miles column in a header row.",
@@ -23,8 +23,13 @@ interface Preview {
   errors: RowError[];
 }
 
-/** Car > Import history (MIL-04). The file is read here in the browser and dropped; only the parsed rows are sent (AC-MIL-04.5). */
-export function ImportMileagePage() {
+const STEPS = ["Upload", "Preview", "Done"];
+
+/**
+ * Car > Import history (MIL-04). The file is read here in the browser and dropped; only the parsed rows are sent (AC-MIL-04.5).
+ * Demo mode passes `sample`, a built-in file generated in code, and then also shows the three steps (DEM-02).
+ */
+export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => File; titleLevel?: 1 | 2 } = {}) {
   const api = useApi();
   const [problem, setProblem] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -32,8 +37,7 @@ export function ImportMileagePage() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function choose(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function load(file: File | undefined) {
     setPreview(null);
     setResult(null);
     setFailed(false);
@@ -44,6 +48,8 @@ export function ImportMileagePage() {
     if (parsed.rows.length === 0) return setProblem("No readings were found in that file.");
     setPreview({ rows: previewImportRows(parsed.rows), errors: parsed.errors });
   }
+
+  const choose = (event: ChangeEvent<HTMLInputElement>) => load(event.target.files?.[0]);
 
   async function commit() {
     if (!preview) return;
@@ -60,13 +66,28 @@ export function ImportMileagePage() {
   }
 
   const flagged = preview?.rows.filter((row) => row.flagged).length ?? 0;
+  const step = result ? 2 : preview ? 1 : 0;
 
   return (
-    <Page title="Import history">
+    <Page title="Import history" level={titleLevel}>
       <div className="space-y-4 text-ink">
         <p className="text-muted">
           Choose your mileage spreadsheet (.xlsx or .csv) with Date and Start Miles columns. Miles driven is worked out again here, not copied from the file. The file stays on this device and is not saved.
         </p>
+        {sample && (
+          <ol aria-label="Steps" className="flex flex-wrap gap-2 text-sm">
+            {STEPS.map((name, index) => (
+              <li key={name} aria-current={index === step ? "step" : undefined} className={`rounded-full border border-line px-3 py-1 ${index === step ? "bg-g700 font-bold text-white" : "text-muted"}`}>
+                {index + 1}. {name}
+              </li>
+            ))}
+          </ol>
+        )}
+        {sample && (
+          <button type="button" className={primaryButton} onClick={() => void load(sample())}>
+            Use the sample file
+          </button>
+        )}
         <label className="block font-bold" htmlFor="mileage-file">
           Spreadsheet file
         </label>
@@ -127,6 +148,11 @@ export function ImportMileagePage() {
           <p role="status" className="text-g700">
             Imported {result.imported} readings. {result.duplicates} were already saved and skipped.
           </p>
+        )}
+        {sample && result && (
+          <button type="button" className="rounded-xl border border-line px-4 py-3 text-ink" onClick={() => setResult(null)}>
+            Start over
+          </button>
         )}
       </div>
     </Page>

@@ -24,3 +24,26 @@ for (const { name, width, height } of widths) {
     expect(apiRequests).toEqual([]);
   });
 }
+
+for (const { name, width, height } of widths) {
+  test(`[AC-DEM-02.1][AC-DEM-02.2][AC-DEM-02.3] /demo at ${name} width walks through the sample mileage import without any API request`, { tag: ["@AC-DEM-02.1", "@AC-DEM-02.2", "@AC-DEM-02.3"] }, async ({ page }) => {
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/api") || (url.hostname !== "127.0.0.1" && url.hostname !== "localhost")) requests.push(request.url());
+    });
+    await page.setViewportSize({ width, height });
+    await page.goto("/demo");
+    await expect(page.getByRole("list", { name: "Steps" }).locator('[aria-current="step"]')).toHaveText("1. Upload");
+    await page.getByRole("button", { name: "Use the sample file" }).click();
+    await expect(page.getByText(/10 readings found/)).toBeVisible();
+    await expect(page.getByRole("list", { name: "Steps" }).locator('[aria-current="step"]')).toHaveText("2. Preview");
+    await page.getByRole("button", { name: "Import 10 readings" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Imported 10 readings" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Steps" }).locator('[aria-current="step"]')).toHaveText("3. Done");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    expect(requests).toEqual([]);
+  });
+}
+
