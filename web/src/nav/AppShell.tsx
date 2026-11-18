@@ -53,6 +53,7 @@ function Nav({ kind, items }: { kind: NavKind; items: Destination[] }) {
 }
 
 export function AppShell() {
+  const { pathname } = useLocation();
   const kind = useNavKind();
   const online = useOnline();
   const waking = useWaking();
@@ -65,7 +66,7 @@ export function AppShell() {
             Waking up the database. This can take a few seconds…
           </p>
         )}
-        {online ? <Outlet /> : <OfflineNotice />}
+        {online ? <div key={pathname} className="lt-page"><Outlet /></div> : <OfflineNotice />}
       </main>
     </div>
   );

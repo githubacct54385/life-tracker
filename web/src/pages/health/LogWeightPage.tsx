@@ -1,3 +1,4 @@
+import { Presence } from "../../ui/Presence.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fromPounds, weightTrend, type WeightEntryRecord } from "@life-tracker/shared";
@@ -115,7 +116,7 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
         )}
       </div>
 
-      {mode === "edit" && (
+      <Presence>{mode === "edit" ? (
         <form
           className="mt-3 space-y-3"
           noValidate
@@ -138,9 +139,9 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
             </button>
           </div>
         </form>
-      )}
+      ) : null}</Presence>
 
-      {mode === "delete" && (
+      <Presence>{mode === "delete" ? (
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this weight? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
@@ -152,8 +153,8 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
             </button>
           </div>
         </div>
-      )}
-      {error && <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p>}
+      ) : null}</Presence>
+      <Presence>{error ? <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p> : null}</Presence>
     </li>
   );
 }
@@ -217,9 +218,9 @@ export function LogWeightPage() {
           <button type="submit" className={primaryButton} disabled={pounds === undefined}>
             Save weight
           </button>
-          {message && <p role="status" className="text-gtext">{message}</p>}
-          {error && <p role="alert">That did not work. Try again.</p>}
-          {replace && (
+          <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
+          <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
+          <Presence>{replace ? (
             <div role="alert" className="rounded-xl border border-line bg-sunk p-4">
               <p>
                 You already saved {formatWeight(replace.existing.pounds, unit)} today. Replace it with {formatWeight(replace.pounds, unit)}?
@@ -233,7 +234,7 @@ export function LogWeightPage() {
                 </button>
               </div>
             </div>
-          )}
+          ) : null}</Presence>
         </form>
 
         <section aria-labelledby="weight-chart" className="rounded-2xl border border-line bg-card p-4 text-ink">
