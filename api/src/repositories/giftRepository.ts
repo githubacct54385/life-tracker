@@ -1,4 +1,4 @@
-import type { GiftRecord, PaymentMethod } from "@life-tracker/shared";
+import type { GiftRecord, PaymentMethod, SpecialContributionRecord } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
 
 export type StoredGift = GiftRecord;
@@ -8,6 +8,32 @@ export interface GiftInput {
   cents: number;
   method: PaymentMethod;
 }
+
+export type StoredSpecialContribution = SpecialContributionRecord;
+export interface SpecialContributionInput {
+  dateGiven: string;
+  occasion: string;
+  cents: number;
+  method: PaymentMethod;
+}
+
+interface SpecialRow {
+  id: string;
+  date_given: string;
+  occasion: string;
+  cents: string;
+  method: PaymentMethod;
+}
+
+const toSpecial = (row: SpecialRow): StoredSpecialContribution => ({
+  id: Number(row.id),
+  dateGiven: row.date_given,
+  occasion: row.occasion,
+  cents: Number(row.cents),
+  method: row.method,
+});
+
+const SPECIAL_COLUMNS = `id, to_char(given_on, 'YYYY-MM-DD') AS date_given, occasion, round(amount * 100)::bigint AS cents, method`;
 
 interface Row {
   id: string;
@@ -40,6 +66,14 @@ export interface GiftRepository {
   update(id: number, gift: GiftInput): Promise<StoredGift | undefined>;
   /** True when a gift was removed. */
   remove(id: number): Promise<boolean>;
+
+  /** Every special contribution, newest date given first (GIV-02). */
+  listSpecial(): Promise<StoredSpecialContribution[]>;
+  insertSpecial(contribution: SpecialContributionInput): Promise<StoredSpecialContribution>;
+  /** Undefined when there is no such contribution. */
+  updateSpecial(id: number, contribution: SpecialContributionInput): Promise<StoredSpecialContribution | undefined>;
+  /** True when a contribution was removed. */
+  removeSpecial(id: number): Promise<boolean>;
 }
 
 export const giftRepository: GiftRepository = {
@@ -67,6 +101,33 @@ export const giftRepository: GiftRepository = {
 
   async remove(id) {
     const result = await getPool().query("DELETE FROM regular_gifts WHERE id = $1", [id]);
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async listSpecial() {
+    const result = await getPool().query<SpecialRow>(`SELECT ${SPECIAL_COLUMNS} FROM special_contributions ORDER BY given_on DESC, id DESC`);
+    return result.rows.map(toSpecial);
+  },
+
+  async insertSpecial({ dateGiven, occasion, cents, method }) {
+    const result = await getPool().query<SpecialRow>(
+      `INSERT INTO special_contributions (given_on, occasion, amount, method) VALUES ($1::date, $2, $3::numeric / 100, $4) RETURNING ${SPECIAL_COLUMNS}`,
+      [dateGiven, occasion, cents, method],
+    );
+    return toSpecial(result.rows[0]!);
+  },
+
+  async updateSpecial(id, { dateGiven, occasion, cents, method }) {
+    const result = await getPool().query<SpecialRow>(
+      `UPDATE special_contributions SET given_on = $2::date, occasion = $3, amount = $4::numeric / 100, method = $5, updated_at = now()
+       WHERE id = $1 RETURNING ${SPECIAL_COLUMNS}`,
+      [id, dateGiven, occasion, cents, method],
+    );
+    return result.rows[0] ? toSpecial(result.rows[0]) : undefined;
+  },
+
+  async removeSpecial(id) {
+    const result = await getPool().query("DELETE FROM special_contributions WHERE id = $1", [id]);
     return (result.rowCount ?? 0) > 0;
   },
 };

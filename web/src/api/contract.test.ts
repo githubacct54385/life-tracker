@@ -22,6 +22,10 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     }
     if (input === "/api/odometer/import" && init?.method === "POST") return Response.json({ imported: 1, duplicates: 0 });
     if (input === "/api/odometer/9" && init?.method === "PUT") return Response.json(SAVED);
+    if (input === "/api/gifts/special" && init?.method === "GET") return Response.json({ contributions: [SPECIAL] });
+    if (input === "/api/gifts/special" && init?.method === "POST") return Response.json(SPECIAL, { status: 201 });
+    if (input === "/api/gifts/special/3" && init?.method === "PUT") return Response.json(SPECIAL);
+    if (input === "/api/gifts/special/3" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/gifts" && init?.method === "GET") return Response.json({ gifts: [GIFT] });
     if (input === "/api/gifts" && init?.method === "POST") return Response.json(GIFT, { status: 201 });
     if (input === "/api/gifts/7" && init?.method === "PUT") return Response.json(GIFT);
@@ -40,7 +44,8 @@ const implementations: Array<[string, () => Api]> = [
   ["demoApi.ts", () => createDemoApi()],
 ];
 
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout"] as const satisfies ReadonlyArray<keyof Api>;
+const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -94,6 +99,41 @@ describe.each(implementations)("[AC-GIV-01.1][AC-GIV-01.4] gift contract: %s", (
     expect(await api.logGift(input)).toMatchObject({ id: expect.any(Number), ...input });
     expect(await api.editGift(gifts[0]!.id, input)).toMatchObject(input);
     await expect(api.deleteGift(gifts[0]!.id)).resolves.toBeUndefined();
+  });
+});
+
+describe.each(implementations)("[AC-GIV-02.1] special contribution contract: %s", (_name, make) => {
+  const input = { dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" } as const;
+
+  it("lists, saves, edits and deletes special contributions with the shared shapes", async () => {
+    const api = make();
+    const { contributions } = await api.listSpecialContributions();
+    expect(contributions.length).toBeGreaterThan(0);
+    expect(await api.logSpecialContribution(input)).toMatchObject({ id: expect.any(Number), ...input });
+    expect(await api.editSpecialContribution(contributions[0]!.id, input)).toMatchObject(input);
+    await expect(api.deleteSpecialContribution(contributions[0]!.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("demo special contribution behaviour", () => {
+  const input = { dateGiven: "2026-11-09", occasion: "Disaster relief offering", cents: 7_500, method: "check" } as const;
+
+  it("[AC-GIV-02.2] keeps special contributions out of the regular gift list", async () => {
+    const api = createDemoApi();
+    const regularBefore = (await api.listGifts()).gifts.length;
+    const saved = await api.logSpecialContribution(input);
+    expect(saved).toMatchObject({ occasion: "Disaster relief offering" });
+    expect((await api.listGifts()).gifts).toHaveLength(regularBefore);
+    expect((await api.listSpecialContributions()).contributions.map((c) => c.id)).toContain(saved.id);
+  });
+
+  it("[AC-GIV-02.1] edit replaces the contribution and delete removes it", async () => {
+    const api = createDemoApi();
+    const [first] = (await api.listSpecialContributions()).contributions;
+    expect(await api.editSpecialContribution(first!.id, input)).toEqual({ id: first!.id, ...input });
+    await api.deleteSpecialContribution(first!.id);
+    expect((await api.listSpecialContributions()).contributions.map((c) => c.id)).not.toContain(first!.id);
+    await expect(api.editSpecialContribution(first!.id, input)).rejects.toThrow();
   });
 });
 

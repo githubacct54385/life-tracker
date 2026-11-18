@@ -1,4 +1,4 @@
-import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveWorkoutRequest, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -25,6 +25,14 @@ export interface Api {
   editGift(id: number, gift: SaveGiftRequest): Promise<GiftRecord>;
   /** Removes a gift for good. */
   deleteGift(id: number): Promise<void>;
+  /** Special contributions, newest first. Separate from regular gifts (GIV-02). */
+  listSpecialContributions(): Promise<SpecialContributionListResponse>;
+  /** Saves a special contribution: it has an occasion instead of a "for" month. */
+  logSpecialContribution(contribution: SaveSpecialContributionRequest): Promise<SpecialContributionRecord>;
+  /** Replaces every field of a special contribution. */
+  editSpecialContribution(id: number, contribution: SaveSpecialContributionRequest): Promise<SpecialContributionRecord>;
+  /** Removes a special contribution for good. */
+  deleteSpecialContribution(id: number): Promise<void>;
   /** Adds readings parsed from the owner's spreadsheet (MIL-04). Rows already stored are skipped, so importing twice adds nothing. */
   importReadings(rows: ImportRow[]): Promise<ImportMileageResult>;
   /** Recent workouts, newest first (HLT-02). */

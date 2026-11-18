@@ -7,6 +7,10 @@ import {
   importMileageResultSchema,
   readingListResponseSchema,
   saveReadingResultSchema,
+  sortSpecialContributions,
+  specialContributionListResponseSchema,
+  specialContributionSchema,
+  type SpecialContributionRecord,
   type GiftRecord,
   workoutListResponseSchema,
   workoutRecordSchema,
@@ -62,6 +66,14 @@ function seedGifts(): GiftRecord[] {
   ];
 }
 
+/** Synthetic special contributions: two invented occasions, so the demo screen is not empty. */
+function seedSpecial(): SpecialContributionRecord[] {
+  return [
+    { id: 2, dateGiven: "2026-09-14", occasion: "Building fund appeal", cents: 25_000, method: "check" },
+    { id: 1, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" },
+  ];
+}
+
 /** Synthetic workouts, one from the watch and two by hand, so the demo screen shows both sources. */
 function seedWorkouts(): WorkoutRecord[] {
   return [
@@ -82,6 +94,8 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   let nextId = 200;
   let gifts = seedGifts();
   let nextGiftId = 5;
+  let special = seedSpecial();
+  let nextSpecialId = 3;
   let workouts = seedWorkouts();
   let nextWorkoutId = 4;
   const newestWorkouts = () => [...workouts].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
@@ -145,6 +159,27 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteGift(id) {
       gifts = gifts.filter((g) => g.id !== id);
+    },
+
+    async listSpecialContributions() {
+      return specialContributionListResponseSchema.parse({ contributions: sortSpecialContributions(special) });
+    },
+
+    async logSpecialContribution(contribution) {
+      const saved = specialContributionSchema.parse({ id: nextSpecialId++, ...contribution });
+      special = [...special, saved];
+      return saved;
+    },
+
+    async editSpecialContribution(id, contribution) {
+      if (!special.some((c) => c.id === id)) throw new Error("Special contribution not found");
+      const saved = specialContributionSchema.parse({ id, ...contribution });
+      special = special.map((c) => (c.id === id ? saved : c));
+      return saved;
+    },
+
+    async deleteSpecialContribution(id) {
+      special = special.filter((c) => c.id !== id);
     },
 
     async importReadings(rows) {

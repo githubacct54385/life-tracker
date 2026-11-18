@@ -35,3 +35,30 @@ describe("giftService", () => {
     expect(await service.list()).toEqual([]);
   });
 });
+
+describe("giftService special contributions", () => {
+  const special = { dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" as const };
+
+  it("[AC-GIV-02.1] stores a special contribution with its occasion and no month it is for", async () => {
+    const service = createGiftService(fakeGiftRepo());
+    expect(await service.createSpecial(special)).toEqual({ id: 1, ...special });
+    expect(await service.listSpecial()).toEqual([{ id: 1, ...special }]);
+  });
+
+  it("[AC-GIV-02.2] keeps special contributions out of the regular gift list", async () => {
+    const service = createGiftService(fakeGiftRepo([gift]));
+    await service.createSpecial(special);
+    expect(await service.list()).toHaveLength(1);
+    expect(await service.list()).toEqual([{ id: 1, ...gift }]);
+    expect(await service.listSpecial()).toHaveLength(1);
+  });
+
+  it("[AC-GIV-02.1] edit replaces every field, and delete removes it; both say so when it does not exist", async () => {
+    const service = createGiftService(fakeGiftRepo([], [special]));
+    const changed = { dateGiven: "2026-04-05", occasion: "Easter offering", cents: 7_500, method: "check" as const };
+    expect(await service.editSpecial(1, changed)).toEqual({ id: 1, ...changed });
+    expect(await service.editSpecial(99, changed)).toBeUndefined();
+    expect(await service.removeSpecial(1)).toBe(true);
+    expect(await service.removeSpecial(1)).toBe(false);
+  });
+});

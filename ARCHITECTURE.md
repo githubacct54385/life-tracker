@@ -246,15 +246,19 @@ erDiagram
         int miles
         string note
     }
-    GIFT {
+    REGULAR_GIFT {
         int id PK
         date given_on
-        date for_month "null for special"
+        date for_month "first day of the month it is for"
         numeric amount
         string method
-        string kind "regular or special"
-        string occasion "special only"
-        string note
+    }
+    SPECIAL_CONTRIBUTION {
+        int id PK
+        date given_on
+        string occasion "name or occasion, instead of a for month"
+        numeric amount
+        string method
     }
     WEIGHT_ENTRY {
         int id PK

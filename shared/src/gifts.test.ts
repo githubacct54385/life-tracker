@@ -1,6 +1,14 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { groupGiftsByMonth, saveGiftRequestSchema, type GiftRecord } from "./gifts";
+import {
+  groupGiftsByMonth,
+  MAX_OCCASION_LENGTH,
+  saveGiftRequestSchema,
+  saveSpecialContributionRequestSchema,
+  sortSpecialContributions,
+  specialContributionTotal,
+  type GiftRecord,
+} from "./gifts";
 
 // Invented amounts, in integer cents (ADR-0007).
 const gift = (id: number, dateGiven: string, forMonth: string, cents: number): GiftRecord => ({ id, dateGiven, forMonth, cents, method: "check" });
@@ -65,5 +73,36 @@ describe("groupGiftsByMonth", () => {
         expect(new Set(months.map((m) => m.month)).size).toBe(months.length);
       }),
     );
+  });
+});
+
+describe("special contributions (GIV-02)", () => {
+  const base = { dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" as const };
+
+  it("[AC-GIV-02.1] needs a name or occasion and has no month it is for", () => {
+    expect(saveSpecialContributionRequestSchema.safeParse(base).success).toBe(true);
+    expect(saveSpecialContributionRequestSchema.safeParse({ ...base, occasion: "   " }).success).toBe(false);
+    expect(saveSpecialContributionRequestSchema.safeParse({ ...base, occasion: "x".repeat(MAX_OCCASION_LENGTH + 1) }).success).toBe(false);
+    expect(saveSpecialContributionRequestSchema.safeParse({ ...base, forMonth: "2026-03" }).success).toBe(false);
+    expect(saveSpecialContributionRequestSchema.parse({ ...base, occasion: "  Spring offering  " }).occasion).toBe("Spring offering");
+  });
+
+  it("[AC-GIV-02.2] totals special contributions on their own, for a year or for all of them", () => {
+    const list = [
+      { id: 1, ...base },
+      { id: 2, ...base, dateGiven: "2025-12-14", cents: 2_500 },
+    ];
+    expect(specialContributionTotal(list)).toBe(12_500);
+    expect(specialContributionTotal(list, 2026)).toBe(10_000);
+    expect(specialContributionTotal([])).toBe(0);
+  });
+
+  it("[AC-GIV-02.2] lists newest date first", () => {
+    const list = [
+      { id: 1, ...base, dateGiven: "2026-01-05" },
+      { id: 2, ...base, dateGiven: "2026-03-29" },
+      { id: 3, ...base, dateGiven: "2026-03-29" },
+    ];
+    expect(sortSpecialContributions(list).map((c) => c.id)).toEqual([3, 2, 1]);
   });
 });
