@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { ALLOWED_LOG_FIELDS, createLogger, errorTypeOf } from "./logger.js";
+import { ALLOWED_LOG_FIELDS, createLogger, errorCodeOf, errorTypeOf } from "./logger.js";
 
 // Synthetic values only. None of these is real data.
 const FAKE_MERCHANT = "Fake Coffee Shop 123";
@@ -53,6 +53,13 @@ describe("logger allow-list", () => {
     const { lines, log } = capture();
     log.error(`saved ${FAKE_MERCHANT}`);
     expect(JSON.parse(lines[0]!).event).toBe("invalid_event_name");
+  });
+
+  it("[AC-OPS-01.2] errorCode keeps a short code and never a message", () => {
+    expect(errorCodeOf(Object.assign(new Error(`bad ${FAKE_AMOUNT}`), { code: "42501" }))).toBe("42501");
+    expect(errorCodeOf(Object.assign(new Error("x"), { code: "connect failed for user 1234" }))).toBeUndefined();
+    expect(errorCodeOf(new Error("no code"))).toBeUndefined();
+    expect(errorCodeOf(null)).toBeUndefined();
   });
 
   it("[AC-OPS-01.2] errorType keeps the class name and never the message", () => {
