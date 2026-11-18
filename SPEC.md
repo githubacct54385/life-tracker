@@ -59,7 +59,7 @@ Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking, accounts, catego
 | Feature | Priority |
 |---|---|
 | Log weight (a value; it is dated when saved, with no date to enter), with a trend line and moving average. Pounds or kilograms. | MVP |
-| Log workouts manually (type, duration, notes; dated when saved, with no date to enter) | MVP |
+| Log workouts manually (type, duration, notes; dated when saved, with no date to enter). Pushups are counted, not timed: enter how many | MVP |
 | Import workouts from an Apple Health export (the ZIP is opened in the browser) | MVP |
 | Workout history, weekly and monthly totals, consistency streaks | MVP |
 | Goals: target weight, workouts per week | Next |

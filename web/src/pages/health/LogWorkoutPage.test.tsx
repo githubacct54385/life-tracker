@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ApiProvider } from "../../api/ApiContext";
 import { createDemoApi } from "../../demo/demoApi";
 import { LogWorkoutPage } from "./LogWorkoutPage";
-import { formatMinutes, parseMinutes } from "./workoutFormat";
+import { formatMinutes, formatReps, parseMinutes, parseReps } from "./workoutFormat";
 
 afterEach(cleanup);
 
@@ -99,5 +99,72 @@ describe("workout formatting", () => {
 
   it("[AC-HLT-02.1] shows long durations as hours and minutes", () => {
     expect([formatMinutes(30), formatMinutes(60), formatMinutes(95)]).toEqual(["30 min", "1 h", "1 h 35 min"]);
+  });
+});
+
+describe("Pushups (counted, not timed)", () => {
+  it("[AC-HLT-02.4] choosing Pushups asks how many instead of a duration, and choosing another type brings the duration back", async () => {
+    open();
+    await screen.findByText("Nov 6");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "Pushups");
+    expect(screen.getByLabelText("How many pushups?")).toBeTruthy();
+    expect(screen.queryByLabelText("Duration (minutes)")).toBeNull();
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "Run");
+    expect(minutesField()).toBeTruthy();
+    expect(screen.queryByLabelText("How many pushups?")).toBeNull();
+  });
+
+  it("[AC-HLT-02.4] saves a count, says so, and shows it in the list", async () => {
+    open();
+    await screen.findByText("Nov 6");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "Pushups");
+    const save = screen.getByRole("button", { name: "Save workout" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await userEvent.type(screen.getByLabelText("How many pushups?"), "40");
+    await userEvent.click(save);
+    expect((await screen.findByRole("status")).textContent).toContain("Saved Pushups, 40 pushups.");
+    const recent = screen.getByRole("region", { name: "Recent workouts" });
+    expect(await within(recent).findByText("Pushups, 40 pushups")).toBeTruthy();
+  });
+
+  it("[AC-HLT-02.4] a count that is not a whole number from 1 to 10,000 cannot be saved", async () => {
+    open();
+    await screen.findByText("Nov 6");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "Pushups");
+    for (const bad of ["0", "2.5", "10001", "abc"]) {
+      const field = screen.getByLabelText("How many pushups?");
+      await userEvent.clear(field);
+      await userEvent.type(field, bad);
+      expect((screen.getByRole("button", { name: "Save workout" }) as HTMLButtonElement).disabled, bad).toBe(true);
+      expect(screen.getByText("Enter a whole number, from 1 to 10,000.")).toBeTruthy();
+    }
+  });
+
+  it("[AC-HLT-02.4] edits the count of a saved pushups workout", async () => {
+    const api = open();
+    await api.logWorkout({ type: "Pushups", reps: 30 });
+    cleanup();
+    render(
+      <MemoryRouter>
+        <ApiProvider api={api}>
+          <LogWorkoutPage />
+        </ApiProvider>
+      </MemoryRouter>,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /^Edit Pushups on/ }));
+    const field = screen.getByLabelText("How many pushups?") as HTMLInputElement;
+    expect(field.value).toBe("30");
+    await userEvent.clear(field);
+    await userEvent.type(field, "55");
+    await userEvent.click(screen.getByRole("button", { name: "Save change" }));
+    expect(await screen.findByText("Pushups, 55 pushups")).toBeTruthy();
+  });
+
+  it("[AC-HLT-02.4] counts read as words: one pushup, many pushups, and reps for a type with no name of its own", () => {
+    expect(formatReps(1, "Pushups")).toBe("1 pushup");
+    expect(formatReps(1200, "Pushups")).toBe("1,200 pushups");
+    expect(formatReps(5, "Situps")).toBe("5 reps");
+    expect(parseReps("1,200")).toBe(1200);
+    expect([parseReps("0"), parseReps("10001"), parseReps("1.5"), parseReps("")]).toEqual([undefined, undefined, undefined, undefined]);
   });
 });

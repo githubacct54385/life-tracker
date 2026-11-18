@@ -17,8 +17,8 @@ test(
       route.fulfill({
         json: {
           workouts: [
-            { id: 2, date: "2026-11-06", type: "Yoga", minutes: 40, note: "A long synthetic note that should wrap rather than push the page sideways", source: "manual" },
-            { id: 1, date: "2026-11-05", type: "Run", minutes: 32, note: null, source: "apple_watch" },
+            { id: 2, date: "2026-11-06", type: "Yoga", minutes: 40, reps: null, note: "A long synthetic note that should wrap rather than push the page sideways", source: "manual" },
+            { id: 1, date: "2026-11-05", type: "Run", minutes: 32, reps: null, note: null, source: "apple_watch" },
           ],
         },
       }),

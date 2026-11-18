@@ -4,7 +4,10 @@
 export interface Workout {
   /** Local calendar date, "YYYY-MM-DD". */
   date: string;
-  minutes: number;
+  /** Null for a workout counted in repetitions (pushups): it adds nothing to the minutes. */
+  minutes: number | null;
+  /** Repetitions, for a workout counted that way. */
+  reps?: number | null;
 }
 
 export interface WorkoutTotal {
@@ -12,6 +15,7 @@ export interface WorkoutTotal {
   period: string;
   count: number;
   minutes: number;
+  reps: number;
 }
 
 export interface WeekOptions {
@@ -47,12 +51,13 @@ function weekStart(day: number, weekStartsOn: number): number {
 export function workoutTotals(workouts: readonly Workout[], by: "week" | "month", options: WeekOptions = {}): WorkoutTotal[] {
   const weekStartsOn = options.weekStartsOn ?? 1;
   const totals = new Map<string, WorkoutTotal>();
-  for (const { date, minutes } of workouts) {
+  for (const { date, minutes, reps } of workouts) {
     const day = toDayNumber(date);
     const period = by === "week" ? toDate(weekStart(day, weekStartsOn)) : toDate(day).slice(0, 7);
-    const entry = totals.get(period) ?? { period, count: 0, minutes: 0 };
+    const entry = totals.get(period) ?? { period, count: 0, minutes: 0, reps: 0 };
     entry.count += 1;
-    entry.minutes += minutes;
+    entry.minutes += minutes ?? 0;
+    entry.reps += reps ?? 0;
     totals.set(period, entry);
   }
   return [...totals.values()].sort((a, b) => (a.period < b.period ? 1 : -1));
@@ -90,18 +95,20 @@ export function paceStreakDays(workouts: readonly Workout[], options: { target?:
   return streak;
 }
 
-/** Count and minutes of the workouts in the week that contains `today` (weeks start on Monday unless told otherwise). Later days are included. */
-export function workoutsThisWeek(workouts: readonly Workout[], today: string, options: WeekOptions = {}): { count: number; minutes: number } {
+/** Count, minutes and repetitions of the workouts in the week that contains `today` (weeks start on Monday unless told otherwise). Later days are included. */
+export function workoutsThisWeek(workouts: readonly Workout[], today: string, options: WeekOptions = {}): { count: number; minutes: number; reps: number } {
   const weekStartsOn = options.weekStartsOn ?? 1;
   const start = weekStart(toDayNumber(today), weekStartsOn);
   let count = 0;
   let minutes = 0;
+  let reps = 0;
   for (const workout of workouts) {
     const day = toDayNumber(workout.date);
     if (day >= start && day < start + 7) {
       count += 1;
-      minutes += workout.minutes;
+      minutes += workout.minutes ?? 0;
+      reps += workout.reps ?? 0;
     }
   }
-  return { count, minutes };
+  return { count, minutes, reps };
 }

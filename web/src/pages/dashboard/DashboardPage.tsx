@@ -138,7 +138,7 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
 
           <Tile id="tile-workouts" title="Workouts this week" load={workouts} to="/health">
             {(list) => {
-              const week = workoutsThisWeek(list.map((w) => ({ date: w.date, minutes: w.minutes })), today);
+              const week = workoutsThisWeek(list.map((w) => ({ date: w.date, minutes: w.minutes, reps: w.reps })), today);
               return week.count === 0 ? (
                 <p className="mt-2 text-muted">No workouts yet this week.</p>
               ) : (
@@ -146,7 +146,9 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
                   <p className="mt-1 text-2xl font-bold">
                     {week.count} {week.count === 1 ? "workout" : "workouts"}
                   </p>
-                  <p className="text-sm text-muted">{formatMinutes(week.minutes)} in total</p>
+                  <p className="text-sm text-muted">
+                    {[week.minutes > 0 || week.reps === 0 ? `${formatMinutes(week.minutes)} in total` : null, week.reps > 0 ? `${week.reps.toLocaleString("en-US")} pushups` : null].filter(Boolean).join(", ")}
+                  </p>
                 </>
               );
             }}

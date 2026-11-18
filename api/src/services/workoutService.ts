@@ -8,7 +8,7 @@ export interface WorkoutService {
   list(limit?: number): Promise<StoredWorkout[]>;
   /** A new manual workout, dated now. */
   log(input: SaveWorkoutRequest): Promise<StoredWorkout>;
-  /** Changes type, duration and note. Keeps the date and the source. Undefined when it does not exist. */
+  /** Changes type, duration or count, and note. Keeps the date and the source. Undefined when it does not exist. */
   edit(id: number, input: SaveWorkoutRequest): Promise<StoredWorkout | undefined>;
   /** Removes a workout for good. False when it does not exist. */
   remove(id: number): Promise<boolean>;
@@ -28,10 +28,10 @@ export function createWorkoutService(repo: WorkoutRepository, options: WorkoutSe
   return {
     list: (limit = 100) => repo.list(limit),
 
-    log: ({ type, minutes, note }) =>
-      repo.insert({ date: calendarDateIn(timeZone, now()), type, minutes, note: noteOrNull(note), source: "manual" }),
+    log: ({ type, minutes, reps, note }) =>
+      repo.insert({ date: calendarDateIn(timeZone, now()), type, minutes: minutes ?? null, reps: reps ?? null, note: noteOrNull(note), source: "manual" }),
 
-    edit: (id, { type, minutes, note }) => repo.update(id, { type, minutes, note: noteOrNull(note) }),
+    edit: (id, { type, minutes, reps, note }) => repo.update(id, { type, minutes: minutes ?? null, reps: reps ?? null, note: noteOrNull(note) }),
 
     remove: (id) => repo.remove(id),
   };
