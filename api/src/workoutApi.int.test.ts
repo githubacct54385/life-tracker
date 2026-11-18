@@ -41,7 +41,7 @@ describe.skipIf(!server)("/api/workouts (real Postgres)", () => {
   it("[AC-HLT-02.1][AC-HLT-02.3] saves a manual workout dated today when only type, minutes and note are sent", async () => {
     const res = await call("POST", "/api/workouts", { type: "Run", minutes: 30, note: "easy" });
     expect(res.status).toBe(201);
-    expect(await res.json()).toEqual({ id: expect.any(Number), date: "2026-11-13", type: "Run", minutes: 30, note: "easy", source: "manual" });
+    expect(await res.json()).toEqual({ id: expect.any(Number), date: "2026-11-13", type: "Run", minutes: 30, reps: null, note: "easy", source: "manual" });
   });
 
   it("[AC-HLT-02.1] refuses a request that tries to choose a date or a source, and saves nothing", async () => {
@@ -55,7 +55,7 @@ describe.skipIf(!server)("/api/workouts (real Postgres)", () => {
     const id = (await (await call("GET", "/api/workouts")).json()).workouts[0].id;
     const res = await call("PUT", `/api/workouts/${id}`, { type: "Hike", minutes: 90, note: "long one" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ id, date: "2026-11-06", type: "Hike", minutes: 90, note: "long one", source: "apple_watch" });
+    expect(await res.json()).toEqual({ id, date: "2026-11-06", type: "Hike", minutes: 90, reps: null, note: "long one", source: "apple_watch" });
   });
 
   it("[AC-HLT-02.2] deletes a workout, and answers 404 for one that is not there", async () => {
@@ -71,6 +71,27 @@ describe.skipIf(!server)("/api/workouts (real Postgres)", () => {
     await seedWorkout("2026-11-06", "Yoga", 40, "manual");
     const list = (await (await call("GET", "/api/workouts")).json()).workouts;
     expect(list.map((w: { date: string; source: string }) => [w.date, w.source])).toEqual([["2026-11-06", "manual"], ["2026-11-05", "apple_watch"]]);
+  });
+
+  it("[AC-HLT-02.4] saves pushups with a count and no minutes, lists them, and edits the count", async () => {
+    const saved = await call("POST", "/api/workouts", { type: "Pushups", reps: 40 });
+    expect(saved.status).toBe(201);
+    const record = await saved.json();
+    expect(record).toEqual({ id: expect.any(Number), date: "2026-11-13", type: "Pushups", minutes: null, reps: 40, note: null, source: "manual" });
+    expect((await (await call("GET", "/api/workouts")).json()).workouts[0]).toEqual(record);
+    const edited = await call("PUT", `/api/workouts/${record.id}`, { type: "Pushups", reps: 55 });
+    expect((await edited.json()).reps).toBe(55);
+  });
+
+  it("[AC-HLT-02.4] refuses pushups without a count, a run without minutes, and a count on a timed workout", async () => {
+    for (const bad of [{ type: "Pushups" }, { type: "Pushups", reps: 20, minutes: 5 }, { type: "Run" }, { type: "Run", minutes: 30, reps: 20 }, { type: "Pushups", reps: 10_001 }]) {
+      expect((await call("POST", "/api/workouts", bad)).status, JSON.stringify(bad)).toBe(400);
+    }
+    expect(await (await call("GET", "/api/workouts")).json()).toEqual({ workouts: [] });
+  });
+
+  it("[AC-HLT-02.4] the database itself refuses a workout with neither minutes nor a count", async () => {
+    await expect(seedWorkout("2026-11-06", "Other", null, "manual", null)).rejects.toThrow(/workouts_minutes_or_reps/);
   });
 
   it("[AC-HLT-02.1] answers 401 without the owner's token", async () => {

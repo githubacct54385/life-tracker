@@ -96,3 +96,23 @@ describe("Health screen", () => {
     expect(screen.getByRole("link", { name: "Workouts" }).getAttribute("href")).toBe("/health/workouts");
   });
 });
+
+describe("Health screen with pushups", () => {
+  it("[AC-HLT-02.4] shows pushups in the history and adds a Pushups column to the weekly and monthly totals", async () => {
+    const api = createDemoApi({ now: () => new Date(2026, 10, 9, 9, 0) });
+    await api.logWorkout({ type: "Pushups", reps: 40 });
+    await api.logWorkout({ type: "Pushups", reps: 25 });
+    open(api);
+    const history = await screen.findByRole("region", { name: "History" });
+    expect(within(history).getByText("Pushups, 25 pushups")).toBeTruthy();
+    const tables = screen.getAllByRole("table");
+    expect(within(tables[0]!).getByRole("columnheader", { name: "Pushups" })).toBeTruthy();
+    expect(within(tables[0]!).getByText("65")).toBeTruthy();
+  });
+
+  it("[AC-HLT-02.4] without any pushups the totals tables have no Pushups column", async () => {
+    open();
+    await screen.findByRole("region", { name: "History" });
+    expect(screen.queryByRole("columnheader", { name: "Pushups" })).toBeNull();
+  });
+});

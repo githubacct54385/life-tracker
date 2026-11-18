@@ -5,7 +5,7 @@ import { useApi } from "../../api/ApiContext";
 import { monthLabel, todayLocal } from "../giving/giftFormat";
 import { shortDate } from "../car/readingFormat";
 import { Page } from "../Page";
-import { formatMinutes, SOURCE_LABELS } from "./workoutFormat";
+import { describeAmount, formatMinutes, SOURCE_LABELS } from "./workoutFormat";
 
 const card = "rounded-2xl border border-line bg-card p-4 text-ink";
 const linkClass = "block min-h-11 rounded-xl border border-line bg-card p-4 text-ink";
@@ -15,7 +15,8 @@ const WEEKS_SHOWN = 8;
 const MONTHS_SHOWN = 6;
 const HISTORY_SHOWN = 30;
 
-function TotalsTable({ caption, firstHeading, rows }: { caption: string; firstHeading: string; rows: { key: string; label: string; count: number; minutes: number }[] }) {
+function TotalsTable({ caption, firstHeading, rows }: { caption: string; firstHeading: string; rows: { key: string; label: string; count: number; minutes: number; reps: number }[] }) {
+  const showReps = rows.some((row) => row.reps > 0);
   return (
     <table className="mt-2 w-full text-left text-sm">
       <caption className="sr-only">{caption}</caption>
@@ -24,6 +25,7 @@ function TotalsTable({ caption, firstHeading, rows }: { caption: string; firstHe
           <th scope="col">{firstHeading}</th>
           <th scope="col" className="text-right">Workouts</th>
           <th scope="col" className="text-right">Time</th>
+          {showReps && <th scope="col" className="text-right">Pushups</th>}
         </tr>
       </thead>
       <tbody>
@@ -32,6 +34,7 @@ function TotalsTable({ caption, firstHeading, rows }: { caption: string; firstHe
             <th scope="row" className="py-2 font-normal">{row.label}</th>
             <td className="py-2 text-right">{row.count}</td>
             <td className="py-2 text-right">{formatMinutes(row.minutes)}</td>
+            {showReps && <td className="py-2 text-right">{row.reps.toLocaleString("en-US")}</td>}
           </tr>
         ))}
       </tbody>
@@ -61,7 +64,7 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
 
   const summary = useMemo(() => {
     if (!workouts) return null;
-    const days = workouts.map((w) => ({ date: w.date, minutes: w.minutes }));
+    const days = workouts.map((w) => ({ date: w.date, minutes: w.minutes, reps: w.reps }));
     return {
       streak: paceStreakDays(days, { today }),
       weeks: workoutTotals(days, "week").slice(0, WEEKS_SHOWN),
@@ -108,7 +111,7 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
                 <TotalsTable
                   caption="Workouts and time per week, newest first. Weeks start on Monday."
                   firstHeading="Week of"
-                  rows={summary.weeks.map((w) => ({ key: w.period, label: shortDate(w.period), count: w.count, minutes: w.minutes }))}
+                  rows={summary.weeks.map((w) => ({ key: w.period, label: shortDate(w.period), count: w.count, minutes: w.minutes, reps: w.reps }))}
                 />
               </section>
               <section aria-labelledby="months-heading" className={card}>
@@ -118,7 +121,7 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
                 <TotalsTable
                   caption="Workouts and time per month, newest first."
                   firstHeading="Month"
-                  rows={summary.months.map((m) => ({ key: m.period, label: monthLabel(m.period), count: m.count, minutes: m.minutes }))}
+                  rows={summary.months.map((m) => ({ key: m.period, label: monthLabel(m.period), count: m.count, minutes: m.minutes, reps: m.reps }))}
                 />
               </section>
             </div>
@@ -132,7 +135,7 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
                   <li key={w.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-line py-2 last:border-b-0">
                     <span className="text-muted">{shortDate(w.date)}</span>
                     <b>
-                      {w.type}, {formatMinutes(w.minutes)}
+                      {w.type}, {describeAmount(w)}
                     </b>
                     <span className="rounded-full border border-line px-2 py-0.5 text-sm">{SOURCE_LABELS[w.source]}</span>
                   </li>

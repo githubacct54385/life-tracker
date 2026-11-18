@@ -9,7 +9,7 @@ const SAVED = { status: "saved", reading: { id: 9, date: "2026-11-13", miles: 48
 const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check", description: null };
 const WARNING = { status: "needs_confirmation", warnings: [{ kind: "lower_than_previous", previous: { date: "2026-11-06", miles: 48_550 } }] };
 
-const WORKOUT = { id: 7, date: "2026-11-13", type: "Run", minutes: 30, note: null, source: "manual" };
+const WORKOUT = { id: 7, date: "2026-11-13", type: "Run", minutes: 30, reps: null, note: null, source: "manual" };
 
 function fakeNetwork(sent: { method?: string; body?: string; guard?: string | null; url: string }[] = []): typeof fetch {
   return (async (input: string, init?: RequestInit) => {
@@ -211,6 +211,24 @@ describe.each(implementations)("[AC-HLT-02.1][AC-HLT-02.2][AC-HLT-02.3] workout 
   });
 });
 
+describe.each(implementations)("[AC-HLT-02.4] pushups contract: %s", (_name, make) => {
+  it("[AC-HLT-02.4] saves a pushups workout with a count and no minutes", async () => {
+    const api = make();
+    const saved = await api.logWorkout({ type: "Pushups", reps: 40 });
+    expect(saved).toMatchObject({ source: "manual" });
+  });
+});
+
+describe("demo pushups behaviour", () => {
+  it("[AC-HLT-02.4] a pushups workout keeps its count in the list and can be edited", async () => {
+    const api = createDemoApi({ now: () => new Date(2026, 10, 13, 9, 0, 0) });
+    const saved = await api.logWorkout({ type: "Pushups", reps: 40 });
+    expect(saved).toMatchObject({ minutes: null, reps: 40 });
+    expect((await api.listWorkouts()).workouts[0]).toMatchObject({ type: "Pushups", reps: 40, minutes: null });
+    expect(await api.editWorkout(saved.id, { type: "Pushups", reps: 55 })).toMatchObject({ reps: 55, minutes: null });
+  });
+});
+
 describe("demo workout behaviour", () => {
   const friday = () => new Date(2026, 10, 13, 9, 0, 0);
 
@@ -235,10 +253,12 @@ describe("client.ts workout requests", () => {
     const api = createClient(fakeNetwork(sent));
     await api.logWorkout({ type: "Run", minutes: 30 });
     await api.editWorkout(7, { type: "Run", minutes: 35, note: "hills" });
+    await api.logWorkout({ type: "Pushups", reps: 40 });
     await api.deleteWorkout(7);
     expect(sent.map((r) => [r.method, r.url, r.body])).toEqual([
       ["POST", "/api/workouts", '{"type":"Run","minutes":30}'],
       ["PUT", "/api/workouts/7", '{"type":"Run","minutes":35,"note":"hills"}'],
+      ["POST", "/api/workouts", '{"type":"Pushups","reps":40}'],
       ["DELETE", "/api/workouts/7", undefined],
     ]);
     expect(sent.every((r) => r.guard === "1")).toBe(true);

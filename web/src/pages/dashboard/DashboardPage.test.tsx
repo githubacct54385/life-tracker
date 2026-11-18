@@ -137,4 +137,14 @@ describe("Dashboard", () => {
     expect(actions.className).toContain("grid-cols-1");
     expect(actions.className).toContain("sm:grid-cols-2");
   });
+
+  it("[AC-HLT-02.4] the workouts tile adds this week's pushups to its totals", async () => {
+    const api = createDemoApi({ now: () => new Date(2026, 10, 17, 9, 0) });
+    await api.logWorkout({ type: "Pushups", reps: 40 });
+    await api.logWorkout({ type: "Pushups", reps: 25 });
+    open(api);
+    const workouts = await tile("Workouts this week");
+    expect(await within(workouts).findByText("2 workouts")).toBeTruthy();
+    expect(within(workouts).getByText("65 pushups")).toBeTruthy();
+  });
 });

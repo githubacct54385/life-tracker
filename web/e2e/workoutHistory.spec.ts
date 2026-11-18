@@ -22,9 +22,9 @@ test(
       route.fulfill({
         json: {
           workouts: [
-            { id: 3, date: day(0), type: "Yoga", minutes: 40, note: null, source: "manual" },
-            { id: 2, date: day(1), type: "Run", minutes: 32, note: null, source: "apple_watch" },
-            { id: 1, date: day(2), type: "Strength", minutes: 45, note: null, source: "manual" },
+            { id: 3, date: day(0), type: "Yoga", minutes: 40, reps: null, note: null, source: "manual" },
+            { id: 2, date: day(1), type: "Run", minutes: 32, reps: null, note: null, source: "apple_watch" },
+            { id: 1, date: day(2), type: "Strength", minutes: 45, reps: null, note: null, source: "manual" },
           ],
         },
       }),

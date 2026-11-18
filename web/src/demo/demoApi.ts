@@ -87,9 +87,9 @@ function seedWeights(): WeightEntryRecord[] {
 /** Synthetic workouts, one from the watch and two by hand, so the demo screen shows both sources. */
 function seedWorkouts(): WorkoutRecord[] {
   return [
-    { id: 3, date: "2026-11-06", type: "Yoga", minutes: 40, note: "Evening class", source: "manual" },
-    { id: 2, date: "2026-11-05", type: "Run", minutes: 32, note: null, source: "apple_watch" },
-    { id: 1, date: "2026-11-03", type: "Strength", minutes: 45, note: null, source: "manual" },
+    { id: 3, date: "2026-11-06", type: "Yoga", minutes: 40, reps: null, note: "Evening class", source: "manual" },
+    { id: 2, date: "2026-11-05", type: "Run", minutes: 32, reps: null, note: null, source: "apple_watch" },
+    { id: 1, date: "2026-11-03", type: "Strength", minutes: 45, reps: null, note: null, source: "manual" },
   ];
 }
 
@@ -231,16 +231,16 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
       return workoutListResponseSchema.parse({ workouts: newestWorkouts().slice(0, 100) });
     },
 
-    async logWorkout({ type, minutes, note }) {
-      const workout = workoutRecordSchema.parse({ id: nextWorkoutId++, date: localDate(now()), type, minutes, note: note?.trim() || null, source: "manual" });
+    async logWorkout({ type, minutes, reps, note }) {
+      const workout = workoutRecordSchema.parse({ id: nextWorkoutId++, date: localDate(now()), type, minutes: minutes ?? null, reps: reps ?? null, note: note?.trim() || null, source: "manual" });
       workouts = [...workouts, workout];
       return workout;
     },
 
-    async editWorkout(id, { type, minutes, note }) {
+    async editWorkout(id, { type, minutes, reps, note }) {
       const current = workouts.find((w) => w.id === id);
       if (!current) throw new Error("Workout not found");
-      const workout = workoutRecordSchema.parse({ ...current, type, minutes, note: note?.trim() || null });
+      const workout = workoutRecordSchema.parse({ ...current, type, minutes: minutes ?? null, reps: reps ?? null, note: note?.trim() || null });
       workouts = workouts.map((w) => (w.id === id ? workout : w));
       return workout;
     },
