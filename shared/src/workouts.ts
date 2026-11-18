@@ -89,3 +89,19 @@ export function paceStreakDays(workouts: readonly Workout[], options: { target?:
   }
   return streak;
 }
+
+/** Count and minutes of the workouts in the week that contains `today` (weeks start on Monday unless told otherwise). Later days are included. */
+export function workoutsThisWeek(workouts: readonly Workout[], today: string, options: WeekOptions = {}): { count: number; minutes: number } {
+  const weekStartsOn = options.weekStartsOn ?? 1;
+  const start = weekStart(toDayNumber(today), weekStartsOn);
+  let count = 0;
+  let minutes = 0;
+  for (const workout of workouts) {
+    const day = toDayNumber(workout.date);
+    if (day >= start && day < start + 7) {
+      count += 1;
+      minutes += workout.minutes;
+    }
+  }
+  return { count, minutes };
+}

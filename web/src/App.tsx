@@ -1,4 +1,3 @@
-import { APP_NAME } from "@life-tracker/shared";
 import { Navigate, Route, Routes } from "react-router";
 import { AppShell } from "./nav/AppShell";
 import { useNavKind } from "./nav/useNavKind";
@@ -11,9 +10,9 @@ import { ImportMileagePage } from "./pages/car/ImportMileagePage";
 import { LogOdometerPage } from "./pages/car/LogOdometerPage";
 import { MileageStatsPage } from "./pages/car/MileageStatsPage";
 import { HealthPage } from "./pages/health/HealthPage";
+import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { LogWeightPage } from "./pages/health/LogWeightPage";
 import { LogWorkoutPage } from "./pages/health/LogWorkoutPage";
-import { Page } from "./pages/Page";
 import { SettingsPage } from "./settings/SettingsPage";
 
 // More exists only where Settings is hidden inside it (phone and tablet). On desktop Settings is in the sidebar.
@@ -25,7 +24,7 @@ export function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<Page title={APP_NAME} />} />
+        <Route index element={<DashboardPage />} />
         <Route path="giving" element={<GivingPage />} />
         <Route path="giving/log" element={<LogGiftPage />} />
         <Route path="giving/special" element={<SpecialContributionsPage />} />
