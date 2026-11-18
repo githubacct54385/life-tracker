@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { fromPounds, toPounds, weightTrend, findSameDay, DEFAULT_TREND_DAYS, type WeightEntry } from "./weight";
+import { fromPounds, toPounds, weightSummary, weightTrend, findSameDay, DEFAULT_TREND_DAYS, type WeightEntry } from "./weight";
 
 // Invented values, stored in pounds (ADR-0007).
 const e = (date: string, pounds: number): WeightEntry => ({ date, pounds });
@@ -88,5 +88,29 @@ describe("pounds and kilograms", () => {
   it("[AC-HLT-01.4] rejects a weight that is not a positive number", () => {
     expect(() => toPounds(-1, "kg")).toThrow(/weight/i);
     expect(() => fromPounds(Number.POSITIVE_INFINITY, "lb")).toThrow(/weight/i);
+  });
+});
+
+describe("weightSummary (DSH-01)", () => {
+  const entry = (date: string, pounds: number): WeightEntry => ({ date, pounds });
+
+  it("[AC-DSH-01.1] gives the latest weight, its trend, and how the trend moved over the last week", () => {
+    const entries = [entry("2026-11-01", 180), entry("2026-11-02", 180), entry("2026-11-08", 176), entry("2026-11-09", 176)];
+    expect(weightSummary(entries)).toEqual({
+      latest: { date: "2026-11-09", pounds: 176 },
+      trendPounds: 176, // the 7-day window (Nov 3 to 9) holds only the two entries of 176
+      changePounds: -4, // a week before, on Nov 2, the trend was 180
+    });
+  });
+
+  it("[AC-DSH-01.1] has no change until there is an entry a week or more before the latest", () => {
+    expect(weightSummary([entry("2026-11-09", 176), entry("2026-11-10", 175)])?.changePounds).toBeUndefined();
+    expect(weightSummary([entry("2026-11-03", 176), entry("2026-11-10", 175)])?.changePounds).toBeCloseTo(-1, 5);
+  });
+
+  it("[AC-DSH-01.1] is undefined with no entries, and does not depend on entry order", () => {
+    expect(weightSummary([])).toBeUndefined();
+    const a = [entry("2026-11-02", 180), entry("2026-11-09", 176)];
+    expect(weightSummary(a)).toEqual(weightSummary([...a].reverse()));
   });
 });

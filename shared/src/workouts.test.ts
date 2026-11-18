@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WEEKLY_WORKOUT_TARGET, paceStreakDays, workoutTotals, type Workout } from "./workouts";
+import { DEFAULT_WEEKLY_WORKOUT_TARGET, paceStreakDays, workoutsThisWeek, workoutTotals, type Workout } from "./workouts";
 
 // Invented data. 2026-01-05 is a Monday.
 const w = (date: string, minutes: number): Workout => ({ date, minutes });
@@ -92,5 +92,26 @@ describe("paceStreakDays", () => {
   it("[AC-HLT-04.3] rejects a target below one and dates that are not real", () => {
     expect(() => paceStreakDays([], { target: 0, today: day(0) })).toThrow(/target/i);
     expect(() => paceStreakDays([w("2026-02-30", 5)], { today: day(0) })).toThrow(/date/i);
+  });
+});
+
+describe("workoutsThisWeek (DSH-01)", () => {
+  // 2026-01-05 is a Monday, so the week is 2026-01-05 to 2026-01-11.
+  const items = [w("2026-01-04", 30), w("2026-01-05", 45), w("2026-01-07", 20), w("2026-01-11", 10), w("2026-01-12", 60)];
+
+  it("[AC-DSH-01.1] counts the workouts and minutes in the week that contains today, weeks starting Monday", () => {
+    expect(workoutsThisWeek(items, "2026-01-08")).toEqual({ count: 3, minutes: 75 });
+    expect(workoutsThisWeek(items, "2026-01-05")).toEqual({ count: 3, minutes: 75 }); // Monday itself
+    expect(workoutsThisWeek(items, "2026-01-11")).toEqual({ count: 3, minutes: 75 }); // Sunday still belongs to the week that began Monday
+  });
+
+  it("[AC-DSH-01.1] is zero for a week with no workouts, and a week can start on another day", () => {
+    expect(workoutsThisWeek(items, "2026-01-20")).toEqual({ count: 0, minutes: 0 });
+    expect(workoutsThisWeek([], "2026-01-08")).toEqual({ count: 0, minutes: 0 });
+    expect(workoutsThisWeek(items, "2026-01-05", { weekStartsOn: 0 })).toEqual({ count: 3, minutes: 95 }); // Sunday Jan 4 to Saturday Jan 10: Jan 4, 5 and 7
+  });
+
+  it("[AC-DSH-01.1] rejects a date that is not real", () => {
+    expect(() => workoutsThisWeek(items, "2026-02-30")).toThrow();
   });
 });

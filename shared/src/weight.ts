@@ -73,3 +73,26 @@ export function toPounds(value: number, unit: WeightUnit): number {
   checkWeight(value, unit === "kg" ? "kilograms" : "pounds");
   return roundTenth(unit === "kg" ? value * POUNDS_PER_KILOGRAM : value);
 }
+
+export interface WeightSummary {
+  /** The newest entry. */
+  latest: WeightEntry;
+  /** The 7-day moving average at the newest entry, to 0.1 lb. */
+  trendPounds: number;
+  /** How the trend moved since the newest entry on or before a week earlier, to 0.1 lb. Undefined without such an entry. */
+  changePounds: number | undefined;
+}
+
+/** The latest weight, its trend, and how the trend moved over the last week (DSH-01). Undefined when there are no entries. */
+export function weightSummary(entries: readonly WeightEntry[]): WeightSummary | undefined {
+  const points = weightTrend(entries);
+  const last = points[points.length - 1];
+  if (!last) return undefined;
+  const weekBefore = toDayNumber(last.date) - 7;
+  const earlier = [...points].reverse().find((p) => toDayNumber(p.date) <= weekBefore);
+  return {
+    latest: { date: last.date, pounds: last.pounds },
+    trendPounds: last.trendPounds,
+    changePounds: earlier ? roundTenth(last.trendPounds - earlier.trendPounds) : undefined,
+  };
+}

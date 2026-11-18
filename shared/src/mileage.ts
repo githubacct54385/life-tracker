@@ -92,3 +92,12 @@ export function missingWeeks(readings: readonly OdometerReading[], today: string
   }
   return missing;
 }
+
+/**
+ * True when the week that contains `today` (Friday to Thursday) has no reading yet, so the dashboard shows its "odometer due"
+ * banner (DSH-01). A reading on any day of that week counts, and with no readings at all the first one is due.
+ */
+export function isReadingDue(readings: readonly OdometerReading[], today: string): boolean {
+  const thisWeek = fridayOf(toDayNumber(today));
+  return !readings.some(({ date }) => fridayOf(toDayNumber(date)) === thisWeek);
+}

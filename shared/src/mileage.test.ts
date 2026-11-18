@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { missingWeeks, weeklyMiles, type OdometerReading } from "./mileage";
+import { isReadingDue, missingWeeks, weeklyMiles, type OdometerReading } from "./mileage";
 
 // All dates and values are invented. 2026-01-02 is a Friday.
 const r = (date: string, miles: number): OdometerReading => ({ date, miles });
@@ -135,3 +135,28 @@ function fridayStart(date: string): string {
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 5 + 7) % 7));
   return d.toISOString().slice(0, 10);
 }
+
+describe("isReadingDue (DSH-01)", () => {
+  // 2026-11-06 is a Friday. Weeks run Friday to Thursday.
+  const reading = (date: string, miles = 1000) => ({ date, miles });
+
+  it("[AC-DSH-01.2] is due when the current week has no reading", () => {
+    expect(isReadingDue([reading("2026-10-30")], "2026-11-06")).toBe(true); // Friday, new week
+    expect(isReadingDue([reading("2026-10-30")], "2026-11-05")).toBe(false); // Thursday, still last Friday's week
+  });
+
+  it("[AC-DSH-01.2] is not due once any day of the current week has a reading, even a late one", () => {
+    expect(isReadingDue([reading("2026-11-06")], "2026-11-06")).toBe(false);
+    expect(isReadingDue([reading("2026-11-07")], "2026-11-12")).toBe(false); // a Saturday reading counts for that Friday's week
+    expect(isReadingDue([reading("2026-11-07")], "2026-11-13")).toBe(true); // the next Friday starts a new week
+  });
+
+  it("[AC-DSH-01.2] is due when there are no readings at all, and ignores readings dated after the week", () => {
+    expect(isReadingDue([], "2026-11-06")).toBe(true);
+    expect(isReadingDue([reading("2026-11-13")], "2026-11-06")).toBe(true); // next week's reading does not count for this week
+  });
+
+  it("[AC-DSH-01.2] rejects a date that is not real", () => {
+    expect(() => isReadingDue([], "2026-02-30")).toThrow();
+  });
+});
