@@ -36,7 +36,7 @@ The spec says: *no health, mileage, or giving data in logs or telemetry.* Worker
 
 | Signal | Where | Why |
 |---|---|---|
-| `api.unhandled_error` events | Workers Logs, search the event name | A bug. The `errorType` field says which kind. |
+| `api.unhandled_error` events | Workers Logs, search the event name | A bug. The `errorType` field says which kind, and `errorCode` holds the Postgres or Node code when there is one (for example `42501` permission denied, `28P01` wrong password, `42P01` missing table, `ECONNREFUSED`). |
 | Requests with `statusCode` 500 and up | Workers Logs | Same |
 | Slow requests (`durationMs`) | Workers Logs | Cold database or a slow query |
 | Denied sign-ins | Zero Trust, **Logs**, **Access** | Someone other than the owner trying to get in. Non-owners are stopped by Access before they reach the Worker, so the Worker's own logs rarely show them. |

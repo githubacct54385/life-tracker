@@ -11,6 +11,8 @@ const allowedFields = {
   durationMs: (v: unknown) => Number.isInteger(v) && (v as number) >= 0,
   rowCount: (v: unknown) => Number.isInteger(v) && (v as number) >= 0,
   errorType: (v: unknown) => typeof v === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(v),
+  // Postgres SQLSTATE (for example 42501) or a Node error code (for example ECONNREFUSED). A code, never a message.
+  errorCode: (v: unknown) => typeof v === "string" && /^[A-Z0-9_]{2,32}$/.test(v),
 } as const satisfies Record<string, (v: unknown) => boolean>;
 
 export type LogField = keyof typeof allowedFields;
@@ -32,6 +34,12 @@ const consoleSink: LogSink = (level, line) => {
 export function errorTypeOf(error: unknown): string {
   const name = error instanceof Error ? error.name : "UnknownError";
   return allowedFields.errorType(name) ? name : "UnknownError";
+}
+
+/** Short error code (Postgres SQLSTATE or Node code) when the error has one. Never the message. */
+export function errorCodeOf(error: unknown): string | undefined {
+  const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
+  return allowedFields.errorCode(code) ? (code as string) : undefined;
 }
 
 export interface Logger {

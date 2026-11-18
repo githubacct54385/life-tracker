@@ -13,7 +13,7 @@ import { workoutRoutes } from "./handlers/workoutHandler.js";
 import type { OdometerService } from "./services/odometerService.js";
 import type { WeightService } from "./services/weightService.js";
 import type { WorkoutService } from "./services/workoutService.js";
-import { errorTypeOf, type Logger } from "./telemetry/logger.js";
+import { errorCodeOf, errorTypeOf, type Logger } from "./telemetry/logger.js";
 
 export interface AppDeps {
   logger: Logger;
@@ -72,7 +72,7 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {
-    deps.logger.error("api.unhandled_error", { errorType: errorTypeOf(error) });
+    deps.logger.error("api.unhandled_error", { errorType: errorTypeOf(error), errorCode: errorCodeOf(error) });
     return c.json({ error: "internal" }, 500);
   });
 
