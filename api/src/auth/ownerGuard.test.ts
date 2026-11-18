@@ -29,11 +29,13 @@ interface Options {
   key?: CryptoKey;
   kid?: string;
   alg?: string;
+  commonName?: string;
 }
 
 async function token(o: Options = {}): Promise<string> {
   const claims: Record<string, unknown> = {};
   if (o.email !== null) claims.email = o.email ?? config.ownerEmail;
+  if (o.commonName !== undefined) claims.common_name = o.commonName;
   const jwt = new SignJWT(claims)
     .setProtectedHeader({ alg: o.alg ?? "RS256", kid: o.kid ?? "k1" })
     .setIssuer(o.iss ?? `https://${config.teamDomain}`)
@@ -97,6 +99,28 @@ describe("ownerGuard", () => {
   it("[AC-MIG-04.3] returns 403 for a valid token with no email, such as a service token", async () => {
     expect(await guard(await token({ email: null }))).toEqual({ ok: false, status: 403 });
     expect(await guard(await token({ email: "" }))).toEqual({ ok: false, status: 403 });
+  });
+
+  it("[AC-MIG-04.8] lets the configured smoke-test service token in as read-only", async () => {
+    const withSmoke = { ...config, smokeClientId: "synthetic-client-id.access" };
+    const t = await token({ email: null, commonName: "synthetic-client-id.access" });
+    expect(await guard(t, withSmoke)).toEqual({ ok: true, readOnly: true });
+  });
+
+  it("[AC-MIG-04.8] still refuses other service tokens, and every service token when none is configured", async () => {
+    const withSmoke = { ...config, smokeClientId: "synthetic-client-id.access" };
+    expect(await guard(await token({ email: null, commonName: "another-client.access" }), withSmoke)).toEqual({ ok: false, status: 403 });
+    expect(await guard(await token({ email: null, commonName: "" }), withSmoke)).toEqual({ ok: false, status: 403 });
+    expect(await guard(await token({ email: null }), withSmoke)).toEqual({ ok: false, status: 403 });
+    expect(await guard(await token({ email: null, commonName: "synthetic-client-id.access" }))).toEqual({ ok: false, status: 403 });
+  });
+
+  it("[AC-MIG-04.8] the smoke-test token is still verified: forged, expired, wrong-audience tokens get 401", async () => {
+    const withSmoke = { ...config, smokeClientId: "synthetic-client-id.access" };
+    const base = { email: null, commonName: "synthetic-client-id.access" };
+    expect(await guard(await token({ ...base, key: otherPrivateKey }), withSmoke)).toEqual({ ok: false, status: 401 });
+    expect(await guard(await token({ ...base, exp: nowSeconds - 1 }), withSmoke)).toEqual({ ok: false, status: 401 });
+    expect(await guard(await token({ ...base, aud: "another-application" }), withSmoke)).toEqual({ ok: false, status: 401 });
   });
 
   it("[AC-MIG-04.2] compares the email without regard to letter case, and not as a partial match", async () => {

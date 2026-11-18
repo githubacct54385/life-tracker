@@ -53,6 +53,8 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
   app.use("*", async (c, next) => {
     const result = await authenticate(c.req.raw.headers, c.env ?? {}, deps.keys ?? remoteKeys);
     if (!result.ok) return c.json({ error: result.status === 401 ? "unauthorized" : "forbidden" }, result.status);
+    // The smoke-test identity (ADR-0023) can look but never change anything.
+    if (result.readOnly && c.req.method !== "GET" && c.req.method !== "HEAD") return c.json({ error: "forbidden" }, 403);
     await next();
   });
 

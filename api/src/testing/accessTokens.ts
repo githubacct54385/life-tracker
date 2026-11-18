@@ -14,8 +14,8 @@ export async function createTestIssuer() {
   const pair = await generateKeyPair("RS256", { extractable: true });
   const jwk: JWK = { ...(await exportJWK(pair.publicKey)), kid: "test-key", alg: "RS256", use: "sig" };
   const keys: KeySource = () => createLocalJWKSet({ keys: [jwk] });
-  const sign = (email: string | null, overrides: { aud?: string; expiresInSeconds?: number } = {}) =>
-    new SignJWT(email === null ? {} : { email })
+  const sign = (email: string | null, overrides: { aud?: string; expiresInSeconds?: number; commonName?: string } = {}) =>
+    new SignJWT({ ...(email === null ? {} : { email }), ...(overrides.commonName ? { common_name: overrides.commonName } : {}) })
       .setProtectedHeader({ alg: "RS256", kid: "test-key" })
       .setIssuer(`https://${TEST_SETTINGS.ACCESS_TEAM_DOMAIN}`)
       .setAudience(overrides.aud ?? TEST_SETTINGS.ACCESS_AUD)

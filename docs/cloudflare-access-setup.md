@@ -42,3 +42,15 @@ Add a bypass for `/demo*` only. Nothing under `/api` may be bypassed. Note that 
 
 ## 8. Check it
 Manual checks AC-MIG-04.1, 04.4, 04.5 and 04.7 are in `docs/manual-checks.md`; record the date when each is done.
+
+## 9. Optional: a read-only smoke-test token (ADR-0023)
+
+Lets the agent (or you) check the live API after a release without your GitHub login. It can only read.
+
+1. Zero Trust, Access controls, **Service credentials**, **Service Tokens**, Create. Name it "smoke-test". Choose the longest duration. Copy the **Client ID** and **Client Secret** (the secret is shown once).
+2. Zero Trust, Access controls, Applications, open the Worker's application, **Policies**, add a policy: action **Service Auth**, include **Service Token** "smoke-test". Save.
+3. Worker, Settings, Variables and secrets, add a **Secret** `SMOKE_CLIENT_ID` with the Client ID (it ends in `.access`).
+4. Give the Client Secret to the agent through the secure credential form in the session, never in chat or the repo.
+5. To stop it: delete the token in Zero Trust, or remove `SMOKE_CLIENT_ID`.
+
+Run the check: `SMOKE_CLIENT_ID=<id> node scripts/smoke-prod.mjs https://<worker>.workers.dev`. It sends the token headers, GETs each list endpoint and prints the status. A 200 everywhere means the Worker, the database and the grants work. Writes are not tested (the identity cannot write).

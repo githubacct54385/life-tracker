@@ -328,3 +328,15 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 **Miles Driven.** A row's Miles Driven is read as the miles driven in the week that starts on that row (the next Start Miles minus this one). This is the assumption that decides which rows are flagged; confirm it against the real sheet.
 
 **Note.** ADR-0016 (bank layout) is withdrawn, so no finance import will reuse this reader here.
+
+## ADR-0023: A read-only smoke-test identity for the production API
+
+**Decision.** The owner can create one Cloudflare Access **service token** and give its client ID to the Worker as the optional setting `SMOKE_CLIENT_ID`. `ownerGuard` then accepts a token that has no email and whose `common_name` claim equals that client ID, and marks it read-only. `app.ts` allows only GET and HEAD for a read-only identity and answers 403 to every other method. Everything else about the token is checked as for the owner: signature, issuer, audience, expiry. With the setting absent, behavior is unchanged: every service token still gets 403 (AC-MIG-04.3). `scripts/smoke-prod.mjs` uses it to read each list endpoint of the live API.
+
+**Why.** After a release the owner had to read Cloudflare logs by hand to learn why a request failed, because no one else could reach the API. A read-only identity lets the agent check the live API without the owner's login. A permission, password or connection mistake in `DATABASE_URL` shows up on a read just as it does on a write, and a smoke test does not need to change any data.
+
+**Not a bypass (hard rule 9).** There is no flag, no environment check and no unsigned path. The identity is a real Access token that Cloudflare signs, and it exists only if the owner makes the token, adds a **Service Auth** policy to the Access application and sets the Worker secret. Removing the secret, or deleting the token in Zero Trust, ends it. It can never write, so a leaked secret cannot change or delete data. It can read everything the owner's pages show, so treat the client secret like a password.
+
+**Alternatives rejected.** A public health endpoint that reports database status: it would answer without an owner check (hard rule 4). A write-capable test identity: a leaked secret could alter or delete the owner's data. A separate staging Worker and database: more cloud resources to run and pay attention to (cost rule), and it would not show a mistake in the real configuration.
+
+**Consequences.** The owner does the one-time Cloudflare setup in `docs/cloudflare-access-setup.md` section 9. Writing paths (saving a reading) cannot be tested on production by this identity; they are covered by the integration tests, which run under the same least-privilege role grants.
