@@ -143,6 +143,16 @@ describe("health route", () => {
     expect(JSON.stringify(lines)).not.toContain("lt_app");
   });
 
+  it("[AC-MIG-03.5] the database check adds only a short error code when the error has one", async () => {
+    const { call, lines } = setup(async () => {
+      throw Object.assign(new Error("password authentication failed for user lt_app at db.example.test"), { code: "28P01" });
+    });
+    const res = await call("/api/health/db");
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ status: "unavailable", errorCode: "28P01" });
+    expect(JSON.stringify(lines)).not.toContain("lt_app");
+  });
+
   it("[AC-MIG-03.5] the database check returns the same status word when the database answers", async () => {
     const { call } = setup(async () => true);
     expect(await (await call("/api/health/db")).json()).toEqual({ status: "ok" });
