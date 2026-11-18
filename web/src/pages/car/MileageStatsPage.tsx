@@ -25,6 +25,8 @@ interface Row {
   label: string;
   miles: number;
   days: number;
+  /** Weeks inside this period with no reading. They are never guessed: the period simply covers the longer gap (AC-MIL-02.6). */
+  missedWeeks: number;
   average?: number;
 }
 
@@ -63,7 +65,10 @@ function WeeklyChart({ rows }: { rows: Row[] }) {
             <tbody>
               {[...rows].reverse().map((row) => (
                 <tr key={row.label} className="border-t border-line">
-                  <th scope="row" className="py-1 pr-2 font-normal">{row.label}</th>
+                  <th scope="row" className="py-1 pr-2 font-normal">
+                    {row.label}
+                    {row.missedWeeks > 0 && <span className="block text-muted">{row.missedWeeks === 1 ? "1 week" : `${row.missedWeeks} weeks`} with no reading</span>}
+                  </th>
                   <td className="py-1 pr-2">{formatMiles(row.miles)}</td>
                   <td className="py-1">{row.average === undefined ? "–" : formatMiles(round(row.average))}</td>
                 </tr>
@@ -99,7 +104,7 @@ export function MileageStatsPage() {
     const averages = rollingAverages(periods);
     return {
       periods,
-      rows: periods.map((p, i): Row => ({ label: periodLabel(p), miles: p.miles, days: p.days, average: averages[i] })),
+      rows: periods.map((p, i): Row => ({ label: periodLabel(p), miles: p.miles, days: p.days, missedWeeks: p.missedWeeks, average: averages[i] })),
       latestAverage: averages.at(-1),
       months: monthlyTotals(periods).reverse(),
       years: yearlyTotals(periods).reverse(),
