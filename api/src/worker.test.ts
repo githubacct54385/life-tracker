@@ -42,6 +42,30 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true, seed: A
   return { call, lines, assetCalls, env, worker };
 }
 
+describe("smoke-test identity", () => {
+  const SMOKE = "synthetic-smoke-client.access";
+  it("[AC-MIG-04.8] can read through the API but every write is refused, even with the custom header", async () => {
+    const { call, env } = setup();
+    env.SMOKE_CLIENT_ID = SMOKE;
+    const smoke = await issuer.sign(null, { commonName: SMOKE });
+    expect((await call("/api/odometer", {}, smoke)).status).toBe(200);
+    expect((await call("/api/health", {}, smoke)).status).toBe(200);
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+      const res = await call("/api/odometer", { method, headers: { "x-life-tracker": "1", "content-type": "application/json" }, body: method === "DELETE" ? undefined : JSON.stringify({ miles: 1 }) }, smoke);
+      expect(res.status, method).toBe(403);
+    }
+    expect((await call("/api/odometer", {}, null)).status).toBe(401);
+  });
+
+  it("[AC-MIG-04.8] is refused when the setting is absent or names a different token", async () => {
+    const { call, env } = setup();
+    const smoke = await issuer.sign(null, { commonName: SMOKE });
+    expect((await call("/api/odometer", {}, smoke)).status).toBe(403);
+    env.SMOKE_CLIENT_ID = "another-client.access";
+    expect((await call("/api/odometer", {}, smoke)).status).toBe(403);
+  });
+});
+
 describe("https only", () => {
   it("[AC-SET-03.1] redirects http to https with security headers, before the API or assets run", async () => {
     const { worker, env, assetCalls } = setup();

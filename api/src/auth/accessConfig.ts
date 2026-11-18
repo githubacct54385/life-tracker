@@ -6,12 +6,16 @@ export interface AccessConfig {
   audience: string;
   /** The owner's sign-in email, as GitHub reports it to Access. */
   ownerEmail: string;
+  /** Optional. The client ID of one Access service token that may read (never write). See ADR-0023. */
+  smokeClientId?: string;
 }
 
 export interface AccessSettings {
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
   OWNER_EMAIL?: string;
+  /** Optional. The client ID (not the secret) of the read-only smoke-test service token. */
+  SMOKE_CLIENT_ID?: string;
 }
 
 /** Returns undefined unless all three settings are present and not blank. The guard then denies everyone (fail closed). */
@@ -20,7 +24,8 @@ export function readAccessConfig(settings: AccessSettings): AccessConfig | undef
   const audience = settings.ACCESS_AUD?.trim();
   const ownerEmail = settings.OWNER_EMAIL?.trim();
   if (!teamDomain || !audience || !ownerEmail) return undefined;
-  return { teamDomain, audience, ownerEmail };
+  const smokeClientId = settings.SMOKE_CLIENT_ID?.trim();
+  return smokeClientId ? { teamDomain, audience, ownerEmail, smokeClientId } : { teamDomain, audience, ownerEmail };
 }
 
 /**

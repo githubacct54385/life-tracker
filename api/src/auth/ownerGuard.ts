@@ -5,7 +5,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { jwtVerify, type JWTVerifyGetKey } from "jose";
 import { issuerFor, type AccessConfig } from "./accessConfig.js";
 
-export type GuardResult = { ok: true } | { ok: false; status: 401 | 403 };
+/** `readOnly` is set only for the smoke-test service token (ADR-0023). The app then allows GET and HEAD and nothing else. */
+export type GuardResult = { ok: true; readOnly?: true } | { ok: false; status: 401 | 403 };
 
 const deny401: GuardResult = { ok: false, status: 401 };
 const deny403: GuardResult = { ok: false, status: 403 };
@@ -18,6 +19,8 @@ function sameText(a: string, b: string): boolean {
 /**
  * 401: no valid Access token (missing, forged, expired, wrong audience or issuer). Nothing else is revealed.
  * 403: a valid token for someone who is not the owner, or no owner is configured.
+ * One extra identity can be allowed: the Access service token whose client ID is `config.smokeClientId`. It is
+ * verified exactly like an owner token (signature, issuer, audience, expiry) and is marked read-only.
  */
 export async function ownerGuard(
   token: string | undefined,
@@ -29,6 +32,7 @@ export async function ownerGuard(
   if (!config) return deny403; // fail closed: no settings, nobody gets in
 
   let email: unknown;
+  let commonName: unknown;
   try {
     const { payload } = await jwtVerify(token, keys, {
       algorithms: ["RS256"],
@@ -38,11 +42,16 @@ export async function ownerGuard(
       requiredClaims: ["exp"],
     });
     email = payload["email"];
+    commonName = payload["common_name"];
   } catch {
     return deny401;
   }
 
-  // Service tokens and other non-user identities carry no email and are not the owner.
-  if (typeof email !== "string" || email === "") return deny403;
+  // Service tokens carry no email. Only the one configured smoke-test token is let in, and only to read.
+  if (typeof email !== "string" || email === "") {
+    const smoke = config.smokeClientId;
+    if (smoke && typeof commonName === "string" && commonName !== "" && sameText(commonName, smoke)) return { ok: true, readOnly: true };
+    return deny403;
+  }
   return sameText(email.toLowerCase(), config.ownerEmail.toLowerCase()) ? { ok: true } : deny403;
 }
