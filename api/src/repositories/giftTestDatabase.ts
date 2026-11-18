@@ -6,4 +6,5 @@ export { connectFreshAppDatabase, disconnectAppDatabase } from "./odometerTestDa
 
 export async function clearGifts(): Promise<void> {
   await getPool().query("DELETE FROM regular_gifts");
+  await getPool().query("DELETE FROM special_contributions");
 }

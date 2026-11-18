@@ -7,6 +7,9 @@ export function GivingPage() {
       <Link to="/giving/log" className="block rounded-xl border border-line bg-card p-4 text-ink">
         Log a gift
       </Link>
+      <Link to="/giving/special" className="mt-3 block rounded-xl border border-line bg-card p-4 text-ink">
+        Special contributions
+      </Link>
     </Page>
   );
 }

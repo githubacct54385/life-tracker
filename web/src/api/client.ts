@@ -7,6 +7,8 @@ import {
   REQUEST_GUARD_HEADER,
   REQUEST_GUARD_VALUE,
   saveReadingResultSchema,
+  specialContributionListResponseSchema,
+  specialContributionSchema,
   workoutListResponseSchema,
   workoutRecordSchema,
 } from "@life-tracker/shared";
@@ -99,6 +101,18 @@ export function createClient(
     },
     async deleteGift(id) {
       await send(`/api/gifts/${id}`, { method: "DELETE" });
+    },
+    async listSpecialContributions() {
+      return specialContributionListResponseSchema.parse(await request("/api/gifts/special"));
+    },
+    async logSpecialContribution(contribution) {
+      return specialContributionSchema.parse(await (await send("/api/gifts/special", { method: "POST", body: JSON.stringify(contribution), headers: JSON_HEADERS })).json());
+    },
+    async editSpecialContribution(id, contribution) {
+      return specialContributionSchema.parse(await (await send(`/api/gifts/special/${id}`, { method: "PUT", body: JSON.stringify(contribution), headers: JSON_HEADERS })).json());
+    },
+    async deleteSpecialContribution(id) {
+      await send(`/api/gifts/special/${id}`, { method: "DELETE" });
     },
 
     async importReadings(rows) {

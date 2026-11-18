@@ -5,6 +5,7 @@ import { useNavKind } from "./nav/useNavKind";
 import { MorePage } from "./pages/MorePage";
 import { GivingPage } from "./pages/giving/GivingPage";
 import { LogGiftPage } from "./pages/giving/LogGiftPage";
+import { SpecialContributionsPage } from "./pages/giving/SpecialContributionsPage";
 import { CarPage } from "./pages/car/CarPage";
 import { ImportMileagePage } from "./pages/car/ImportMileagePage";
 import { LogOdometerPage } from "./pages/car/LogOdometerPage";
@@ -26,6 +27,7 @@ export function App() {
         <Route index element={<Page title={APP_NAME} />} />
         <Route path="giving" element={<GivingPage />} />
         <Route path="giving/log" element={<LogGiftPage />} />
+        <Route path="giving/special" element={<SpecialContributionsPage />} />
         <Route path="health" element={<HealthPage />} />
         <Route path="health/workouts" element={<LogWorkoutPage />} />
         <Route path="car" element={<CarPage />} />

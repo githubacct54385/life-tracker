@@ -13,7 +13,7 @@ import { fakeRepo } from "./testing/fakeOdometerRepository.js";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
 
 const server = inject("postgres");
-const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" };
+const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check", description: null };
 
 describe.skipIf(!server)("/api/gifts (real Postgres)", () => {
   let call: (method: string, url: string, body?: unknown, token?: string | null, guard?: boolean) => Promise<Response>;
@@ -73,7 +73,7 @@ describe.skipIf(!server)("/api/gifts (real Postgres)", () => {
 
   it("[AC-GIV-01.4] edit replaces the gift, delete removes it, missing ids give 404", async () => {
     const { id } = await (await call("POST", "/api/gifts", gift)).json();
-    const changed = { dateGiven: "2026-03-02", forMonth: "2026-02", cents: 12_500, method: "card" };
+    const changed = { dateGiven: "2026-03-02", forMonth: "2026-02", cents: 12_500, method: "card", description: null };
     const edited = await call("PUT", `/api/gifts/${id}`, changed);
     expect(edited.status).toBe(200);
     expect(await edited.json()).toEqual({ id, ...changed });

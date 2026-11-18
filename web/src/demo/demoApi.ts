@@ -7,6 +7,10 @@ import {
   importMileageResultSchema,
   readingListResponseSchema,
   saveReadingResultSchema,
+  sortSpecialContributions,
+  specialContributionListResponseSchema,
+  specialContributionSchema,
+  type SpecialContributionRecord,
   type GiftRecord,
   workoutListResponseSchema,
   workoutRecordSchema,
@@ -55,10 +59,18 @@ function seedReadings(): OdometerReadingRecord[] {
 /** Synthetic gifts: one for each of the last few months, one paid late, so the demo screen is not empty. */
 function seedGifts(): GiftRecord[] {
   return [
-    { id: 4, dateGiven: "2026-11-02", forMonth: "2026-11", cents: 15_000, method: "card" },
-    { id: 3, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 15_000, method: "check" },
-    { id: 2, dateGiven: "2026-10-28", forMonth: "2026-10", cents: 5_000, method: "card" },
-    { id: 1, dateGiven: "2026-10-03", forMonth: "2026-09", cents: 15_000, method: "check" },
+    { id: 4, dateGiven: "2026-11-02", forMonth: "2026-11", cents: 15_000, method: "card", description: "November tithe" },
+    { id: 3, dateGiven: "2026-10-05", forMonth: "2026-10", cents: 15_000, method: "check", description: "October tithe" },
+    { id: 2, dateGiven: "2026-10-28", forMonth: "2026-10", cents: 5_000, method: "card", description: null },
+    { id: 1, dateGiven: "2026-10-03", forMonth: "2026-09", cents: 15_000, method: "check", description: "September tithe" },
+  ];
+}
+
+/** Synthetic special contributions: two invented occasions, so the demo screen is not empty. */
+function seedSpecial(): SpecialContributionRecord[] {
+  return [
+    { id: 2, dateGiven: "2026-09-14", occasion: "Building fund appeal", cents: 25_000, method: "check" },
+    { id: 1, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" },
   ];
 }
 
@@ -82,6 +94,8 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   let nextId = 200;
   let gifts = seedGifts();
   let nextGiftId = 5;
+  let special = seedSpecial();
+  let nextSpecialId = 3;
   let workouts = seedWorkouts();
   let nextWorkoutId = 4;
   const newestWorkouts = () => [...workouts].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
@@ -131,20 +145,41 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
     },
 
     async logGift(gift) {
-      const saved = giftSchema.parse({ id: nextGiftId++, ...gift });
+      const saved = giftSchema.parse({ id: nextGiftId++, ...gift, description: gift.description?.trim() || null });
       gifts = [...gifts, saved];
       return saved;
     },
 
     async editGift(id, gift) {
       if (!gifts.some((g) => g.id === id)) throw new Error("Gift not found");
-      const saved = giftSchema.parse({ id, ...gift });
+      const saved = giftSchema.parse({ id, ...gift, description: gift.description?.trim() || null });
       gifts = gifts.map((g) => (g.id === id ? saved : g));
       return saved;
     },
 
     async deleteGift(id) {
       gifts = gifts.filter((g) => g.id !== id);
+    },
+
+    async listSpecialContributions() {
+      return specialContributionListResponseSchema.parse({ contributions: sortSpecialContributions(special) });
+    },
+
+    async logSpecialContribution(contribution) {
+      const saved = specialContributionSchema.parse({ id: nextSpecialId++, ...contribution });
+      special = [...special, saved];
+      return saved;
+    },
+
+    async editSpecialContribution(id, contribution) {
+      if (!special.some((c) => c.id === id)) throw new Error("Special contribution not found");
+      const saved = specialContributionSchema.parse({ id, ...contribution });
+      special = special.map((c) => (c.id === id ? saved : c));
+      return saved;
+    },
+
+    async deleteSpecialContribution(id) {
+      special = special.filter((c) => c.id !== id);
     },
 
     async importReadings(rows) {
