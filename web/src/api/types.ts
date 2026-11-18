@@ -1,4 +1,4 @@
-import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -35,6 +35,14 @@ export interface Api {
   deleteSpecialContribution(id: number): Promise<void>;
   /** Adds readings parsed from the owner's spreadsheet (MIL-04). Rows already stored are skipped, so importing twice adds nothing. */
   importReadings(rows: ImportRow[]): Promise<ImportMileageResult>;
+  /** Weight entries, newest first (HLT-01). Stored in pounds. */
+  listWeights(): Promise<WeightListResponse>;
+  /** Saves today's weight in pounds. When today already has one, it is not saved unless `replace` is true (AC-HLT-01.3). */
+  logWeight(pounds: number, replace?: boolean): Promise<SaveWeightResult>;
+  /** Changes an entry's value and keeps its date. */
+  editWeight(id: number, pounds: number): Promise<WeightEntryRecord>;
+  /** Removes an entry for good. */
+  deleteWeight(id: number): Promise<void>;
   /** Recent workouts, newest first (HLT-02). */
   listWorkouts(): Promise<WorkoutListResponse>;
   /** Saves a manual workout, dated when it is saved. There is no date to send. */

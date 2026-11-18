@@ -11,6 +11,7 @@ import { ImportMileagePage } from "./pages/car/ImportMileagePage";
 import { LogOdometerPage } from "./pages/car/LogOdometerPage";
 import { MileageStatsPage } from "./pages/car/MileageStatsPage";
 import { HealthPage } from "./pages/health/HealthPage";
+import { LogWeightPage } from "./pages/health/LogWeightPage";
 import { LogWorkoutPage } from "./pages/health/LogWorkoutPage";
 import { Page } from "./pages/Page";
 import { SettingsPage } from "./settings/SettingsPage";
@@ -29,6 +30,7 @@ export function App() {
         <Route path="giving/log" element={<LogGiftPage />} />
         <Route path="giving/special" element={<SpecialContributionsPage />} />
         <Route path="health" element={<HealthPage />} />
+        <Route path="health/weight" element={<LogWeightPage />} />
         <Route path="health/workouts" element={<LogWorkoutPage />} />
         <Route path="car" element={<CarPage />} />
         <Route path="car/log" element={<LogOdometerPage />} />

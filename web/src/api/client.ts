@@ -7,8 +7,11 @@ import {
   REQUEST_GUARD_HEADER,
   REQUEST_GUARD_VALUE,
   saveReadingResultSchema,
+  saveWeightResultSchema,
   specialContributionListResponseSchema,
   specialContributionSchema,
+  weightEntrySchema,
+  weightListResponseSchema,
   workoutListResponseSchema,
   workoutRecordSchema,
 } from "@life-tracker/shared";
@@ -115,6 +118,21 @@ export function createClient(
       await send(`/api/gifts/special/${id}`, { method: "DELETE" });
     },
 
+    async listWeights() {
+      return weightListResponseSchema.parse(await request("/api/weight"));
+    },
+    // 409 is an answer, not a failure: today already has an entry and the owner must confirm the replacement.
+    async logWeight(pounds, replace) {
+      const body = JSON.stringify(replace ? { pounds, replace: true } : { pounds });
+      const response = await send("/api/weight", { method: "POST", body, headers: JSON_HEADERS }, [409]);
+      return saveWeightResultSchema.parse(await response.json());
+    },
+    async editWeight(id, pounds) {
+      return weightEntrySchema.parse(await (await send(`/api/weight/${id}`, { method: "PUT", body: JSON.stringify({ pounds }), headers: JSON_HEADERS })).json());
+    },
+    async deleteWeight(id) {
+      await send(`/api/weight/${id}`, { method: "DELETE" });
+    },
     async importReadings(rows) {
       const init = { method: "POST", body: JSON.stringify({ rows }), headers: { "content-type": "application/json" } };
       return importMileageResultSchema.parse(await (await send("/api/odometer/import", init)).json());

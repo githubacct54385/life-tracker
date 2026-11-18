@@ -262,8 +262,8 @@ erDiagram
     }
     WEIGHT_ENTRY {
         int id PK
-        date logged_on UK
-        numeric pounds
+        date entry_date UK "one per day, set when saved"
+        numeric pounds "stored in pounds, 0.1"
     }
     WORKOUT {
         int id PK

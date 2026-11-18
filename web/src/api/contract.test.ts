@@ -22,6 +22,12 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     }
     if (input === "/api/odometer/import" && init?.method === "POST") return Response.json({ imported: 1, duplicates: 0 });
     if (input === "/api/odometer/9" && init?.method === "PUT") return Response.json(SAVED);
+    if (input === "/api/weight" && init?.method === "GET") return Response.json({ entries: [WEIGHT] });
+    if (input === "/api/weight" && init?.method === "POST") {
+      return JSON.parse(init.body as string).pounds === 100 ? Response.json({ status: "needs_replace", existing: WEIGHT }, { status: 409 }) : Response.json({ status: "saved", entry: WEIGHT }, { status: 201 });
+    }
+    if (input === "/api/weight/5" && init?.method === "PUT") return Response.json(WEIGHT);
+    if (input === "/api/weight/5" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/gifts/special" && init?.method === "GET") return Response.json({ contributions: [SPECIAL] });
     if (input === "/api/gifts/special" && init?.method === "POST") return Response.json(SPECIAL, { status: 201 });
     if (input === "/api/gifts/special/3" && init?.method === "PUT") return Response.json(SPECIAL);
@@ -45,7 +51,8 @@ const implementations: Array<[string, () => Api]> = [
 ];
 
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout"] as const satisfies ReadonlyArray<keyof Api>;
+const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -327,5 +334,48 @@ describe("client.ts database wake-up", () => {
     const calls = vi.fn(async () => Response.json({ error: "down" }, { status: 503 }));
     await expect(createClient(calls as unknown as typeof fetch, { ...noWait, onWaking: () => {} }).health()).rejects.toMatchObject({ status: 503 });
     expect(calls).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe.each(implementations)("[AC-HLT-01.1] weight contract: %s", (_name, make) => {
+  it("lists, saves, edits and deletes weights with the shared shapes", async () => {
+    const api = make();
+    const { entries } = await api.listWeights();
+    expect(entries.length).toBeGreaterThan(0);
+    expect((await api.logWeight(172.4, true)).status).toBe("saved");
+    expect(await api.editWeight(entries[0]!.id, 171.5)).toMatchObject({ id: expect.any(Number), date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
+    await expect(api.deleteWeight(entries[0]!.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("client.ts weight requests", () => {
+  it("[AC-HLT-01.3] a 409 is read as needs_replace, not as a failure, and replace is sent only when confirmed", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    const api = createClient(fakeNetwork(sent));
+    expect(await api.logWeight(100)).toMatchObject({ status: "needs_replace", existing: { pounds: 172.4 } });
+    await api.logWeight(172.4, true);
+    const posts = sent.filter((s) => s.url === "/api/weight" && s.method === "POST");
+    expect(JSON.parse(posts[0]!.body!)).toEqual({ pounds: 100 });
+    expect(JSON.parse(posts[1]!.body!)).toEqual({ pounds: 172.4, replace: true });
+    expect(posts.every((p) => p.guard !== null)).toBe(true);
+  });
+});
+
+describe("demo weight behaviour", () => {
+  const today = () => new Date(2026, 10, 18, 9, 0);
+
+  it("[AC-HLT-01.1] dates the entry today, with no date from the caller", async () => {
+    const api = createDemoApi({ now: today });
+    await api.logWeight(172.4);
+    expect((await api.listWeights()).entries[0]).toMatchObject({ date: "2026-11-18", pounds: 172.4 });
+  });
+
+  it("[AC-HLT-01.3] a second entry for the day needs confirming, and confirming keeps one entry for the day", async () => {
+    const api = createDemoApi({ now: today });
+    await api.logWeight(172.4);
+    expect(await api.logWeight(171)).toMatchObject({ status: "needs_replace", existing: { pounds: 172.4 } });
+    await api.logWeight(171, true);
+    const entries = (await api.listWeights()).entries.filter((e) => e.date === "2026-11-18");
+    expect(entries).toEqual([expect.objectContaining({ pounds: 171 })]);
   });
 });
