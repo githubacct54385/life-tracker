@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import type { OdometerReadingRecord, ReadingWarning, SaveReadingResult } from "@life-tracker/shared";
+import { missingWeeks, type OdometerReadingRecord, type ReadingWarning, type SaveReadingResult } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
+import { todayLocal } from "../giving/giftFormat";
 import { Page } from "../Page";
 import { describeWarning, formatMiles, parseMiles, shortDate } from "./readingFormat";
 
@@ -134,8 +135,22 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
   );
 }
 
-/** Car > Log reading (MIL-01). There is no date field: a reading is dated when it is saved (AC-MIL-01.1). */
-export function LogOdometerPage() {
+const MS_PER_DAY = 86_400_000;
+const dayNumber = (date: string) => Date.parse(`${date}T00:00:00Z`) / MS_PER_DAY;
+
+/**
+ * The Fridays that start a past week with no reading, within the span of `readings`. A gap is shown, never filled in or
+ * guessed (AC-MIL-02.6), and the current week is not a gap yet: it is the one the owner is about to enter.
+ */
+export function pastGapWeeks(readings: readonly OdometerReadingRecord[], today: string): string[] {
+  return missingWeeks(readings, today).filter((friday) => dayNumber(friday) + 6 < dayNumber(today));
+}
+
+/**
+ * Car > Log reading (MIL-01). There is no date field: a reading is dated when it is saved (AC-MIL-01.1). Weeks with no reading
+ * are listed as gaps (MIL-02). `today` is a prop only so tests can fix the date.
+ */
+export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {}) {
   const api = useApi();
   const field = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -228,9 +243,20 @@ export function LogOdometerPage() {
             <p className="mt-2 text-muted">No readings yet. Enter this week&rsquo;s odometer reading above, then save.</p>
           ) : (
             <ul className="mt-2">
-              {readings.map((reading) => (
-                <ReadingRow key={reading.id} reading={reading} onChanged={refresh} />
-              ))}
+              {[
+                ...readings.map((reading) => ({ kind: "reading" as const, date: reading.date, reading })),
+                ...pastGapWeeks(readings, today).map((friday) => ({ kind: "gap" as const, date: friday })),
+              ]
+                .sort((a, b) => (a.date < b.date ? 1 : -1))
+                .map((item) =>
+                  item.kind === "reading" ? (
+                    <ReadingRow key={item.reading.id} reading={item.reading} onChanged={refresh} />
+                  ) : (
+                    <li key={`gap-${item.date}`} aria-label={`No reading for the week of ${shortDate(item.date)}`} className="border-b border-line py-3 text-muted last:border-b-0">
+                      Week of {shortDate(item.date)}: <b>no reading</b>
+                    </li>
+                  ),
+                )}
             </ul>
           )}
         </section>
