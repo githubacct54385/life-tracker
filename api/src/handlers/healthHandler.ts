@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { healthStatus } from "../health.js";
-import { errorTypeOf, type Logger } from "../telemetry/logger.js";
+import { errorCodeOf, errorTypeOf, type Logger } from "../telemetry/logger.js";
 
 export interface HealthDeps {
   logger: Logger;
@@ -16,13 +16,16 @@ export function healthRoutes({ logger, checkDatabase }: HealthDeps): Hono {
   routes.get("/", (c) => c.json(healthStatus()));
 
   // Wakes the database if it is suspended. For setup checks, not for monitoring.
+  // On failure it adds the short error code (a Postgres or Node code, never a message), so a setup mistake can be told apart.
   routes.get("/db", async (c) => {
+    let errorCode: string | undefined;
     try {
       if (await checkDatabase()) return c.json(healthStatus());
     } catch (error) {
-      logger.error("health.db_failed", { errorType: errorTypeOf(error) });
+      errorCode = errorCodeOf(error);
+      logger.error("health.db_failed", { errorType: errorTypeOf(error), errorCode });
     }
-    return c.json({ status: "unavailable" }, 503);
+    return c.json(errorCode ? { status: "unavailable", errorCode } : { status: "unavailable" }, 503);
   });
 
   return routes;

@@ -30,7 +30,7 @@ export function getPool(): pg.Pool {
   if (forRequest) return forRequest;
   if (!pool) {
     const connection = override ?? process.env.DATABASE_URL;
-    if (!connection) throw new Error("DATABASE_URL is not set");
+    if (!connection) throw Object.assign(new Error("DATABASE_URL is not set"), { code: "DATABASE_URL_NOT_SET" });
     pool = newPool(connection, 5);
   }
   return pool;
