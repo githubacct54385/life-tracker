@@ -1,3 +1,5 @@
+import { Button } from "../../ui/Button.js";
+import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { groupGiftsByMonth, MAX_DESCRIPTION_LENGTH, PAYMENT_METHODS, type GiftRecord, type PaymentMethod, type SaveGiftRequest } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
@@ -5,8 +7,6 @@ import { Page } from "../Page";
 import { centsToInput, dateLabel, defaultDescription, formatCents, METHOD_LABEL, monthLabel, parseDollars, todayLocal } from "./giftFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
-const primaryButton = "rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
-const ghostButton = "rounded-xl border border-line px-4 py-3 text-ink";
 
 interface FormValues {
   dateGiven: string;
@@ -88,6 +88,7 @@ function GiftFields({ values, onChange, idPrefix }: { values: FormValues; onChan
 /** One gift in the list, with edit (every field) and delete (for good). */
 function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promise<void> }) {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [values, setValues] = useState<FormValues>({
     dateGiven: gift.dateGiven,
@@ -142,17 +143,17 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            if (request) void run(() => api.editGift(gift.id, request));
+            if (request) void track(() => run(() => api.editGift(gift.id, request)));
           }}
         >
           <GiftFields values={values} onChange={setValues} idPrefix={`edit-${gift.id}`} />
           <div className="flex gap-2">
-            <button type="submit" className={primaryButton} disabled={!request}>
+            <Button type="submit" disabled={!request} busy={busy}>
               Save change
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -161,12 +162,12 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this gift? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className={primaryButton} onClick={() => void run(() => api.deleteGift(gift.id))}>
+            <Button type="button" onClick={() => void track(() => run(() => api.deleteGift(gift.id)))} busy={busy}>
               Yes, delete
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Keep it
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -178,6 +179,7 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
 /** Giving > Log a gift (GIV-01). Gifts are listed under the month they are for, with the month total (AC-GIV-01.3). */
 export function LogGiftPage() {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [values, setValues] = useState<FormValues>(blankForm);
   const [gifts, setGifts] = useState<GiftRecord[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -219,14 +221,14 @@ export function LogGiftPage() {
   return (
     <Page title="Log a gift">
       <div className="grid gap-5 text-ink lg:grid-cols-2">
-        <form onSubmit={(e) => void submit(e)} className="space-y-3" noValidate>
+        <form onSubmit={(e) => void track(() => submit(e))} className="space-y-3" noValidate>
           <GiftFields values={values} onChange={(next) => { setValues(next); setMessage(null); }} idPrefix="new-gift" />
           {values.amount.trim() !== "" && parseDollars(values.amount) === undefined && (
             <p className="text-sm">Enter an amount in dollars and cents, like 150.00.</p>
           )}
-          <button type="submit" className={primaryButton} disabled={!request}>
+          <Button type="submit" disabled={!request} busy={busy}>
             Save gift
-          </button>
+          </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>

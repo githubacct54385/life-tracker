@@ -62,3 +62,11 @@ button, a, input { transition: background-color 150ms ease, border-color 150ms e
   .lt-enter, .lt-leave, .lt-page { animation: none; }
   button, a, input { transition: none; }
 }
+
+/* Spinner inside a busy button (ui/Button.tsx). It takes its colour from the button text. With reduced motion it
+   stops turning and stays as a static ring, so "busy" is still visible. */
+@keyframes lt-spin { to { transform: rotate(360deg); } }
+.lt-spinner { width: 1em; height: 1em; flex: none; border: 2px solid currentColor; border-right-color: transparent; border-radius: 9999px; animation: lt-spin 700ms linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lt-spinner { animation: none; }
+}

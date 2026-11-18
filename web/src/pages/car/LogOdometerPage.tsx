@@ -1,3 +1,5 @@
+import { Button } from "../../ui/Button.js";
+import { useBusy } from "../../ui/useBusy.js";
 import { Presence } from "../../ui/Presence.js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { missingWeeks, type OdometerReadingRecord, type ReadingWarning, type SaveReadingResult } from "@life-tracker/shared";
@@ -7,11 +9,9 @@ import { Page } from "../Page";
 import { describeWarning, formatMiles, parseMiles, shortDate } from "./readingFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
-const primaryButton = "rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
-const ghostButton = "rounded-xl border border-line px-4 py-3 text-ink";
 
 /** Warnings that must be confirmed before a reading is saved (AC-MIL-01.2, AC-MIL-01.3). */
-function WarningBanner({ warnings, onConfirm, onCancel }: { warnings: ReadingWarning[]; onConfirm: () => void; onCancel: () => void }) {
+function WarningBanner({ warnings, busy, onConfirm, onCancel }: { warnings: ReadingWarning[]; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div role="alert" className="rounded-xl border border-line bg-sunk p-4 text-ink">
       {warnings.map((warning) => {
@@ -24,12 +24,12 @@ function WarningBanner({ warnings, onConfirm, onCancel }: { warnings: ReadingWar
       })}
       <p className="mt-1">Save anyway?</p>
       <div className="mt-3 flex gap-2">
-        <button type="button" className={primaryButton} onClick={onConfirm}>
+        <Button type="button" onClick={onConfirm} busy={busy}>
           Yes, save
-        </button>
-        <button type="button" className={ghostButton} onClick={onCancel}>
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} disabled={busy}>
           Change it
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -38,6 +38,7 @@ function WarningBanner({ warnings, onConfirm, onCancel }: { warnings: ReadingWar
 /** One reading in the list, with edit (value only, the date stays) and delete (for good). */
 function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; onChanged: () => Promise<void> }) {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [text, setText] = useState(String(reading.miles));
   const [warnings, setWarnings] = useState<ReadingWarning[] | null>(null);
@@ -95,7 +96,7 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
           className="mt-3 space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            void saveEdit(false);
+            void track(() => saveEdit(false));
           }}
         >
           <label className="block text-sm text-muted">
@@ -103,15 +104,15 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
             <input className={inputClass} inputMode="numeric" value={text} onChange={(e) => { setText(e.target.value); setWarnings(null); }} />
           </label>
           <p className="text-sm text-muted">The date stays {shortDate(reading.date)}.</p>
-          <Presence>{warnings ? <WarningBanner warnings={warnings} onConfirm={() => void saveEdit(true)} onCancel={() => setWarnings(null)} /> : null}</Presence>
+          <Presence>{warnings ? <WarningBanner warnings={warnings} busy={busy} onConfirm={() => void track(() => saveEdit(true))} onCancel={() => setWarnings(null)} /> : null}</Presence>
           {!warnings && (
             <div className="flex gap-2">
-              <button type="submit" className={primaryButton} disabled={miles === undefined}>
+              <Button type="submit" disabled={miles === undefined} busy={busy}>
                 Save change
-              </button>
-              <button type="button" className={ghostButton} onClick={close}>
+              </Button>
+              <Button variant="ghost" type="button" onClick={close} disabled={busy}>
                 Cancel
-              </button>
+              </Button>
             </div>
           )}
         </form>
@@ -121,12 +122,12 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this reading? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className={primaryButton} onClick={() => void remove()}>
+            <Button type="button" onClick={() => void track(remove)} busy={busy}>
               Yes, delete
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Keep it
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}</Presence>
@@ -152,6 +153,7 @@ export function pastGapWeeks(readings: readonly OdometerReadingRecord[], today: 
  */
 export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {}) {
   const api = useApi();
+  const [busy, track] = useBusy();
   const field = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
   const [warnings, setWarnings] = useState<ReadingWarning[] | null>(null);
@@ -194,7 +196,7 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    void save(false);
+    void track(() => save(false));
   }
 
   return (
@@ -222,11 +224,11 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
           </div>
           <p className="text-sm">Saved as of now</p>
           {text.trim() !== "" && miles === undefined && <p className="text-sm">Enter whole miles, up to 9,999,999.</p>}
-          <Presence>{warnings ? <WarningBanner warnings={warnings} onConfirm={() => void save(true)} onCancel={() => { setWarnings(null); field.current?.focus(); }} /> : null}</Presence>
+          <Presence>{warnings ? <WarningBanner warnings={warnings} busy={busy} onConfirm={() => void track(() => save(true))} onCancel={() => { setWarnings(null); field.current?.focus(); }} /> : null}</Presence>
           {!warnings && (
-            <button type="submit" className={primaryButton} disabled={miles === undefined}>
+            <Button type="submit" disabled={miles === undefined} busy={busy}>
               Save reading
-            </button>
+            </Button>
           )}
           <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
           <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>

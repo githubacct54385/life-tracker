@@ -1,3 +1,5 @@
+import { Button } from "../../ui/Button.js";
+import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { MAX_WORKOUT_NOTE_LENGTH, WORKOUT_TYPES, type WorkoutRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
@@ -6,8 +8,6 @@ import { Page } from "../Page";
 import { formatMinutes, parseMinutes, SOURCE_LABELS } from "./workoutFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
-const primaryButton = "rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
-const ghostButton = "rounded-xl border border-line px-4 py-3 text-ink";
 
 interface FieldsProps {
   idPrefix: string;
@@ -48,6 +48,7 @@ function WorkoutFields({ idPrefix, type, minutes, note, onChange, typeRef }: Fie
 /** One workout in the list, with its source, edit (type, duration, note; the date stays) and delete (for good). */
 function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged: () => Promise<void> }) {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [form, setForm] = useState({ type: workout.type, minutes: String(workout.minutes), note: workout.note ?? "" });
   const [error, setError] = useState(false);
@@ -96,18 +97,18 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
           className="mt-3 space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            if (minutes !== undefined) void run(() => api.editWorkout(workout.id, { type: form.type, minutes, note: form.note }));
+            if (minutes !== undefined) void track(() => run(() => api.editWorkout(workout.id, { type: form.type, minutes, note: form.note })));
           }}
         >
           <WorkoutFields idPrefix={`edit-${workout.id}`} {...form} onChange={(next) => setForm((f) => ({ ...f, ...next }))} />
           <p className="text-sm text-muted">The date stays {shortDate(workout.date)}.</p>
           <div className="flex gap-2">
-            <button type="submit" className={primaryButton} disabled={minutes === undefined}>
+            <Button type="submit" disabled={minutes === undefined} busy={busy}>
               Save change
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -116,12 +117,12 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this workout? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className={primaryButton} onClick={() => void run(() => api.deleteWorkout(workout.id))}>
+            <Button type="button" onClick={() => void track(() => run(() => api.deleteWorkout(workout.id)))} busy={busy}>
               Yes, delete
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Keep it
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -133,6 +134,7 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
 /** Health > Workouts (HLT-02). There is no date field: a manual workout is dated when it is saved (AC-HLT-02.1). */
 export function LogWorkoutPage() {
   const api = useApi();
+  const [busy, track] = useBusy();
   const typeField = useRef<HTMLSelectElement>(null);
   const [form, setForm] = useState({ type: WORKOUT_TYPES[0] as string, minutes: "", note: "" });
   const [workouts, setWorkouts] = useState<WorkoutRecord[] | null>(null);
@@ -172,12 +174,12 @@ export function LogWorkoutPage() {
   return (
     <Page title="Workouts">
       <div className="grid gap-5 text-ink lg:grid-cols-2">
-        <form onSubmit={(e) => void submit(e)} className="space-y-3" noValidate>
+        <form onSubmit={(e) => void track(() => submit(e))} className="space-y-3" noValidate>
           <WorkoutFields idPrefix="new" {...form} typeRef={typeField} onChange={(next) => { setForm((f) => ({ ...f, ...next })); setMessage(null); }} />
           <p className="text-sm">Saved as of now</p>
-          <button type="submit" className={primaryButton} disabled={minutes === undefined}>
+          <Button type="submit" disabled={minutes === undefined} busy={busy}>
             Save workout
-          </button>
+          </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>

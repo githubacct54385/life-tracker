@@ -1,3 +1,5 @@
+import { Button } from "../../ui/Button.js";
+import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   MAX_DESCRIPTION_LENGTH,
@@ -12,8 +14,6 @@ import { Page } from "../Page";
 import { centsToInput, dateLabel, formatCents, METHOD_LABEL, parseDollars, todayLocal } from "./giftFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
-const primaryButton = "min-h-11 rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
-const ghostButton = "min-h-11 rounded-xl border border-line px-4 py-3 text-ink";
 
 interface FormValues {
   dateGiven: string;
@@ -71,6 +71,7 @@ function Fields({ values, onChange, idPrefix }: { values: FormValues; onChange: 
 
 function Row({ contribution, onChanged }: { contribution: SpecialContributionRecord; onChanged: () => Promise<void> }) {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [values, setValues] = useState<FormValues>({
     dateGiven: contribution.dateGiven,
@@ -123,17 +124,17 @@ function Row({ contribution, onChanged }: { contribution: SpecialContributionRec
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            if (request) void run(() => api.editSpecialContribution(contribution.id, request));
+            if (request) void track(() => run(() => api.editSpecialContribution(contribution.id, request)));
           }}
         >
           <Fields values={values} onChange={setValues} idPrefix={`edit-special-${contribution.id}`} />
           <div className="flex gap-2">
-            <button type="submit" className={primaryButton} disabled={!request}>
+            <Button type="submit" disabled={!request} busy={busy}>
               Save change
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -142,12 +143,12 @@ function Row({ contribution, onChanged }: { contribution: SpecialContributionRec
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this special contribution? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className={primaryButton} onClick={() => void run(() => api.deleteSpecialContribution(contribution.id))}>
+            <Button type="button" onClick={() => void track(() => run(() => api.deleteSpecialContribution(contribution.id)))} busy={busy}>
               Yes, delete
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Keep it
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -159,6 +160,7 @@ function Row({ contribution, onChanged }: { contribution: SpecialContributionRec
 /** Giving > Special contributions (GIV-02). Listed and totaled apart from regular giving (AC-GIV-02.2). */
 export function SpecialContributionsPage() {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [values, setValues] = useState<FormValues>(blankForm);
   const [list, setList] = useState<SpecialContributionRecord[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -198,12 +200,12 @@ export function SpecialContributionsPage() {
   return (
     <Page title="Special contributions">
       <div className="grid gap-5 text-ink lg:grid-cols-2">
-        <form onSubmit={(e) => void submit(e)} className="space-y-3" noValidate>
+        <form onSubmit={(e) => void track(() => submit(e))} className="space-y-3" noValidate>
           <Fields values={values} onChange={(next) => { setValues(next); setMessage(null); }} idPrefix="new-special" />
           {values.amount.trim() !== "" && parseDollars(values.amount) === undefined && <p className="text-sm">Enter an amount in dollars and cents, like 150.00.</p>}
-          <button type="submit" className={primaryButton} disabled={!request}>
+          <Button type="submit" disabled={!request} busy={busy}>
             Save special contribution
-          </button>
+          </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
           {error && <p role="alert">That did not work. Try again.</p>}
         </form>

@@ -1,3 +1,5 @@
+import { Button } from "../../ui/Button.js";
+import { useBusy } from "../../ui/useBusy.js";
 import { Presence } from "../../ui/Presence.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -9,8 +11,6 @@ import { Page } from "../Page";
 import { formatWeight, parseWeight, UNIT_LABEL, weightToInput } from "./weightFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
-const primaryButton = "min-h-11 rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
-const ghostButton = "min-h-11 rounded-xl border border-line px-4 py-3 text-ink";
 
 type Unit = ReturnType<typeof loadPreferences>["weightUnit"];
 
@@ -77,6 +77,7 @@ function WeightChart({ entries, unit }: { entries: WeightEntryRecord[]; unit: Un
 /** One entry in the list: edit the value (the date stays) or delete it for good. */
 function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit: Unit; onChanged: () => Promise<void> }) {
   const api = useApi();
+  const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [value, setValue] = useState(weightToInput(entry.pounds, unit));
   const [error, setError] = useState(false);
@@ -122,7 +123,7 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            if (pounds !== undefined) void run(() => api.editWeight(entry.id, pounds));
+            if (pounds !== undefined) void track(() => run(() => api.editWeight(entry.id, pounds)));
           }}
         >
           <label className="block font-bold text-ink" htmlFor={`edit-weight-${entry.id}`}>
@@ -131,12 +132,12 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
           <input id={`edit-weight-${entry.id}`} className={inputClass} inputMode="decimal" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />
           <p className="text-sm text-muted">The date stays {shortDate(entry.date)}.</p>
           <div className="flex gap-2">
-            <button type="submit" className={primaryButton} disabled={pounds === undefined}>
+            <Button type="submit" disabled={pounds === undefined} busy={busy}>
               Save change
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       ) : null}</Presence>
@@ -145,12 +146,12 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this weight? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className={primaryButton} onClick={() => void run(() => api.deleteWeight(entry.id))}>
+            <Button type="button" onClick={() => void track(() => run(() => api.deleteWeight(entry.id)))} busy={busy}>
               Yes, delete
-            </button>
-            <button type="button" className={ghostButton} onClick={close}>
+            </Button>
+            <Button variant="ghost" type="button" onClick={close} disabled={busy}>
               Keep it
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}</Presence>
@@ -162,6 +163,7 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
 /** Health > Weight (HLT-01). There is no date field: an entry is dated when it is saved (AC-HLT-01.1). */
 export function LogWeightPage() {
   const api = useApi();
+  const [busy, track] = useBusy();
   const unit = loadPreferences().weightUnit;
   const field = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -202,7 +204,7 @@ export function LogWeightPage() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (pounds !== undefined) void save(pounds, false);
+    if (pounds !== undefined) void track(() => save(pounds, false));
   }
 
   return (
@@ -215,9 +217,9 @@ export function LogWeightPage() {
           <input id="new-weight" ref={field} className={inputClass} inputMode="decimal" autoComplete="off" value={text} onChange={(e) => { setText(e.target.value); setMessage(null); setReplace(null); }} />
           {text.trim() !== "" && pounds === undefined && <p className="text-sm">Enter a weight in {unit === "kg" ? "kilograms" : "pounds"}, like {unit === "kg" ? "78.2" : "172.4"}.</p>}
           <p className="text-sm">Saved as of today. Change {unit === "kg" ? "kilograms" : "pounds"} in Settings.</p>
-          <button type="submit" className={primaryButton} disabled={pounds === undefined}>
+          <Button type="submit" disabled={pounds === undefined} busy={busy}>
             Save weight
-          </button>
+          </Button>
           <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
           <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
           <Presence>{replace ? (
@@ -226,12 +228,12 @@ export function LogWeightPage() {
                 You already saved {formatWeight(replace.existing.pounds, unit)} today. Replace it with {formatWeight(replace.pounds, unit)}?
               </p>
               <div className="mt-3 flex gap-2">
-                <button type="button" className={primaryButton} onClick={() => void save(replace.pounds, true)}>
+                <Button type="button" onClick={() => void track(() => save(replace.pounds, true))} busy={busy}>
                   Replace it
-                </button>
-                <button type="button" className={ghostButton} onClick={() => setReplace(null)}>
+                </Button>
+                <Button variant="ghost" type="button" onClick={() => setReplace(null)} disabled={busy}>
                   Keep the first one
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}</Presence>
