@@ -1,4 +1,6 @@
 // The gift endpoints with an in-memory repository, so they run without Docker (the same cases run against Postgres in giftsApi.int.test.ts).
+import { createWeightService } from "./services/weightService";
+import { fakeWeightRepo } from "./testing/fakeWeightRepository";
 import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE } from "@life-tracker/shared";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app";
@@ -25,6 +27,7 @@ describe("/api/gifts", () => {
       odometer: createOdometerService(fakeRepo()),
       gifts: createGiftService(fakeGiftRepo()),
       workouts: createWorkoutService(fakeWorkoutRepo()),
+      weight: createWeightService(fakeWeightRepo()),
       keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {
@@ -85,6 +88,7 @@ describe("/api/gifts/special", () => {
       odometer: createOdometerService(fakeRepo()),
       gifts: createGiftService(fakeGiftRepo([gift])),
       workouts: createWorkoutService(fakeWorkoutRepo()),
+      weight: createWeightService(fakeWeightRepo()),
       keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {

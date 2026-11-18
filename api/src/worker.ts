@@ -6,6 +6,7 @@ import { httpsRedirect } from "./http/httpsOnly.js";
 import { withSecurityHeaders } from "./http/securityHeaders.js";
 import { databaseReachable } from "./services/healthService.js";
 import { giftService } from "./services/giftService.js";
+import { weightService } from "./services/weightService.js";
 import { odometerService } from "./services/odometerService.js";
 import { workoutService } from "./services/workoutService.js";
 import { runWithDatabase } from "./services/requestScope.js";
@@ -37,4 +38,4 @@ export function createWorker(deps: AppDeps) {
   };
 }
 
-export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService, workouts: workoutService });
+export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService, workouts: workoutService, weight: weightService });

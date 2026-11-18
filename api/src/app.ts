@@ -8,8 +8,10 @@ import { healthRoutes } from "./handlers/healthHandler.js";
 import { giftRoutes } from "./handlers/giftHandler.js";
 import { odometerRoutes } from "./handlers/odometerHandler.js";
 import type { GiftService } from "./services/giftService.js";
+import { weightRoutes } from "./handlers/weightHandler.js";
 import { workoutRoutes } from "./handlers/workoutHandler.js";
 import type { OdometerService } from "./services/odometerService.js";
+import type { WeightService } from "./services/weightService.js";
 import type { WorkoutService } from "./services/workoutService.js";
 import { errorTypeOf, type Logger } from "./telemetry/logger.js";
 
@@ -19,6 +21,7 @@ export interface AppDeps {
   odometer: OdometerService;
   gifts: GiftService;
   workouts: WorkoutService;
+  weight: WeightService;
   /** Where to get Access's public keys. Defaults to the published ones; tests pass their own. */
   keys?: KeySource;
 }
@@ -65,6 +68,7 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
   app.route("/odometer", odometerRoutes(deps));
   app.route("/gifts", giftRoutes(deps));
   app.route("/workouts", workoutRoutes(deps));
+  app.route("/weight", weightRoutes(deps));
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {

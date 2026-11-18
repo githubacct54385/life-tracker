@@ -7,11 +7,15 @@ import {
   importMileageResultSchema,
   readingListResponseSchema,
   saveReadingResultSchema,
+  saveWeightResultSchema,
   sortSpecialContributions,
   specialContributionListResponseSchema,
   specialContributionSchema,
   type SpecialContributionRecord,
   type GiftRecord,
+  weightEntrySchema,
+  weightListResponseSchema,
+  type WeightEntryRecord,
   workoutListResponseSchema,
   workoutRecordSchema,
   type OdometerReadingRecord,
@@ -74,6 +78,12 @@ function seedSpecial(): SpecialContributionRecord[] {
   ];
 }
 
+/** Synthetic weights, one a day for two weeks ending 2026-11-17, so the demo chart has a trend to show. Pounds. */
+function seedWeights(): WeightEntryRecord[] {
+  const pounds = [176.2, 175.8, 176.0, 175.1, 175.4, 174.9, 175.2, 174.6, 174.8, 174.1, 174.5, 173.9, 174.2, 173.6];
+  return pounds.map((p, index) => ({ id: index + 1, date: `2026-11-${String(index + 4).padStart(2, "0")}`, pounds: p }));
+}
+
 /** Synthetic workouts, one from the watch and two by hand, so the demo screen shows both sources. */
 function seedWorkouts(): WorkoutRecord[] {
   return [
@@ -96,6 +106,9 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   let nextGiftId = 5;
   let special = seedSpecial();
   let nextSpecialId = 3;
+  let weights = seedWeights();
+  let nextWeightId = 15;
+  const newestWeights = () => [...weights].sort((a, b) => (a.date < b.date ? 1 : -1));
   let workouts = seedWorkouts();
   let nextWorkoutId = 4;
   const newestWorkouts = () => [...workouts].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
@@ -187,6 +200,31 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
       const fresh = unique.filter((row) => !readings.some((r) => r.date === row.date && r.miles === row.miles));
       for (const row of fresh) readings = [...readings, { id: nextId++, ...row }];
       return importMileageResultSchema.parse({ imported: fresh.length, duplicates: rows.length - fresh.length });
+    },
+
+    async listWeights() {
+      return weightListResponseSchema.parse({ entries: newestWeights() });
+    },
+
+    async logWeight(pounds, replace = false) {
+      const date = localDate(now());
+      const existing = weights.find((w) => w.date === date);
+      if (existing && !replace) return saveWeightResultSchema.parse({ status: "needs_replace", existing });
+      const entry = weightEntrySchema.parse({ id: existing?.id ?? nextWeightId++, date, pounds });
+      weights = existing ? weights.map((w) => (w.id === existing.id ? entry : w)) : [...weights, entry];
+      return saveWeightResultSchema.parse({ status: "saved", entry });
+    },
+
+    async editWeight(id, pounds) {
+      const current = weights.find((w) => w.id === id);
+      if (!current) throw new Error("Weight entry not found");
+      const entry = weightEntrySchema.parse({ ...current, pounds });
+      weights = weights.map((w) => (w.id === id ? entry : w));
+      return entry;
+    },
+
+    async deleteWeight(id) {
+      weights = weights.filter((w) => w.id !== id);
     },
 
     async listWorkouts() {
