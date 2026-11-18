@@ -1,3 +1,4 @@
+import { Presence } from "../../ui/Presence.js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { missingWeeks, type OdometerReadingRecord, type ReadingWarning, type SaveReadingResult } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
@@ -89,7 +90,7 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
         )}
       </div>
 
-      {mode === "edit" && (
+      <Presence>{mode === "edit" ? (
         <form
           className="mt-3 space-y-3"
           onSubmit={(event) => {
@@ -102,9 +103,8 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
             <input className={inputClass} inputMode="numeric" value={text} onChange={(e) => { setText(e.target.value); setWarnings(null); }} />
           </label>
           <p className="text-sm text-muted">The date stays {shortDate(reading.date)}.</p>
-          {warnings ? (
-            <WarningBanner warnings={warnings} onConfirm={() => void saveEdit(true)} onCancel={() => setWarnings(null)} />
-          ) : (
+          <Presence>{warnings ? <WarningBanner warnings={warnings} onConfirm={() => void saveEdit(true)} onCancel={() => setWarnings(null)} /> : null}</Presence>
+          {!warnings && (
             <div className="flex gap-2">
               <button type="submit" className={primaryButton} disabled={miles === undefined}>
                 Save change
@@ -115,9 +115,9 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
             </div>
           )}
         </form>
-      )}
+      ) : null}</Presence>
 
-      {mode === "delete" && (
+      <Presence>{mode === "delete" ? (
         <div role="alert" className="mt-3 rounded-xl border border-line bg-sunk p-4 text-ink">
           <p>Delete this reading? It is removed for good.</p>
           <div className="mt-3 flex gap-2">
@@ -129,8 +129,8 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
             </button>
           </div>
         </div>
-      )}
-      {error && <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p>}
+      ) : null}</Presence>
+      <Presence>{error ? <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p> : null}</Presence>
     </li>
   );
 }
@@ -222,15 +222,14 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
           </div>
           <p className="text-sm">Saved as of now</p>
           {text.trim() !== "" && miles === undefined && <p className="text-sm">Enter whole miles, up to 9,999,999.</p>}
-          {warnings ? (
-            <WarningBanner warnings={warnings} onConfirm={() => void save(true)} onCancel={() => { setWarnings(null); field.current?.focus(); }} />
-          ) : (
+          <Presence>{warnings ? <WarningBanner warnings={warnings} onConfirm={() => void save(true)} onCancel={() => { setWarnings(null); field.current?.focus(); }} /> : null}</Presence>
+          {!warnings && (
             <button type="submit" className={primaryButton} disabled={miles === undefined}>
               Save reading
             </button>
           )}
-          {message && <p role="status" className="text-gtext">{message}</p>}
-          {error && <p role="alert">That did not work. Try again.</p>}
+          <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
+          <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
         </form>
 
         <section aria-labelledby="recent-readings" className="rounded-2xl border border-line bg-card p-4 text-ink">
