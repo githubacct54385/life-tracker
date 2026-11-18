@@ -4,29 +4,30 @@ import { DEFAULT_WEEKLY_WORKOUT_TARGET, paceStreakDays, workoutsThisWeek, workou
 
 // Invented data. 2026-01-05 is a Monday.
 const w = (date: string, minutes: number): Workout => ({ date, minutes });
+const pushups = (date: string, reps: number): Workout => ({ date, minutes: null, reps });
 
 describe("workoutTotals", () => {
   const items = [w("2026-01-04", 30), w("2026-01-05", 45), w("2026-01-11", 20), w("2026-01-12", 60), w("2026-02-01", 10)];
 
   it("[AC-HLT-04.2] totals count and minutes per week, newest first, weeks starting Monday", () => {
     expect(workoutTotals(items, "week")).toEqual([
-      { period: "2026-01-26", count: 1, minutes: 10 },
-      { period: "2026-01-12", count: 1, minutes: 60 },
-      { period: "2026-01-05", count: 2, minutes: 65 },
-      { period: "2025-12-29", count: 1, minutes: 30 },
+      { period: "2026-01-26", count: 1, minutes: 10, reps: 0 },
+      { period: "2026-01-12", count: 1, minutes: 60, reps: 0 },
+      { period: "2026-01-05", count: 2, minutes: 65, reps: 0 },
+      { period: "2025-12-29", count: 1, minutes: 30, reps: 0 },
     ]);
   });
 
   it("[AC-HLT-04.2] totals count and minutes per calendar month, newest first", () => {
     expect(workoutTotals(items, "month")).toEqual([
-      { period: "2026-02", count: 1, minutes: 10 },
-      { period: "2026-01", count: 4, minutes: 155 },
+      { period: "2026-02", count: 1, minutes: 10, reps: 0 },
+      { period: "2026-01", count: 4, minutes: 155, reps: 0 },
     ]);
   });
 
   it("[AC-HLT-04.2] a week can start on another day, and no workouts gives no periods", () => {
     expect(workoutTotals([w("2026-01-04", 30), w("2026-01-05", 45)], "week", { weekStartsOn: 0 })).toEqual([
-      { period: "2026-01-04", count: 2, minutes: 75 },
+      { period: "2026-01-04", count: 2, minutes: 75, reps: 0 },
     ]);
     expect(workoutTotals([], "week")).toEqual([]);
   });
@@ -42,7 +43,7 @@ describe("workoutTotals", () => {
         for (const kind of ["week", "month"] as const) {
           const totals = workoutTotals(list, kind);
           expect(totals.reduce((s, t) => s + t.count, 0)).toBe(list.length);
-          expect(totals.reduce((s, t) => s + t.minutes, 0)).toBe(list.reduce((s, x) => s + x.minutes, 0));
+          expect(totals.reduce((s, t) => s + t.minutes, 0)).toBe(list.reduce((s, x) => s + (x.minutes ?? 0), 0));
           expect(workoutTotals([...list].reverse(), kind)).toEqual(totals);
         }
       }),
@@ -100,18 +101,32 @@ describe("workoutsThisWeek (DSH-01)", () => {
   const items = [w("2026-01-04", 30), w("2026-01-05", 45), w("2026-01-07", 20), w("2026-01-11", 10), w("2026-01-12", 60)];
 
   it("[AC-DSH-01.1] counts the workouts and minutes in the week that contains today, weeks starting Monday", () => {
-    expect(workoutsThisWeek(items, "2026-01-08")).toEqual({ count: 3, minutes: 75 });
-    expect(workoutsThisWeek(items, "2026-01-05")).toEqual({ count: 3, minutes: 75 }); // Monday itself
-    expect(workoutsThisWeek(items, "2026-01-11")).toEqual({ count: 3, minutes: 75 }); // Sunday still belongs to the week that began Monday
+    expect(workoutsThisWeek(items, "2026-01-08")).toEqual({ count: 3, minutes: 75, reps: 0 });
+    expect(workoutsThisWeek(items, "2026-01-05")).toEqual({ count: 3, minutes: 75, reps: 0 }); // Monday itself
+    expect(workoutsThisWeek(items, "2026-01-11")).toEqual({ count: 3, minutes: 75, reps: 0 }); // Sunday still belongs to the week that began Monday
   });
 
   it("[AC-DSH-01.1] is zero for a week with no workouts, and a week can start on another day", () => {
-    expect(workoutsThisWeek(items, "2026-01-20")).toEqual({ count: 0, minutes: 0 });
-    expect(workoutsThisWeek([], "2026-01-08")).toEqual({ count: 0, minutes: 0 });
-    expect(workoutsThisWeek(items, "2026-01-05", { weekStartsOn: 0 })).toEqual({ count: 3, minutes: 95 }); // Sunday Jan 4 to Saturday Jan 10: Jan 4, 5 and 7
+    expect(workoutsThisWeek(items, "2026-01-20")).toEqual({ count: 0, minutes: 0, reps: 0 });
+    expect(workoutsThisWeek([], "2026-01-08")).toEqual({ count: 0, minutes: 0, reps: 0 });
+    expect(workoutsThisWeek(items, "2026-01-05", { weekStartsOn: 0 })).toEqual({ count: 3, minutes: 95, reps: 0 }); // Sunday Jan 4 to Saturday Jan 10: Jan 4, 5 and 7
   });
 
   it("[AC-DSH-01.1] rejects a date that is not real", () => {
     expect(() => workoutsThisWeek(items, "2026-02-30")).toThrow();
+  });
+});
+
+describe("workouts counted in repetitions (pushups)", () => {
+  it("[AC-HLT-02.4] a pushups workout counts as a workout and adds its reps, and no minutes, to the weekly and monthly totals", () => {
+    const items = [w("2026-01-05", 30), pushups("2026-01-06", 40), pushups("2026-01-08", 25)];
+    expect(workoutTotals(items, "week")).toEqual([{ period: "2026-01-05", count: 3, minutes: 30, reps: 65 }]);
+    expect(workoutTotals(items, "month")).toEqual([{ period: "2026-01", count: 3, minutes: 30, reps: 65 }]);
+  });
+
+  it("[AC-HLT-02.4] this week's totals include pushups reps, and pushups count toward the streak like any workout", () => {
+    const items = [pushups("2026-01-05", 20), pushups("2026-01-06", 20), w("2026-01-07", 10)];
+    expect(workoutsThisWeek(items, "2026-01-08")).toEqual({ count: 3, minutes: 10, reps: 40 });
+    expect(paceStreakDays(items, { today: "2026-01-08" })).toBeGreaterThan(0);
   });
 });

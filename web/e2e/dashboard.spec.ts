@@ -22,7 +22,7 @@ test(
     await page.route("**/api/odometer?all=1", (route) =>
       route.fulfill({ json: { readings: [{ id: 2, date: day(0), miles: 48_402 }, { id: 1, date: day(7), miles: 48_190 }] } }),
     );
-    await page.route("**/api/workouts", (route) => route.fulfill({ json: { workouts: [{ id: 1, date: day(0), type: "Run", minutes: 32, note: null, source: "manual" }] } }));
+    await page.route("**/api/workouts", (route) => route.fulfill({ json: { workouts: [{ id: 1, date: day(0), type: "Run", minutes: 32, reps: null, note: null, source: "manual" }] } }));
     await page.route("**/api/gifts", (route) => route.fulfill({ json: { gifts: [] } }));
     await page.route("**/api/gifts/special", (route) => route.fulfill({ json: { contributions: [] } }));
     await signInAs(context, OWNER);

@@ -9,7 +9,7 @@ describe("log", () => {
   it("[AC-HLT-02.1][AC-HLT-02.3] dates a new workout when it is saved and marks it manual", async () => {
     const repo = fakeWorkoutRepo();
     const result = await createWorkoutService(repo, { now: FRIDAY_NOON }).log({ type: "Run", minutes: 30 });
-    expect(result).toEqual({ id: 1, date: "2026-11-13", type: "Run", minutes: 30, note: null, source: "manual" });
+    expect(result).toEqual({ id: 1, date: "2026-11-13", type: "Run", minutes: 30, reps: null, note: null, source: "manual" });
   });
 
   it("[AC-HLT-02.1] keeps an optional note, and treats a blank note as none", async () => {
@@ -21,9 +21,9 @@ describe("log", () => {
 
 describe("edit", () => {
   it("[AC-HLT-02.2] changes type, minutes and note but keeps the date and source", async () => {
-    const repo = fakeWorkoutRepo([{ date: "2026-11-06", type: "Run", minutes: 30, note: null, source: "apple_watch" }]);
+    const repo = fakeWorkoutRepo([{ date: "2026-11-06", type: "Run", minutes: 30, reps: null, note: null, source: "apple_watch" }]);
     const result = await createWorkoutService(repo, { now: FRIDAY_NOON }).edit(1, { type: "Walk", minutes: 50, note: "with a friend" });
-    expect(result).toEqual({ id: 1, date: "2026-11-06", type: "Walk", minutes: 50, note: "with a friend", source: "apple_watch" });
+    expect(result).toEqual({ id: 1, date: "2026-11-06", type: "Walk", minutes: 50, reps: null, note: "with a friend", source: "apple_watch" });
   });
 
   it("[AC-HLT-02.2] answers undefined for a workout that does not exist", async () => {
@@ -33,7 +33,7 @@ describe("edit", () => {
 
 describe("remove and list", () => {
   it("[AC-HLT-02.2] removes a workout for good, and says so when it was not there", async () => {
-    const repo = fakeWorkoutRepo([{ date: "2026-11-06", type: "Run", minutes: 30, note: null, source: "manual" }]);
+    const repo = fakeWorkoutRepo([{ date: "2026-11-06", type: "Run", minutes: 30, reps: null, note: null, source: "manual" }]);
     const service = createWorkoutService(repo);
     expect(await service.remove(1)).toBe(true);
     expect(await service.remove(1)).toBe(false);
@@ -42,10 +42,28 @@ describe("remove and list", () => {
 
   it("[AC-HLT-02.3] lists newest first with each workout's source", async () => {
     const repo = fakeWorkoutRepo([
-      { date: "2026-11-05", type: "Run", minutes: 30, note: null, source: "apple_watch" },
-      { date: "2026-11-06", type: "Yoga", minutes: 40, note: null, source: "manual" },
+      { date: "2026-11-05", type: "Run", minutes: 30, reps: null, note: null, source: "apple_watch" },
+      { date: "2026-11-06", type: "Yoga", minutes: 40, reps: null, note: null, source: "manual" },
     ]);
     const list = await createWorkoutService(repo).list();
     expect(list.map((w) => [w.date, w.source])).toEqual([["2026-11-06", "manual"], ["2026-11-05", "apple_watch"]]);
+  });
+});
+
+describe("pushups (counted, not timed)", () => {
+  it("[AC-HLT-02.4] logs a pushups workout with its count and no minutes", async () => {
+    const result = await createWorkoutService(fakeWorkoutRepo(), { now: FRIDAY_NOON }).log({ type: "Pushups", reps: 40 });
+    expect(result).toEqual({ id: 1, date: "2026-11-13", type: "Pushups", minutes: null, reps: 40, note: null, source: "manual" });
+  });
+
+  it("[AC-HLT-02.4] edits the count and keeps the date and source", async () => {
+    const repo = fakeWorkoutRepo([{ date: "2026-11-06", type: "Pushups", minutes: null, reps: 30, note: null, source: "manual" }]);
+    const result = await createWorkoutService(repo).edit(1, { type: "Pushups", reps: 55, note: "new best" });
+    expect(result).toEqual({ id: 1, date: "2026-11-06", type: "Pushups", minutes: null, reps: 55, note: "new best", source: "manual" });
+  });
+
+  it("[AC-HLT-02.4] a timed workout stores no count", async () => {
+    const result = await createWorkoutService(fakeWorkoutRepo(), { now: FRIDAY_NOON }).log({ type: "Run", minutes: 30 });
+    expect(result.reps).toBeNull();
   });
 });

@@ -1,11 +1,11 @@
 import { Button } from "../../ui/Button.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { MAX_WORKOUT_NOTE_LENGTH, WORKOUT_TYPES, type WorkoutRecord } from "@life-tracker/shared";
+import { isRepWorkout, MAX_WORKOUT_NOTE_LENGTH, WORKOUT_TYPES, type WorkoutRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { shortDate } from "../car/readingFormat";
 import { Page } from "../Page";
-import { formatMinutes, parseMinutes, SOURCE_LABELS } from "./workoutFormat";
+import { amountFromForm, describeAmount, parseMinutes, parseReps, SOURCE_LABELS } from "./workoutFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -13,14 +13,17 @@ interface FieldsProps {
   idPrefix: string;
   type: string;
   minutes: string;
+  reps: string;
   note: string;
-  onChange: (next: { type?: string; minutes?: string; note?: string }) => void;
+  onChange: (next: { type?: string; minutes?: string; reps?: string; note?: string }) => void;
   typeRef?: React.Ref<HTMLSelectElement>;
 }
 
-/** Type, duration and note. Deliberately no date or time (AC-HLT-02.1). */
-function WorkoutFields({ idPrefix, type, minutes, note, onChange, typeRef }: FieldsProps) {
+/** Type, duration (or a count, for pushups) and note. Deliberately no date or time (AC-HLT-02.1). */
+function WorkoutFields({ idPrefix, type, minutes, reps, note, onChange, typeRef }: FieldsProps) {
   const parsed = parseMinutes(minutes);
+  const parsedReps = parseReps(reps);
+  const counted = isRepWorkout(type);
   const types = (WORKOUT_TYPES as readonly string[]).includes(type) ? WORKOUT_TYPES : [...WORKOUT_TYPES, type];
   return (
     <>
@@ -32,11 +35,23 @@ function WorkoutFields({ idPrefix, type, minutes, note, onChange, typeRef }: Fie
           <option key={t}>{t}</option>
         ))}
       </select>
-      <label className="block font-bold text-ink" htmlFor={`${idPrefix}-minutes`}>
-        Duration (minutes)
-      </label>
-      <input id={`${idPrefix}-minutes`} className={inputClass} inputMode="numeric" autoComplete="off" value={minutes} onChange={(e) => onChange({ minutes: e.target.value })} />
-      {minutes.trim() !== "" && parsed === undefined && <p className="text-sm">Enter whole minutes, from 1 to 1,440.</p>}
+      {counted ? (
+        <>
+          <label className="block font-bold text-ink" htmlFor={`${idPrefix}-reps`}>
+            How many {type.toLowerCase()}?
+          </label>
+          <input id={`${idPrefix}-reps`} className={inputClass} inputMode="numeric" autoComplete="off" value={reps} onChange={(e) => onChange({ reps: e.target.value })} />
+          {reps.trim() !== "" && parsedReps === undefined && <p className="text-sm">Enter a whole number, from 1 to 10,000.</p>}
+        </>
+      ) : (
+        <>
+          <label className="block font-bold text-ink" htmlFor={`${idPrefix}-minutes`}>
+            Duration (minutes)
+          </label>
+          <input id={`${idPrefix}-minutes`} className={inputClass} inputMode="numeric" autoComplete="off" value={minutes} onChange={(e) => onChange({ minutes: e.target.value })} />
+          {minutes.trim() !== "" && parsed === undefined && <p className="text-sm">Enter whole minutes, from 1 to 1,440.</p>}
+        </>
+      )}
       <label className="block font-bold text-ink" htmlFor={`${idPrefix}-note`}>
         Note (optional)
       </label>
@@ -50,9 +65,9 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
   const api = useApi();
   const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
-  const [form, setForm] = useState({ type: workout.type, minutes: String(workout.minutes), note: workout.note ?? "" });
+  const [form, setForm] = useState({ type: workout.type, minutes: workout.minutes === null ? "" : String(workout.minutes), reps: workout.reps === null ? "" : String(workout.reps), note: workout.note ?? "" });
   const [error, setError] = useState(false);
-  const minutes = parseMinutes(form.minutes);
+  const amount = amountFromForm(form.type, form);
   const label = `${workout.type} on ${shortDate(workout.date)}`;
 
   const close = () => {
@@ -76,12 +91,12 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="text-muted">{shortDate(workout.date)}</span>
         <b>
-          {workout.type}, {formatMinutes(workout.minutes)}
+          {workout.type}, {describeAmount(workout)}
         </b>
         <span className="rounded-full border border-line px-2 py-0.5 text-sm">{SOURCE_LABELS[workout.source]}</span>
         {mode === "view" && (
           <span className="flex gap-2">
-            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit ${label}`} onClick={() => { setForm({ type: workout.type, minutes: String(workout.minutes), note: workout.note ?? "" }); setMode("edit"); }}>
+            <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit ${label}`} onClick={() => { setForm({ type: workout.type, minutes: workout.minutes === null ? "" : String(workout.minutes), reps: workout.reps === null ? "" : String(workout.reps), note: workout.note ?? "" }); setMode("edit"); }}>
               Edit
             </button>
             <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Delete ${label}`} onClick={() => setMode("delete")}>
@@ -97,13 +112,13 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
           className="mt-3 space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            if (minutes !== undefined) void track(() => run(() => api.editWorkout(workout.id, { type: form.type, minutes, note: form.note })));
+            if (amount !== undefined) void track(() => run(() => api.editWorkout(workout.id, { type: form.type, ...amount, note: form.note })));
           }}
         >
           <WorkoutFields idPrefix={`edit-${workout.id}`} {...form} onChange={(next) => setForm((f) => ({ ...f, ...next }))} />
           <p className="text-sm text-muted">The date stays {shortDate(workout.date)}.</p>
           <div className="flex gap-2">
-            <Button type="submit" disabled={minutes === undefined} busy={busy}>
+            <Button type="submit" disabled={amount === undefined} busy={busy}>
               Save change
             </Button>
             <Button variant="ghost" type="button" onClick={close} disabled={busy}>
@@ -136,7 +151,7 @@ export function LogWorkoutPage() {
   const api = useApi();
   const [busy, track] = useBusy();
   const typeField = useRef<HTMLSelectElement>(null);
-  const [form, setForm] = useState({ type: WORKOUT_TYPES[0] as string, minutes: "", note: "" });
+  const [form, setForm] = useState({ type: WORKOUT_TYPES[0] as string, minutes: "", reps: "", note: "" });
   const [workouts, setWorkouts] = useState<WorkoutRecord[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -153,17 +168,17 @@ export function LogWorkoutPage() {
     void refresh();
   }, [refresh]);
 
-  const minutes = parseMinutes(form.minutes);
+  const amount = amountFromForm(form.type, form);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (minutes === undefined) return;
+    if (amount === undefined) return;
     setError(false);
     setMessage(null);
     try {
-      const saved = await api.logWorkout({ type: form.type, minutes, note: form.note });
-      setForm({ type: form.type, minutes: "", note: "" });
-      setMessage(`Saved ${saved.type}, ${formatMinutes(saved.minutes)}.`);
+      const saved = await api.logWorkout({ type: form.type, ...amount, note: form.note });
+      setForm({ type: form.type, minutes: "", reps: "", note: "" });
+      setMessage(`Saved ${saved.type}, ${describeAmount(saved)}.`);
       typeField.current?.focus();
     } catch {
       return setError(true);
@@ -177,7 +192,7 @@ export function LogWorkoutPage() {
         <form onSubmit={(e) => void track(() => submit(e))} className="space-y-3" noValidate>
           <WorkoutFields idPrefix="new" {...form} typeRef={typeField} onChange={(next) => { setForm((f) => ({ ...f, ...next })); setMessage(null); }} />
           <p className="text-sm">Saved as of now</p>
-          <Button type="submit" disabled={minutes === undefined} busy={busy}>
+          <Button type="submit" disabled={amount === undefined} busy={busy}>
             Save workout
           </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
@@ -191,7 +206,7 @@ export function LogWorkoutPage() {
           {workouts === null ? (
             <p className="mt-2 text-muted">Loading…</p>
           ) : workouts.length === 0 ? (
-            <p className="mt-2 text-muted">No workouts yet. Choose a type and a duration above, then save.</p>
+            <p className="mt-2 text-muted">No workouts yet. Choose a type and a duration (or a count, for pushups) above, then save.</p>
           ) : (
             <ul className="mt-2">
               {workouts.map((workout) => (

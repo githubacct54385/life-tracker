@@ -270,7 +270,8 @@ erDiagram
         timestamptz started_at_utc
         date done_on "local date"
         string type
-        int minutes
+        int minutes "empty for pushups"
+        int reps "pushups only"
         string source "manual or watch"
     }
     APP_SETTING {
@@ -279,7 +280,7 @@ erDiagram
     }
 ```
 
-`WORKOUT` has a unique index on (start time, type, minutes) so re-imports skip repeats. `WEIGHT_ENTRY` is unique per day. All tables stand alone for now, so they have no lines.
+`WORKOUT` has a unique index on (start time, type, minutes) so re-imports skip repeats. A timed workout has `minutes` and no `reps`; a counted one (pushups) has `reps` and no `minutes`, and the database requires one or the other. `WEIGHT_ENTRY` is unique per day. All tables stand alone for now, so they have no lines.
 
 ## 7. Tool comparison: which diagramming tool?
 
