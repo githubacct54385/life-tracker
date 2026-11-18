@@ -3,10 +3,10 @@ import { previewImportRows, type ImportMileageResult, type ImportPreviewRow } fr
 import { useApi } from "../../api/ApiContext";
 import { readMileageFile } from "../../importers/mileageFile";
 import type { RowError } from "../../importers/mileageGrid";
+import { Button } from "../../ui/Button.js";
+import { useBusy } from "../../ui/useBusy.js";
 import { Page } from "../Page";
 import { formatMiles, shortDate } from "./readingFormat";
-
-const primaryButton = "min-h-11 rounded-xl bg-g700 px-4 py-3 font-bold text-white disabled:opacity-40";
 
 const PROBLEMS: Record<string, string> = {
   missing_columns: "The file needs a Date column and a Start Miles column in a header row.",
@@ -35,7 +35,8 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<ImportMileageResult | null>(null);
   const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [reading, trackRead] = useBusy();
+  const [saving, trackSave] = useBusy();
 
   async function load(file: File | undefined) {
     setPreview(null);
@@ -49,19 +50,16 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
     setPreview({ rows: previewImportRows(parsed.rows), errors: parsed.errors });
   }
 
-  const choose = (event: ChangeEvent<HTMLInputElement>) => load(event.target.files?.[0]);
+  const choose = (event: ChangeEvent<HTMLInputElement>) => trackRead(() => load(event.target.files?.[0]));
 
   async function commit() {
     if (!preview) return;
-    setBusy(true);
     setFailed(false);
     try {
       setResult(await api.importReadings(preview.rows.map(({ date, miles }) => ({ date, miles }))));
       setPreview(null);
     } catch {
       setFailed(true);
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -84,14 +82,15 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
           </ol>
         )}
         {sample && (
-          <button type="button" className={primaryButton} onClick={() => void load(sample())}>
+          <Button busy={reading} disabled={saving} onClick={() => void trackRead(() => load(sample()))}>
             Use the sample file
-          </button>
+          </Button>
         )}
         <label className="block font-bold" htmlFor="mileage-file">
           Spreadsheet file
         </label>
-        <input id="mileage-file" type="file" accept=".xlsx,.csv" className="block min-h-11 w-full text-ink" onChange={(e) => void choose(e)} />
+        <input id="mileage-file" type="file" accept=".xlsx,.csv" className="block min-h-11 w-full text-ink" disabled={reading || saving} onChange={(e) => void choose(e)} />
+        {reading && <p role="status" className="text-muted">Reading the file…</p>}
         {problem && <p role="alert">{problem}</p>}
 
         {preview && (
@@ -137,9 +136,9 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
                 </tbody>
               </table>
             </div>
-            <button type="button" className={primaryButton} disabled={busy} onClick={() => void commit()}>
+            <Button busy={saving} disabled={reading} onClick={() => void trackSave(commit)}>
               Import {preview.rows.length} readings
-            </button>
+            </Button>
             {failed && <p role="alert">That did not work. Try again.</p>}
           </section>
         )}
