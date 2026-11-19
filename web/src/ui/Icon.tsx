@@ -35,6 +35,7 @@ const PATHS = {
   ),
   chart: <path d="M5 20V10M12 20V4M19 20v-7" />,
   upload: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />,
+  wrench: <path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />,
   chevron: <path d="M9 6l6 6-6 6" />,
 } satisfies Record<string, ReactNode>;
 

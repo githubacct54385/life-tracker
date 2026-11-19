@@ -1,3 +1,5 @@
+import { createMaintenanceService } from "./services/maintenanceService.js";
+import { fakeMaintenanceRepo } from "./testing/fakeMaintenanceRepository.js";
 // The owner's time zone, sent by the browser in a header, decides the calendar day of a new reading, weight or workout.
 // The whole API runs here with in-memory repositories and a fixed clock.
 import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE, TIME_ZONE_HEADER } from "@life-tracker/shared";
@@ -28,7 +30,7 @@ beforeAll(async () => {
     odometer: createOdometerService(fakeRepo(), { now: NOW }),
     gifts: createGiftService(fakeGiftRepo()),
     workouts: createWorkoutService(fakeWorkoutRepo(), { now: NOW }),
-    weight: createWeightService(fakeWeightRepo(), { now: NOW }),
+    weight: createWeightService(fakeWeightRepo(), { now: NOW }), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
     keys: issuer.keys,
   });
   post = async (path, body, zone) => {

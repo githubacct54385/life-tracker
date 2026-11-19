@@ -274,6 +274,21 @@ erDiagram
         int reps "pushups only"
         string source "manual or watch"
     }
+    SERVICE_PLACE {
+        int id PK
+        string name "unique ignoring letter case"
+    }
+    MAINTENANCE_RECORD {
+        int id PK
+        date service_date
+        int odometer_miles "optional"
+        string done_by "shop or home"
+        int place_id FK "empty for home"
+        int cost_cents "optional"
+        string note "optional"
+        string_list services "1 to 8 types"
+    }
+    SERVICE_PLACE ||--o{ MAINTENANCE_RECORD : "used by"
     APP_SETTING {
         string key PK
         string value "time zone, weight unit, theme"

@@ -1,4 +1,4 @@
-import type { GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -51,4 +51,14 @@ export interface Api {
   editWorkout(id: number, workout: SaveWorkoutRequest): Promise<WorkoutRecord>;
   /** Removes a workout for good. */
   deleteWorkout(id: number): Promise<void>;
+  /** Car services, newest first (MIL-05). */
+  listMaintenance(): Promise<MaintenanceListResponse>;
+  /** The shops used before, for the drop-down. */
+  listServicePlaces(): Promise<PlaceListResponse>;
+  /** Saves a service. The place is sent by name: an existing one (ignoring letter case) is reused, a new one is added. */
+  logMaintenance(service: SaveMaintenanceRequest): Promise<MaintenanceRecord>;
+  /** Replaces every field of a service. */
+  editMaintenance(id: number, service: SaveMaintenanceRequest): Promise<MaintenanceRecord>;
+  /** Removes a service for good. */
+  deleteMaintenance(id: number): Promise<void>;
 }

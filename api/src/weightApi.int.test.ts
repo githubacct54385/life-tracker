@@ -1,3 +1,5 @@
+import { createMaintenanceService } from "./services/maintenanceService.js";
+import { fakeMaintenanceRepo } from "./testing/fakeMaintenanceRepository.js";
 // The weight endpoints end to end: owner check, handler, service, repository, and a real Postgres created from the real migrations.
 import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE } from "@life-tracker/shared";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
@@ -31,6 +33,7 @@ describe.skipIf(!server)("/api/weight (real Postgres)", () => {
       gifts: createGiftService(fakeGiftRepo()),
       workouts: createWorkoutService(fakeWorkoutRepo()),
       weight: createWeightService(weightRepository, { now: () => new Date("2026-11-18T20:00:00Z") }),
+      maintenance: createMaintenanceService(fakeMaintenanceRepo()),
       keys: issuer.keys,
     });
     call = (method, url, body) =>

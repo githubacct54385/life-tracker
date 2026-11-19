@@ -4,7 +4,7 @@ import { OWNER, signInAs } from "./signIn";
 
 // SET-02: automated accessibility checks on every main screen. The API edge is faked with synthetic data, so the lists, rows and
 // charts are on screen. Behaviour is proven in unit tests; these check what only a real browser can (contrast as rendered, focus, size).
-const SCREENS = ["/", "/giving", "/giving/log", "/giving/special", "/health", "/health/weight", "/health/workouts", "/car", "/car/log", "/car/stats", "/car/import", "/settings"];
+const SCREENS = ["/", "/giving", "/giving/log", "/giving/special", "/health", "/health/weight", "/health/workouts", "/car", "/car/log", "/car/maintenance", "/car/stats", "/car/import", "/settings"];
 
 async function mockApi(page: Page) {
   const now = new Date();
@@ -27,8 +27,20 @@ async function mockApi(page: Page) {
   );
   await page.route("**/api/weight", (r) => r.fulfill({ json: { entries: [172.4, 172.9, 173.1, 172.2, 171.8].map((pounds, i) => ({ id: 5 - i, date: day(i), pounds })) } }));
   await page.route(/\/api\/odometer(\?.*)?$/, (r) => r.fulfill({ json: { readings: [0, 1, 2, 3, 4].map((i) => ({ id: 5 - i, date: day(i * 7), miles: 48_400 - i * 210 })) } }));
+  const place = { id: 1, name: "Joe's Garage" };
+  await page.route("**/api/maintenance/places", (r) => r.fulfill({ json: { places: [place] } }));
+  await page.route("**/api/maintenance", (r) =>
+    r.fulfill({
+      json: {
+        records: [
+          { id: 2, date: day(10), services: ["Oil change", "Air filter"], doneBy: "shop", place, costCents: 8999, odometerMiles: 48_150, note: "Synthetic oil" },
+          { id: 1, date: day(40), services: ["Wipers"], doneBy: "home", place: null, costCents: 1800, odometerMiles: null, note: null },
+        ],
+      },
+    }),
+  );
   await page.route("**/api/workouts", (r) =>
-    r.fulfill({ json: { workouts: [{ id: 2, date: day(0), type: "Run", minutes: 32, note: "Easy pace", source: "manual" }, { id: 1, date: day(2), type: "Yoga", minutes: 40, note: null, source: "apple_watch" }] } }),
+    r.fulfill({ json: { workouts: [{ id: 2, date: day(0), type: "Run", minutes: 32, reps: null, note: "Easy pace", source: "manual" }, { id: 1, date: day(2), type: "Yoga", minutes: 40, reps: null, note: null, source: "apple_watch" }] } }),
   );
 }
 

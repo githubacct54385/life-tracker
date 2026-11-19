@@ -3,6 +3,9 @@ import {
   giftSchema,
   healthResponseSchema,
   importMileageResultSchema,
+  maintenanceListResponseSchema,
+  maintenanceRecordSchema,
+  placeListResponseSchema,
   readingListResponseSchema,
   REQUEST_GUARD_HEADER,
   REQUEST_GUARD_VALUE,
@@ -154,6 +157,21 @@ export function createClient(
     },
     async deleteWorkout(id) {
       await send(`/api/workouts/${id}`, { method: "DELETE" });
+    },
+    async listMaintenance() {
+      return maintenanceListResponseSchema.parse(await request("/api/maintenance"));
+    },
+    async listServicePlaces() {
+      return placeListResponseSchema.parse(await request("/api/maintenance/places"));
+    },
+    async logMaintenance(service) {
+      return maintenanceRecordSchema.parse(await (await send("/api/maintenance", { method: "POST", body: JSON.stringify(service), headers: JSON_HEADERS })).json());
+    },
+    async editMaintenance(id, service) {
+      return maintenanceRecordSchema.parse(await (await send(`/api/maintenance/${id}`, { method: "PUT", body: JSON.stringify(service), headers: JSON_HEADERS })).json());
+    },
+    async deleteMaintenance(id) {
+      await send(`/api/maintenance/${id}`, { method: "DELETE" });
     },
   };
 }
