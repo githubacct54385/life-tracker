@@ -2,6 +2,7 @@
 // Only one entry per day is kept: a second one for today is not saved until the owner confirms replacing the first (AC-HLT-01.3).
 // Nothing here touches SQL.
 import { weightRepository, type StoredWeight, type WeightRepository } from "../repositories/weightRepository.js";
+import { isValidTimeZone } from "@life-tracker/shared";
 import { calendarDateIn, DEFAULT_OWNER_TIME_ZONE } from "./odometerService.js";
 
 export type WeightOutcome = { status: "saved"; entry: StoredWeight } | { status: "needs_replace"; existing: StoredWeight };
@@ -9,7 +10,7 @@ export type WeightOutcome = { status: "saved"; entry: StoredWeight } | { status:
 export interface WeightService {
   list(limit?: number): Promise<StoredWeight[]>;
   /** Saves today's weight. When today already has one, nothing is saved unless `replace` is true. */
-  log(pounds: number, replace?: boolean): Promise<WeightOutcome>;
+  log(pounds: number, replace?: boolean, timeZone?: string): Promise<WeightOutcome>;
   /** Changes the value and keeps the date. Undefined when it does not exist. */
   edit(id: number, pounds: number): Promise<StoredWeight | undefined>;
   /** Removes an entry for good. False when it does not exist. */
@@ -31,8 +32,8 @@ export function createWeightService(repo: WeightRepository, options: WeightServi
   return {
     list: (limit = DEFAULT_LIMIT) => repo.list(limit),
 
-    async log(pounds, replace = false) {
-      const date = calendarDateIn(timeZone, now());
+    async log(pounds, replace = false, requestZone) {
+      const date = calendarDateIn(isValidTimeZone(requestZone) ? requestZone : timeZone, now());
       const existing = await repo.findByDate(date);
       if (!existing) return { status: "saved", entry: await repo.insert({ date, pounds }) };
       if (!replace) return { status: "needs_replace", existing };

@@ -57,12 +57,15 @@ export function SettingsPage() {
           <div className="grid gap-3">
             <label className="grid gap-1 text-sm text-muted">
               Time zone
-              <select className={select} value={prefs.timeZone} onChange={(e) => update({ timeZone: e.target.value })}>
+              <select className={select} value={prefs.timeZone} onChange={(e) => update({ timeZone: e.target.value })} aria-describedby="tz-help">
                 {timeZones(prefs.timeZone).map((z) => (
                   <option key={z} value={z}>{z}</option>
                 ))}
               </select>
             </label>
+            <p id="tz-help" className="-mt-2 text-sm text-muted">
+              Decides which day a new reading, weight or workout is saved on, and what &ldquo;today&rdquo; means, wherever you are.
+            </p>
             <label className="grid gap-1 text-sm text-muted">
               Weight unit
               <select

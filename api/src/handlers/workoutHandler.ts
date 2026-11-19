@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { saveWorkoutRequestSchema, workoutListResponseSchema, workoutRecordSchema } from "@life-tracker/shared";
+import { TIME_ZONE_HEADER, saveWorkoutRequestSchema, workoutListResponseSchema, workoutRecordSchema } from "@life-tracker/shared";
 import type { WorkoutService } from "../services/workoutService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
@@ -23,7 +23,7 @@ export function workoutRoutes({ logger, workouts }: WorkoutDeps): Hono {
   routes.post("/", async (c) => {
     const body = saveWorkoutRequestSchema.safeParse(await c.req.json().catch(() => undefined));
     if (!body.success) return c.json({ error: "invalid_request" }, 400);
-    return c.json(workoutRecordSchema.parse(await workouts.log(body.data)), 201);
+    return c.json(workoutRecordSchema.parse(await workouts.log(body.data, c.req.header(TIME_ZONE_HEADER))), 201);
   });
 
   routes.put("/:id", async (c) => {
