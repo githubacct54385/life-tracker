@@ -14,6 +14,8 @@
     "run_worker_first": true,
     "not_found_handling": "single-page-application"
   },
+  // Maintenance documents (MIL-07, ADR-0024): a private R2 bucket. It has no public access; the Worker is the only way in.
+  "r2_buckets": [{ "binding": "DOCUMENTS", "bucket_name": "life-tracker-documents" }],
   // Workers Logs (MIG-06): keeps the JSON lines written by telemetry/logger.ts, searchable in the dashboard.
   // Free plan: 200,000 events a day, 3 days of history. One user stays far below that, so every request is kept.
   "observability": {

@@ -12,6 +12,7 @@ import { maintenanceRoutes } from "./handlers/maintenanceHandler.js";
 import { weightRoutes } from "./handlers/weightHandler.js";
 import { workoutRoutes } from "./handlers/workoutHandler.js";
 import type { OdometerService } from "./services/odometerService.js";
+import type { DocumentService } from "./services/documentService.js";
 import type { MaintenanceService } from "./services/maintenanceService.js";
 import type { WeightService } from "./services/weightService.js";
 import type { WorkoutService } from "./services/workoutService.js";
@@ -25,6 +26,8 @@ export interface AppDeps {
   workouts: WorkoutService;
   weight: WeightService;
   maintenance: MaintenanceService;
+  /** Documents attached to car services (MIL-07). Without it the document routes answer 404. */
+  documents?: DocumentService;
   /** Where to get Access's public keys. Defaults to the published ones; tests pass their own. */
   keys?: KeySource;
 }
