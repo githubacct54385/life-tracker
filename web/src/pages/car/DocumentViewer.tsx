@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 const buttonClass = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/60 px-4 py-2 text-white";
 
@@ -21,7 +22,8 @@ export function DocumentViewer({ title, imageUrl, downloadUrl, onClose }: { titl
     };
   }, [onClose]);
 
-  return (
+  // In a portal: the page's entry animation leaves a transform on it, which would make `fixed` mean "inside the page column".
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex flex-col bg-black text-white">
       <div className="flex items-center justify-between gap-3 p-3">
         <button ref={back} type="button" className={buttonClass} onClick={onClose}>
@@ -39,6 +41,7 @@ export function DocumentViewer({ title, imageUrl, downloadUrl, onClose }: { titl
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-2">
         <img src={imageUrl} alt={title} className="max-h-full max-w-full object-contain" />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

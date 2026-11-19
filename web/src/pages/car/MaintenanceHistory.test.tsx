@@ -24,12 +24,19 @@ function open(api: Api = demo()) {
   return api;
 }
 const lastDone = () => within(screen.getByRole("region", { name: "Last done" }));
+// "Last done" is a strip that opens (AC-MIL-06.11), and the filters sit behind a Filters button.
+const openLastDone = () => userEvent.click(screen.getByRole("button", { name: /^Last done/ }));
+const openFilters = () => userEvent.click(within(history()).getByRole("button", { name: /^Filters/ }));
+const loaded = () => screen.findByRole("group", { name: "Group services" });
 const history = () => screen.getByRole("region", { name: "Services" });
+/** The service cards, in the order shown. */
+const rows = () => [...history().querySelectorAll<HTMLElement>("ul[id^='group-'] > li")];
 const places = () => within(screen.getByRole("region", { name: "Places" }));
 
 describe("Last done", () => {
   it("[AC-MIL-06.2] shows each type with its latest date and mileage, and Not recorded yet for a fixed type with none", async () => {
     open();
+    await openLastDone();
     const oil = (await lastDone().findByText("Oil change")).closest("li")!;
     expect(oil.textContent).toContain("Nov 3");
     expect(oil.textContent).toContain("48,150 mi");
@@ -41,6 +48,7 @@ describe("Last done", () => {
     const api = demo();
     await api.logMaintenance({ date: "2026-11-10", services: ["Cabin filter"], doneBy: "home" });
     open(api);
+    await openLastDone();
     const row = (await lastDone().findByText("Cabin filter")).closest("li")!;
     expect(row.textContent).toContain("Nov 10");
     expect(lastDone().getAllByRole("listitem")).toHaveLength(10);
@@ -48,6 +56,7 @@ describe("Last done", () => {
 
   it("[AC-MIL-06.3] shows the miles driven since each service, from the latest odometer reading", async () => {
     open();
+    await openLastDone();
     const oil = (await lastDone().findByText("Oil change")).closest("li")!;
     await waitFor(() => expect(oil.textContent).toContain("252 mi since"));
     expect(lastDone().getByText("Wipers").closest("li")!.textContent).toContain("702 mi since");
@@ -57,6 +66,7 @@ describe("Last done", () => {
     const api = demo();
     await api.logMaintenance({ date: "2026-11-10", services: ["Tires"], doneBy: "home" });
     open(api);
+    await openLastDone();
     const tires = (await lastDone().findByText("Tires")).closest("li")!;
     await screen.findAllByText(/252 mi since/);
     expect(tires.textContent).toContain("Nov 10");
@@ -67,26 +77,26 @@ describe("Last done", () => {
 describe("History filters", () => {
   it("[AC-MIL-06.1] lists services newest first with date, types, place or At home, cost and odometer", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
-    const rows = within(within(history()).getByRole("list")).getAllByRole("listitem");
-    expect(rows).toHaveLength(2);
-    expect(rows[0]!.textContent).toContain("Nov 3");
-    expect(rows[0]!.textContent).toContain("Joe's Garage");
-    expect(rows[0]!.textContent).toContain("$89.99");
-    expect(rows[0]!.textContent).toContain("48,150 mi");
-    expect(rows[1]!.textContent).toContain("At home");
+    await loaded();
+    expect(rows()).toHaveLength(2);
+    expect(rows()[0]!.textContent).toContain("Nov 3");
+    expect(rows()[0]!.textContent).toContain("Joe's Garage");
+    expect(rows()[0]!.textContent).toContain("$89.99");
+    expect(rows()[0]!.textContent).toContain("48,150 mi");
+    expect(rows()[1]!.textContent).toContain("At home");
   });
 
   it("[AC-MIL-06.4] shows the total cost of everything, then of one type, then of one place", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await loaded();
+    await openFilters();
     const summary = () => within(history()).getByText(/total/).textContent;
     expect(summary()).toContain("2 services");
     expect(summary()).toContain("$107.99");
     await userEvent.selectOptions(within(history()).getByLabelText("Show service"), "Wipers");
     expect(summary()).toContain("1 service");
     expect(summary()).toContain("$18.00");
-    expect(within(within(history()).getByRole("list")).getAllByRole("listitem")).toHaveLength(1);
+    expect(rows()).toHaveLength(1);
     await userEvent.selectOptions(within(history()).getByLabelText("Show service"), "");
     await userEvent.selectOptions(within(history()).getByLabelText("Show place"), "Joe's Garage");
     expect(summary()).toContain("$89.99");
@@ -94,7 +104,8 @@ describe("History filters", () => {
 
   it("[AC-MIL-06.4] says so when nothing matches both choices, and offers a way back", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await loaded();
+    await openFilters();
     await userEvent.selectOptions(within(history()).getByLabelText("Show service"), "Wipers");
     await userEvent.selectOptions(within(history()).getByLabelText("Show place"), "Joe's Garage");
     expect(within(history()).getByText(/No services match/)).toBeTruthy();
@@ -112,7 +123,7 @@ describe("Places", () => {
     await userEvent.type(input, "Joe's Auto");
     await userEvent.click(places().getByRole("button", { name: "Save name" }));
     await waitFor(() => expect(places().getByText("Joe's Auto")).toBeTruthy());
-    expect(within(within(history()).getByRole("list")).getByText(/Joe's Auto/)).toBeTruthy();
+    await waitFor(() => expect(within(history()).getAllByText(/· Joe's Auto/).length).toBeGreaterThan(0));
   });
 
   it("[AC-MIL-06.5] says when the new name is already taken by another place", async () => {
@@ -151,6 +162,7 @@ describe("Loading, empty and failed states", () => {
   it("[AC-MIL-06.6] shows a loading placeholder in the summary and the history until the services arrive", async () => {
     const api = { ...demo(), listMaintenance: () => new Promise<never>(() => undefined) } as Api;
     open(api);
+    await openLastDone();
     expect(within(screen.getByRole("region", { name: "Last done" })).getByText("Loading…")).toBeTruthy();
     expect(within(history()).getByText("Loading…")).toBeTruthy();
   });
@@ -159,9 +171,10 @@ describe("Loading, empty and failed states", () => {
     const base = demo();
     const api = { ...base, listMaintenance: async () => ({ records: [] }), listServicePlaces: async () => ({ places: [] }) } as Api;
     open(api);
+    await openLastDone();
     expect(await lastDone().findByText(/Nothing is recorded yet. Save a service/)).toBeTruthy();
     expect(lastDone().getAllByText("Not recorded yet")).toHaveLength(9);
-    expect(within(history()).getByText(/No services yet. Choose what was done above, then save./)).toBeTruthy();
+    expect(within(history()).getByText(/No services yet. Press Log a service, choose what was done, then save./)).toBeTruthy();
   });
 
   it("[AC-MIL-06.6] says the services could not be loaded, and loads them when the owner tries again", async () => {
@@ -175,10 +188,11 @@ describe("Loading, empty and failed states", () => {
       },
     } as Api;
     open(api);
+    await openLastDone();
     expect((await within(history()).findByRole("alert")).textContent).toContain("We could not load your services.");
     expect(within(screen.getByRole("region", { name: "Last done" })).getByRole("alert").textContent).toContain("We could not load your services.");
     fail = false;
     await userEvent.click(within(history()).getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("Oil change, Air filter")).toBeTruthy();
+    expect(await loaded()).toBeTruthy();
   });
 });

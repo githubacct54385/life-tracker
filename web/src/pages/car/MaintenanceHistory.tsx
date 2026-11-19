@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { MAINTENANCE_TYPES, filterHistory, lastDoneByService, ownServices, totalCostCents, type MaintenanceRecord, type ServicePlace } from "@life-tracker/shared";
+import { MAINTENANCE_TYPES, filterHistory, lastDoneByService, ownServices, type MaintenanceRecord, type ServicePlace } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { Button } from "../../ui/Button";
 import { Presence } from "../../ui/Presence";
 import { Skeleton } from "../../ui/Skeleton";
 import { useBusy } from "../../ui/useBusy";
-import { formatCents } from "../giving/giftFormat";
 import { formatMiles, shortDate } from "./readingFormat";
 
 const selectClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
@@ -15,15 +14,17 @@ const linkButton = "inline-flex min-h-11 min-w-11 items-center justify-center px
 export interface HistoryFilterState {
   service: string;
   placeId: string;
+  /** What the owner typed in the search box. */
+  text: string;
 }
-export const NO_FILTER: HistoryFilterState = { service: "", placeId: "" };
+export const NO_FILTER: HistoryFilterState = { service: "", placeId: "", text: "" };
 
 /** The records the filter lets through. A filter that no longer matches anything on offer (its service was deleted) is ignored. */
 export function applyFilter(records: MaintenanceRecord[], places: ServicePlace[], filter: HistoryFilterState): MaintenanceRecord[] {
   const services = serviceOptions(records);
   const service = services.some((s) => s.toLowerCase() === filter.service.toLowerCase()) ? filter.service : "";
   const place = places.find((p) => String(p.id) === filter.placeId);
-  return filterHistory(records, { ...(service ? { service } : {}), ...(place ? { placeId: place.id } : {}) });
+  return filterHistory(records, { ...(service ? { service } : {}), ...(place ? { placeId: place.id } : {}), text: filter.text });
 }
 
 const serviceOptions = (records: MaintenanceRecord[]) => [...MAINTENANCE_TYPES, ...ownServices(records, MAINTENANCE_TYPES)];
@@ -48,44 +49,61 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
 
 /** "Last done": each type of service with its latest date and mileage, and the miles driven since (MIL-06). */
 export function LastDoneSection({ records, loadFailed, onRetry, latestOdometer }: LoadProps & { latestOdometer: number | undefined }) {
+  const [open, setOpen] = useState(false);
   const rows = records === null ? [] : lastDoneByService(records, MAINTENANCE_TYPES, latestOdometer);
+  // The strip shows the service done most recently, so the closed section still says something useful.
+  const recent = rows.filter((r) => r.date !== null).sort((a, b) => (a.date! < b.date! ? 1 : a.date! > b.date! ? -1 : 0))[0];
   return (
-    <section aria-labelledby="last-done" className="rounded-2xl border border-line bg-card p-4 text-ink">
-      <h2 id="last-done" className="font-bold">
-        Last done
+    <section aria-labelledby="last-done" className="rounded-2xl border border-line bg-card text-ink">
+      <h2 className="font-bold">
+        <button type="button" aria-expanded={open} aria-controls="last-done-list" onClick={() => setOpen((o) => !o)} className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2 text-left">
+          <span className="min-w-0">
+            <span id="last-done">Last done</span>
+            {recent && (
+              <span className="block text-sm font-normal text-muted">
+                {recent.service} &middot; {shortDate(recent.date!)}
+                {recent.milesSince !== null && <> &middot; {formatMiles(recent.milesSince)} mi since</>}
+              </span>
+            )}
+          </span>
+          <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+        </button>
       </h2>
-      {loadFailed && records === null ? (
-        <LoadFailed onRetry={onRetry} />
-      ) : records === null ? (
-        <Skeleton lines={4} />
-      ) : (
-        <>
-          {records.length === 0 && <p className="mt-2 text-muted">Nothing is recorded yet. Save a service and it shows up here.</p>}
-          <ul className="mt-2">
-            {rows.map((row) => (
-              <li key={row.service} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line py-2 last:border-b-0">
-                <span className="font-bold">{row.service}</span>
-                {row.date === null ? (
-                  <span className="text-muted">Not recorded yet</span>
-                ) : (
-                  <span className="text-right text-sm text-muted">
-                    {shortDate(row.date)}
-                    {row.odometerMiles !== null && <> &middot; {formatMiles(row.odometerMiles)} mi</>}
-                    {row.milesSince !== null && <> &middot; {formatMiles(row.milesSince)} mi since</>}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
+      {open && (
+        <div id="last-done-list" className="px-4 pb-3">
+          {loadFailed && records === null ? (
+            <LoadFailed onRetry={onRetry} />
+          ) : records === null ? (
+            <Skeleton lines={4} />
+          ) : (
+            <>
+              {records.length === 0 && <p className="text-muted">Nothing is recorded yet. Save a service and it shows up here.</p>}
+              <ul>
+                {rows.map((row) => (
+                  <li key={row.service} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line py-2 last:border-b-0">
+                    <span className="font-bold">{row.service}</span>
+                    {row.date === null ? (
+                      <span className="text-muted">Not recorded yet</span>
+                    ) : (
+                      <span className="text-right text-sm text-muted">
+                        {shortDate(row.date)}
+                        {row.odometerMiles !== null && <> &middot; {formatMiles(row.odometerMiles)} mi</>}
+                        {row.milesSince !== null && <> &middot; {formatMiles(row.milesSince)} mi since</>}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       )}
     </section>
   );
 }
 
-/** Choose one type and/or one place; the total below is for what is shown. */
-export function HistoryFilters({ records, places, filter, onChange, shown }: { records: MaintenanceRecord[]; places: ServicePlace[]; filter: HistoryFilterState; onChange: (next: HistoryFilterState) => void; shown: MaintenanceRecord[] }) {
-  const total = totalCostCents(shown);
+/** Choose one type and/or one place. The count and total of what is shown are next to the Filters button. */
+export function HistoryFilters({ records, places, filter, onChange }: { records: MaintenanceRecord[]; places: ServicePlace[]; filter: HistoryFilterState; onChange: (next: HistoryFilterState) => void }) {
   return (
     <div className="mt-2 space-y-2">
       <div className="grid gap-2 sm:grid-cols-2">
@@ -116,9 +134,6 @@ export function HistoryFilters({ records, places, filter, onChange, shown }: { r
           </select>
         </div>
       </div>
-      <p aria-live="polite" className="text-sm text-muted">
-        {shown.length} {shown.length === 1 ? "service" : "services"} &middot; <b className="text-ink tabular-nums">{formatCents(total)}</b> total
-      </p>
     </div>
   );
 }

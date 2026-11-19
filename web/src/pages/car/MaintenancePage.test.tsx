@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
@@ -21,14 +21,22 @@ function open(api = createDemoApi({ now: () => new Date(2026, 10, 13, 9, 0, 0) }
   );
   return api;
 }
+// The page opens on the history; the form is in a panel that "Log a service" opens (AC-MIL-06.9).
+const loaded = () => screen.findByRole("group", { name: "Group services" });
+async function openForm() {
+  await loaded();
+  await userEvent.click(screen.getByRole("button", { name: "Log a service" }));
+  return screen.getByRole("dialog", { name: "Log a service" });
+}
+const history = () => within(screen.getByRole("region", { name: "Services" }));
 const save = () => screen.getByRole("button", { name: "Save service" }) as HTMLButtonElement;
 const tick = (name: string) => userEvent.click(screen.getByRole("checkbox", { name }));
 
 describe("Maintenance screen", () => {
   it("[AC-MIL-05.1] offers the fixed list of services as ticks, and cannot be saved with none", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
-    for (const name of ["Oil change", "Tires", "Brakes", "Battery", "Air filter", "Wipers", "Alignment"]) expect(screen.getByRole("checkbox", { name })).toBeTruthy();
+    await openForm();
+    for (const name of ["Oil change", "Tires", "Rotate tires", "Multi-point inspection", "Brakes", "Battery", "Air filter", "Wipers", "Alignment"]) expect(screen.getByRole("checkbox", { name })).toBeTruthy();
     expect(save().disabled).toBe(true);
     await tick("Tires");
     expect(save().disabled).toBe(false);
@@ -36,7 +44,7 @@ describe("Maintenance screen", () => {
 
   it("[AC-MIL-05.1] the owner can add a service of their own, remove it, and not add the same one twice", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     const field = screen.getByLabelText("Add your own service");
     const add = screen.getByRole("button", { name: "Add" }) as HTMLButtonElement;
     expect(add.disabled).toBe(true);
@@ -53,7 +61,7 @@ describe("Maintenance screen", () => {
 
   it("[AC-MIL-05.2] choosing 'I did it myself' hides the place and relabels the cost as parts", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     expect(screen.getByLabelText("Place")).toBeTruthy();
     await userEvent.click(screen.getByRole("radio", { name: "I did it myself" }));
     expect(screen.queryByLabelText("Place")).toBeNull();
@@ -63,7 +71,7 @@ describe("Maintenance screen", () => {
 
   it("[AC-MIL-05.3] offers the places used before, and a typed new place is offered next time", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     const place = screen.getByLabelText("Place") as HTMLSelectElement;
     expect([...place.options].map((o) => o.text)).toEqual(["No place named", "Joe's Garage", "Add a new place…"]);
     await tick("Brakes");
@@ -71,24 +79,24 @@ describe("Maintenance screen", () => {
     await userEvent.type(screen.getByLabelText("New place"), "Acme Tire");
     await userEvent.click(save());
     expect((await screen.findByRole("status")).textContent).toContain("Saved Brakes.");
+    await openForm();
     const after = screen.getByLabelText("Place") as HTMLSelectElement;
     expect([...after.options].map((o) => o.text)).toContain("Acme Tire");
   });
 
   it("[AC-MIL-05.3] a place used before can be chosen from the list", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     await tick("Tires");
     await userEvent.selectOptions(screen.getByLabelText("Place"), "Joe's Garage");
     await userEvent.click(save());
     await screen.findByRole("status");
-    const list = within(screen.getByRole("region", { name: "Services" })).getByRole("list");
-    expect(within(list).getAllByText(/Joe's Garage/).length).toBe(2);
+    expect(history().getAllByText(/^Nov \d+ · Joe's Garage/)).toHaveLength(2);
   });
 
   it("[AC-MIL-05.4] a cost of zero can be saved, and a cost that is not a dollar amount blocks saving", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     await tick("Battery");
     await userEvent.type(screen.getByLabelText("Cost (optional)"), "abc");
     expect(save().disabled).toBe(true);
@@ -97,12 +105,12 @@ describe("Maintenance screen", () => {
     await userEvent.type(screen.getByLabelText("Cost (optional)"), "0");
     await userEvent.click(save());
     await screen.findByRole("status");
-    expect(within(screen.getByRole("region", { name: "Services" })).getByText("$0.00")).toBeTruthy();
+    expect(history().getByText("$0.00")).toBeTruthy();
   });
 
   it("[AC-MIL-05.5] the date starts as today, can be changed, and cannot be after today", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     const date = screen.getByLabelText("Date") as HTMLInputElement;
     expect(date.value).toBe(TODAY);
     expect(date.max).toBe(TODAY);
@@ -118,7 +126,7 @@ describe("Maintenance screen", () => {
 
   it("[AC-MIL-05.6] the odometer starts as the latest reading, can be changed or cleared, and starts again after saving", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     const odometer = screen.getByLabelText("Odometer (optional)") as HTMLInputElement;
     await screen.findByDisplayValue("48402");
     await userEvent.clear(odometer);
@@ -126,18 +134,19 @@ describe("Maintenance screen", () => {
     await tick("Tires");
     await userEvent.click(save());
     await screen.findByRole("status");
+    expect(history().getByText(/48,500 mi/)).toBeTruthy();
+    await openForm();
     expect((screen.getByLabelText("Odometer (optional)") as HTMLInputElement).value).toBe("48402");
-    expect(within(screen.getByRole("region", { name: "Services" })).getByText(/48,500 mi/)).toBeTruthy();
   });
 
   it("[AC-MIL-05.7] a note is saved and shown with the service", async () => {
     open();
-    await screen.findByText("Oil change, Air filter");
+    await openForm();
     await tick("Alignment");
     await userEvent.type(screen.getByLabelText("Note (optional)"), "Pulls left");
     await userEvent.click(save());
     await screen.findByRole("status");
-    expect(within(screen.getByRole("region", { name: "Services" })).getByText("Pulls left")).toBeTruthy();
+    expect(history().getByText("Pulls left")).toBeTruthy();
   });
 
   it("[AC-MIL-05.8] edits a service, and a service moved to home loses its place", async () => {
@@ -146,9 +155,8 @@ describe("Maintenance screen", () => {
     const editForm = screen.getByRole("button", { name: "Save change" }).closest("form")!;
     await userEvent.click(within(editForm).getByRole("radio", { name: "I did it myself" }));
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
-    const list = within(screen.getByRole("region", { name: "Services" })).getByRole("list");
-    expect(await within(list).findAllByText(/At home/)).toHaveLength(2);
-    expect(within(list).queryByText(/Joe's Garage/)).toBeNull();
+    expect(await history().findAllByText(/At home/)).toHaveLength(2);
+    expect(history().queryByText(/· Joe's Garage/)).toBeNull();
   });
 
   it("[AC-MIL-05.8] asks before deleting, and removes the service for good", async () => {
@@ -156,12 +164,11 @@ describe("Maintenance screen", () => {
     await userEvent.click(await screen.findByRole("button", { name: /^Delete service: Wipers/ }));
     expect(screen.getByText("Delete this service? It is removed for good.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Keep it" }));
-    const list = () => within(within(screen.getByRole("region", { name: "Services" })).getByRole("list"));
-    expect(list().getByText("Wipers")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Delete service: Wipers/ })).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: /^Delete service: Wipers/ }));
     await userEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
-    await screen.findByText("Oil change, Air filter");
-    expect(list().queryByText("Wipers")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Delete service: Wipers/ })).toBeNull());
+    expect(screen.getByRole("button", { name: /^Delete service: Oil change, Air filter/ })).toBeTruthy();
   });
 
   it("[AC-MIL-05.8] says what to do when there are no services yet", async () => {
