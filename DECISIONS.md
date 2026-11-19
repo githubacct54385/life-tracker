@@ -27,6 +27,9 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | 0019 | Pull request screenshots are release assets | Accepted |
 | 0020 | How the API and `shared` are packaged for deploy | Superseded by 0021 |
 | 0021 | Move to Cloudflare Workers + Neon Postgres; finance moved out of this app | Accepted |
+| 0022 | Spreadsheet reader for the mileage import | Accepted |
+| 0023 | A read-only smoke-test identity for the production API | Accepted |
+| 0024 | Maintenance documents are stored privately in Cloudflare R2 | Accepted |
 
 ---
 
@@ -340,3 +343,23 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 **Alternatives rejected.** A public health endpoint that reports database status: it would answer without an owner check (hard rule 4). A write-capable test identity: a leaked secret could alter or delete the owner's data. A separate staging Worker and database: more cloud resources to run and pay attention to (cost rule), and it would not show a mistake in the real configuration.
 
 **Consequences.** The owner does the one-time Cloudflare setup in `docs/cloudflare-access-setup.md` section 9. Writing paths (saving a reading) cannot be tested on production by this identity; they are covered by the integration tests, which run under the same least-privilege role grants.
+
+## ADR-0024: Maintenance documents are stored privately in Cloudflare R2
+
+**Decision.** The owner can attach documents (a photo, a screenshot or a PDF that a shop gave) to a car service in the maintenance log (MIL-05 to MIL-08). They are stored in a **private Cloudflare R2 bucket** bound to the Worker. This is a narrow exception to AGENTS.md hard rule 5 ("Do not store uploaded files"), agreed by the owner on 2026-11-19. The rule stands for everything else: spreadsheets and the Apple Health export are still parsed in the browser and discarded.
+
+**Why.** A shop's summary is the proof of what was done, and a photo of it is the simplest way to keep it. R2 is on the platform already in use, so it adds no second cloud, no extra credentials, and no egress fees. Its free allowance should cover a few dozen small documents a year (verify the current allowance and whether R2 asks for a payment method before the bucket is created, because the target cost is $0).
+
+**Limits that keep the exception small.**
+- Only maintenance documents, only attached to a service, at most 10 per service.
+- JPEG, PNG, WebP or PDF, at most 5 MB, checked from the file's own first bytes and not its name or the type the browser claims.
+- The browser shrinks photos before sending, which drops location and camera data.
+- Random storage keys. The original file name is not kept. Nothing about a document is logged (hard rule 6).
+- The bucket has no public access. A document is read only through the API after the owner check, with `nosniff` and `Cache-Control: private, no-store`.
+- Deleting a document or its service deletes the file. Demo mode never touches storage (hard rule 7).
+- "Export my data" must include the documents when it is built.
+
+**Alternatives rejected.** AWS S3: a second cloud account, credentials in the Worker, and a billing risk against the $0 rule. Storing the images in Neon: no new service, but the free database is small (0.5 GB), and images bloat backups and restores. Cloudflare Images: a paid service.
+
+**Risks.** A document can show a name, address, VIN, licence plate or card digits, so it is treated as sensitive. R2 has no point-in-time restore like the database, so a deleted document cannot be brought back. Testing real uploads is safest on a staging environment, not on the owner's production data.
+
