@@ -5,15 +5,7 @@ import { useWaking } from "../api/wakeStatus";
 import { OfflineNotice } from "../pwa/OfflineNotice";
 import { useOnline } from "../pwa/useOnline";
 import { useNavKind } from "./useNavKind";
-
-function Icon({ active }: { active: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`block size-[22px] rounded-[7px] border-2 ${active ? "border-g500 bg-g500" : "border-g300"}`}
-    />
-  );
-}
+import { Icon } from "../ui/Icon";
 
 const itemClass: Record<NavKind, (active: boolean) => string> = {
   tabs: (a) => `flex flex-1 flex-col items-center gap-1 py-2 text-[11px] ${a ? "font-bold text-gtext" : "text-muted"}`,
@@ -43,7 +35,7 @@ function Nav({ kind, items }: { kind: NavKind; items: Destination[] }) {
             className={itemClass[kind](active)}
             aria-current={active ? "page" : undefined}
           >
-            <Icon active={active} />
+            <Icon name={dest.icon} className={kind === "tabs" ? "size-[22px]" : "size-[22px]"} />
             {dest.label}
           </Link>
         );

@@ -1,4 +1,5 @@
 import { Button } from "../../ui/Button.js";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { isRepWorkout, MAX_WORKOUT_NOTE_LENGTH, WORKOUT_TYPES, type WorkoutRecord } from "@life-tracker/shared";
@@ -204,7 +205,7 @@ export function LogWorkoutPage() {
             Recent workouts
           </h2>
           {workouts === null ? (
-            <p className="mt-2 text-muted">Loading…</p>
+            <Skeleton lines={3} />
           ) : workouts.length === 0 ? (
             <p className="mt-2 text-muted">No workouts yet. Choose a type and a duration (or a count, for pushups) above, then save.</p>
           ) : (

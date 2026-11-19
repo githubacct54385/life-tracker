@@ -70,3 +70,10 @@ button, a, input { transition: background-color 150ms ease, border-color 150ms e
 @media (prefers-reduced-motion: reduce) {
   .lt-spinner { animation: none; }
 }
+
+/* Loading placeholder (ui/Skeleton.tsx). A soft shimmer; static grey with reduced motion. */
+@keyframes lt-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.lt-skeleton { background: linear-gradient(90deg, var(--sunk) 30%, var(--line) 50%, var(--sunk) 70%); background-size: 200% 100%; animation: lt-shimmer 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lt-skeleton { animation: none; }
+}

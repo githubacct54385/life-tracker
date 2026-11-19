@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { DEFAULT_WEEKLY_WORKOUT_TARGET, paceStreakDays, workoutTotals, type WorkoutRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { monthLabel, todayLocal } from "../giving/giftFormat";
 import { shortDate } from "../car/readingFormat";
+import { HubLink } from "../../ui/HubLink";
+import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
 import { describeAmount, formatMinutes, SOURCE_LABELS } from "./workoutFormat";
 
 const card = "rounded-2xl border border-line bg-card p-4 text-ink";
-const linkClass = "block min-h-11 rounded-xl border border-line bg-card p-4 text-ink";
 
 /** How many periods and workouts the screen lists. The full history stays on the Workouts screen. */
 const WEEKS_SHOWN = 8;
@@ -77,16 +77,12 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
     <Page title="Health">
       <div className="space-y-4 text-ink">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Link to="/health/weight" className={linkClass}>
-            Weight
-          </Link>
-          <Link to="/health/workouts" className={linkClass}>
-            Workouts
-          </Link>
+          <HubLink to="/health/weight" icon="scale" title="Weight" description="Log and chart your weight" />
+          <HubLink to="/health/workouts" icon="dumbbell" title="Workouts" description="Log a workout, or count pushups" />
         </div>
 
         {failed && <p role="alert">That did not work. Try again.</p>}
-        {!failed && !summary && <p className="text-muted">Loading…</p>}
+        {!failed && !summary && <Skeleton lines={3} />}
         {summary && workouts!.length === 0 && <p className="text-muted">No workouts yet. Log a workout to see your streak, weekly and monthly totals, and your history here.</p>}
 
         {summary && workouts!.length > 0 && (

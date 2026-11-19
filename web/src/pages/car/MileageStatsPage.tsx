@@ -11,6 +11,7 @@ import {
   type OdometerReadingRecord,
 } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { Page } from "../Page";
 import { formatMiles, shortDate } from "./readingFormat";
 
@@ -120,7 +121,7 @@ export function MileageStatsPage() {
       {failed ? (
         <p role="alert" className={`${card} mt-4`}>The readings could not be loaded. Try again in a moment.</p>
       ) : readings === null ? (
-        <p className="mt-4">Loading…</p>
+        <Skeleton lines={4} className="mt-4" />
       ) : stats.periods.length === 0 ? (
         <p className={`${card} mt-4`}>Stats appear once you have two weekly readings. <Link to="/car/log" className="underline">Log a reading</Link>.</p>
       ) : (
