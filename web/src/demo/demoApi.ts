@@ -21,6 +21,7 @@ import {
   maintenanceListResponseSchema,
   maintenanceRecordSchema,
   placeListResponseSchema,
+  renamePlaceRequestSchema,
   saveMaintenanceRequestSchema,
   type MaintenanceRecord,
   type ServicePlace,
@@ -320,6 +321,24 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteMaintenance(id) {
       services = services.filter((s) => s.id !== id);
+    },
+
+    async renameServicePlace(id, name) {
+      const trimmed = renamePlaceRequestSchema.parse({ name }).name;
+      const place = places.find((p) => p.id === id);
+      if (!place) throw new Error("Place not found");
+      if (places.some((p) => p.id !== id && p.name.toLowerCase() === trimmed.toLowerCase())) return { status: "name_taken" };
+      const renamed = { id, name: trimmed };
+      places = places.map((p) => (p.id === id ? renamed : p));
+      services = services.map((s) => (s.place?.id === id ? { ...s, place: renamed } : s));
+      return { status: "saved", place: renamed };
+    },
+
+    async deleteServicePlace(id) {
+      if (!places.some((p) => p.id === id)) throw new Error("Place not found");
+      if (services.some((s) => s.place?.id === id)) return "in_use";
+      places = places.filter((p) => p.id !== id);
+      return "deleted";
     },
   };
 }

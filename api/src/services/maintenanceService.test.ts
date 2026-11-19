@@ -93,3 +93,32 @@ describe("edit and remove", () => {
     expect((await service.list()).map((r) => r.date)).toEqual(["2026-11-01", "2026-10-01"]);
   });
 });
+
+describe("places (MIL-06)", () => {
+  it("[AC-MIL-06.5] renames a place, and the services that use it show the new name", async () => {
+    const { service } = make();
+    await service.log(shop);
+    expect(await service.renamePlace(1, "  Joe's Auto  ")).toEqual({ status: "saved", place: { id: 1, name: "Joe's Auto" } });
+    expect((await service.list())[0]!.place).toEqual({ id: 1, name: "Joe's Auto" });
+  });
+
+  it("[AC-MIL-06.5] refuses a name another place already has, ignoring letter case, but allows changing only the case of its own", async () => {
+    const { service } = make();
+    await service.log(shop);
+    await service.log({ ...shop, placeName: "Quick Lube" });
+    expect(await service.renamePlace(2, "JOE'S GARAGE")).toEqual({ status: "name_taken" });
+    expect(await service.renamePlace(2, "QUICK LUBE")).toEqual({ status: "saved", place: { id: 2, name: "QUICK LUBE" } });
+    expect(await service.renamePlace(99, "Nowhere")).toEqual({ status: "not_found" });
+  });
+
+  it("[AC-MIL-06.5] deletes a place only when no service uses it", async () => {
+    const { service } = make();
+    const saved = await service.log(shop);
+    expect(await service.deletePlace(1)).toBe("in_use");
+    expect(await service.places()).toHaveLength(1);
+    if (saved.status === "saved") await service.remove(saved.record.id);
+    expect(await service.deletePlace(1)).toBe("deleted");
+    expect(await service.places()).toEqual([]);
+    expect(await service.deletePlace(1)).toBe("not_found");
+  });
+});

@@ -120,8 +120,40 @@ describe.skipIf(!server)("/api/maintenance (real Postgres)", () => {
     ).rejects.toThrow();
   });
 
+  it("[AC-MIL-06.5] renames a place in the database and its services keep pointing at it", async () => {
+    const saved = await (await call("POST", "/api/maintenance", shop)).json();
+    const placeId = saved.place.id;
+    const res = await call("PUT", `/api/maintenance/places/${placeId}`, { name: "Joe's Auto" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: placeId, name: "Joe's Auto" });
+    expect((await (await call("GET", "/api/maintenance")).json()).records[0].place).toEqual({ id: placeId, name: "Joe's Auto" });
+  });
+
+  it("[AC-MIL-06.5] answers 409 for a name that is taken, 404 for a place that is not there, and 400 for a bad request", async () => {
+    await call("POST", "/api/maintenance", shop);
+    const other = await (await call("POST", "/api/maintenance", { ...shop, placeName: "Acme Tire" })).json();
+    expect((await call("PUT", `/api/maintenance/places/${other.place.id}`, { name: "JOE'S garage" })).status).toBe(409);
+    expect((await call("PUT", `/api/maintenance/places/${other.place.id}`, { name: "ACME TIRE" })).status).toBe(200);
+    expect((await call("PUT", "/api/maintenance/places/999999", { name: "Nowhere" })).status).toBe(404);
+    expect((await call("PUT", `/api/maintenance/places/${other.place.id}`, { name: "  " })).status).toBe(400);
+    expect((await call("PUT", "/api/maintenance/places/abc", { name: "X" })).status).toBe(400);
+  });
+
+  it("[AC-MIL-06.5] deletes a place only when no service uses it", async () => {
+    const saved = await (await call("POST", "/api/maintenance", shop)).json();
+    const url = `/api/maintenance/places/${saved.place.id}`;
+    expect((await call("DELETE", url)).status).toBe(409);
+    expect((await (await call("GET", "/api/maintenance/places")).json()).places).toHaveLength(1);
+    expect((await call("DELETE", `/api/maintenance/${saved.id}`)).status).toBe(204);
+    expect((await call("DELETE", url)).status).toBe(204);
+    expect((await call("DELETE", url)).status).toBe(404);
+    expect((await call("DELETE", "/api/maintenance/places/abc")).status).toBe(400);
+  });
+
   it("[AC-MIL-05.9] answers 401 without the owner's token", async () => {
     expect((await call("GET", "/api/maintenance", undefined, null)).status).toBe(401);
     expect((await call("GET", "/api/maintenance/places", undefined, null)).status).toBe(401);
+    expect((await call("PUT", "/api/maintenance/places/1", { name: "X" }, null)).status).toBe(401);
+    expect((await call("DELETE", "/api/maintenance/places/1", undefined, null)).status).toBe(401);
   });
 });

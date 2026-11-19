@@ -27,6 +27,20 @@ export function fakeMaintenanceRepo(): MaintenanceRepository & { rows: StoredMai
     async listPlaces() {
       return [...places].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
     },
+    async renamePlace(id, name) {
+      const place = places.find((p) => p.id === id);
+      if (!place) return { status: "not_found" };
+      if (places.some((p) => p.id !== id && p.name.toLowerCase() === name.toLowerCase())) return { status: "name_taken" };
+      place.name = name;
+      return { status: "renamed", place: { ...place } };
+    },
+    async deletePlace(id) {
+      const index = places.findIndex((p) => p.id === id);
+      if (index < 0) return "not_found";
+      if (rows.some((r) => r.place?.id === id)) return "in_use";
+      places.splice(index, 1);
+      return "deleted";
+    },
     async findOrCreatePlace(name) {
       const found = places.find((p) => p.name.toLowerCase() === name.toLowerCase());
       if (found) return { ...found };

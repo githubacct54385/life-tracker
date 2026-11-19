@@ -8,9 +8,15 @@ import { DEFAULT_OWNER_TIME_ZONE } from "./odometerService.js";
 
 export type MaintenanceOutcome = { status: "saved"; record: StoredMaintenance } | { status: "future_date" } | { status: "not_found" };
 
+export type PlaceOutcome = { status: "saved"; place: ServicePlace } | { status: "not_found" } | { status: "name_taken" };
+
 export interface MaintenanceService {
   list(): Promise<StoredMaintenance[]>;
   places(): Promise<ServicePlace[]>;
+  /** Renames a place (MIL-06). The services keep pointing at it. */
+  renamePlace(id: number, name: string): Promise<PlaceOutcome>;
+  /** Deletes a place only when no service uses it (MIL-06). */
+  deletePlace(id: number): Promise<"deleted" | "not_found" | "in_use">;
   log(input: SaveMaintenanceRequest, timeZone?: string): Promise<MaintenanceOutcome>;
   /** Replaces every field of a service. */
   edit(id: number, input: SaveMaintenanceRequest, timeZone?: string): Promise<MaintenanceOutcome>;
@@ -47,6 +53,13 @@ export function createMaintenanceService(repo: MaintenanceRepository, options: M
   return {
     list: () => repo.list(),
     places: () => repo.listPlaces(),
+
+    async renamePlace(id, name) {
+      const result = await repo.renamePlace(id, name.trim());
+      return result.status === "renamed" ? { status: "saved", place: result.place } : result;
+    },
+
+    deletePlace: (id) => repo.deletePlace(id),
 
     async log(input, requestZone) {
       if (isFuture(input.date, requestZone)) return { status: "future_date" };

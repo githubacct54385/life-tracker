@@ -8,6 +8,7 @@ import { useBusy } from "../../ui/useBusy";
 import { formatCents, todayLocal } from "../giving/giftFormat";
 import { Page } from "../Page";
 import { addableService, allServices, formFromRecord, NEW_PLACE, toRequest, type ServiceForm } from "./maintenanceFormat";
+import { applyFilter, HistoryFilters, LastDoneSection, NO_FILTER, PlacesSection, type HistoryFilterState } from "./MaintenanceHistory";
 import { formatMiles, shortDate } from "./readingFormat";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
@@ -262,6 +263,9 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
   const [places, setPlaces] = useState<ServicePlace[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [filter, setFilter] = useState<HistoryFilterState>(NO_FILTER);
+  const [latestOdometer, setLatestOdometer] = useState<number | undefined>(undefined);
   const latestMiles = useRef<number | undefined>(undefined);
 
   const refresh = useCallback(async () => {
@@ -269,8 +273,9 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
       const [list, placeList] = await Promise.all([api.listMaintenance(), api.listServicePlaces()]);
       setRecords(list.records);
       setPlaces(placeList.places);
+      setLoadFailed(false);
     } catch {
-      setError(true);
+      setLoadFailed(true);
     }
   }, [api]);
 
@@ -282,12 +287,14 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
       .then((r) => {
         const latest = r.readings[0]?.miles;
         latestMiles.current = latest;
+        setLatestOdometer(latest);
         if (latest !== undefined) setForm((f) => (odometerEdited || f.odometer !== "" ? f : { ...f, odometer: String(latest) }));
       })
       .catch(() => undefined);
   }, [refresh]);
 
   const checked = toRequest(form, MAINTENANCE_TYPES, today);
+  const shown = records === null ? [] : applyFilter(records, places, filter);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -328,22 +335,44 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
           <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
         </form>
 
-        <section aria-labelledby="service-history" className="rounded-2xl border border-line bg-card p-4 text-ink">
-          <h2 id="service-history" className="font-bold">
-            Services
-          </h2>
-          {records === null ? (
-            <Skeleton lines={3} />
-          ) : records.length === 0 ? (
-            <p className="mt-2 text-muted">No services yet. Choose what was done above, then save.</p>
-          ) : (
-            <ul className="mt-2">
-              {records.map((record) => (
-                <ServiceRow key={record.id} record={record} places={places} today={today} onChanged={refresh} />
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="space-y-5">
+          <LastDoneSection records={records} loadFailed={loadFailed} onRetry={() => void refresh()} latestOdometer={latestOdometer} />
+
+          <section aria-labelledby="service-history" className="rounded-2xl border border-line bg-card p-4 text-ink">
+            <h2 id="service-history" className="font-bold">
+              Services
+            </h2>
+            {records === null ? (
+              loadFailed ? (
+                <div role="alert" className="mt-2 space-y-2">
+                  <p>We could not load your services.</p>
+                  <Button type="button" variant="ghost" onClick={() => void refresh()}>
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <Skeleton lines={3} />
+              )
+            ) : records.length === 0 ? (
+              <p className="mt-2 text-muted">No services yet. Choose what was done above, then save.</p>
+            ) : (
+              <>
+                <HistoryFilters records={records} places={places} filter={filter} onChange={setFilter} shown={shown} />
+                {shown.length === 0 ? (
+                  <p className="mt-2 text-muted">No services match. Choose All services or All places to see the rest.</p>
+                ) : (
+                  <ul className="mt-2">
+                    {shown.map((record) => (
+                      <ServiceRow key={record.id} record={record} places={places} today={today} onChanged={refresh} />
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </section>
+
+          <PlacesSection places={places} records={records ?? []} onChanged={refresh} />
+        </div>
       </div>
     </Page>
   );
