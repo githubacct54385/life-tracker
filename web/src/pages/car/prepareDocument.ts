@@ -1,13 +1,14 @@
 import { MAX_DOCUMENT_BYTES } from "@life-tracker/shared";
 
 // Gets a chosen file ready to send (MIL-07, ADR-0024). A photo is redrawn smaller as a JPEG in the browser. Redrawing drops
-// the location and camera data a phone puts in a photo, and keeps a photo well under the 5 MB limit. A PDF is sent as it is.
+// the location and camera data a phone puts in a photo, and keeps a photo far under the size limit. A PDF is sent as it is.
 // The server still checks the type from the file's own bytes, so nothing here is trusted.
 
 export const MAX_IMAGE_SIDE = 2000;
 const JPEG_QUALITY = 0.85;
 
-export type PreparedDocument = { status: "ready"; file: Blob } | { status: "too_large" } | { status: "unreadable" };
+/** `originalBytes` is the size of the file as chosen, so the screen can show what a photo shrank from. */
+export type PreparedDocument = { status: "ready"; file: Blob; originalBytes: number } | { status: "too_large" } | { status: "unreadable" };
 export type ShrinkImage = (file: Blob, maxSide: number) => Promise<Blob>;
 
 /** Redraws an image no larger than `maxSide` on its longest side, as a JPEG with a white background. Browser only. */
@@ -39,5 +40,5 @@ export async function prepareDocument(file: Blob, shrink: ShrinkImage = shrinkWi
       return { status: "unreadable" };
     }
   }
-  return ready.size > MAX_DOCUMENT_BYTES ? { status: "too_large" } : { status: "ready", file: ready };
+  return ready.size > MAX_DOCUMENT_BYTES ? { status: "too_large" } : { status: "ready", file: ready, originalBytes: file.size };
 }

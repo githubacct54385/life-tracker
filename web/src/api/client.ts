@@ -192,12 +192,14 @@ export function createClient(
       const init = { method: "POST", body: file, headers: { "content-type": "application/octet-stream" } };
       const response = await send(`/api/maintenance/${recordId}/documents`, init, [404, 409, 413, 415]);
       if (response.status === 201) return { status: "saved", document: maintenanceDocumentSchema.parse(await response.json()) };
-      const refusals = { 404: "not_found", 409: "limit_reached", 413: "too_large", 415: "unsupported_type" } as const;
+      if (response.status === 409) return { status: ((await response.json().catch(() => ({}))) as { error?: string }).error === "too_much" ? "too_much" : "limit_reached" };
+      const refusals = { 404: "not_found", 413: "too_large", 415: "unsupported_type" } as const;
       return { status: refusals[response.status as keyof typeof refusals] };
     },
     async deleteDocument(id) {
       await send(`/api/maintenance/documents/${id}`, { method: "DELETE" });
     },
     documentUrl: (document) => `/api/maintenance/documents/${document.id}`,
+    documentDownloadUrl: (document) => `/api/maintenance/documents/${document.id}?download=1`,
   };
 }

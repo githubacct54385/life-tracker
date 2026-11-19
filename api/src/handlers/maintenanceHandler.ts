@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { TIME_ZONE_HEADER, documentListResponseSchema, maintenanceDocumentSchema, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, renamePlaceRequestSchema, saveMaintenanceRequestSchema, servicePlaceSchema } from "@life-tracker/shared";
-import { DOCUMENT_UPLOAD, readUpload } from "../http/uploadLimits.js";
+import { DOCUMENT_UPLOAD, openUpload } from "../http/uploadLimits.js";
 import type { DocumentService } from "../services/documentService.js";
 import type { MaintenanceService } from "../services/maintenanceService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
@@ -34,14 +34,17 @@ export function maintenanceRoutes({ logger, maintenance, documents }: Maintenanc
     const found = await documents.read(id);
     if (found.status !== "found") return c.json({ error: "not_found" }, 404);
     // The stored type, never sniffed by the browser, and never kept by it or by a shared cache (AC-MIL-07.5).
-    return new Response(new Uint8Array(found.bytes), {
+    const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[found.contentType] ?? "bin";
+    // A download gets a made-up name: the original name is never kept (AC-MIL-07.13).
+    const disposition = c.req.query("download") === "1" ? `attachment; filename="life-tracker-document-${id}.${extension}"` : "inline";
+    return new Response(found.body, {
       status: 200,
       headers: {
         "content-type": found.contentType,
-        "content-length": String(found.bytes.byteLength),
+        "content-length": String(found.size),
         "x-content-type-options": "nosniff",
         "cache-control": "private, no-store",
-        "content-disposition": "inline",
+        "content-disposition": disposition,
       },
     });
   });
@@ -60,13 +63,25 @@ export function maintenanceRoutes({ logger, maintenance, documents }: Maintenanc
   routes.post("/:id/documents", async (c) => {
     const id = parseId(c.req.param("id"));
     if (!documents || id === undefined) return c.json({ error: id === undefined ? "invalid_request" : "not_found" }, id === undefined ? 400 : 404);
-    const upload = await readUpload(c.req.raw, DOCUMENT_UPLOAD);
+    const upload = openUpload(c.req.raw, DOCUMENT_UPLOAD);
     if (!upload.ok) return c.json({ error: upload.error }, upload.status);
-    const outcome = await documents.upload(id, upload.bytes);
-    if (outcome.status === "unsupported_type") return c.json({ error: "unsupported_type" }, 415);
-    if (outcome.status === "no_record") return c.json({ error: "not_found" }, 404);
-    if (outcome.status === "full") return c.json({ error: "limit_reached" }, 409);
-    return c.json(maintenanceDocumentSchema.parse(outcome.document), 201);
+    const outcome = await documents.upload(id, upload.body, upload.length);
+    switch (outcome.status) {
+      case "saved":
+        return c.json(maintenanceDocumentSchema.parse(outcome.document), 201);
+      case "unsupported_type":
+        return c.json({ error: "unsupported_type" }, 415);
+      case "no_record":
+        return c.json({ error: "not_found" }, 404);
+      case "full":
+        return c.json({ error: "limit_reached" }, 409);
+      case "too_much":
+        return c.json({ error: "too_much" }, 409);
+      case "too_large":
+        return c.json({ error: "too_large" }, 413);
+      case "bad_length":
+        return c.json({ error: "invalid_request" }, 400);
+    }
   });
 
   routes.get("/places", async (c) => {

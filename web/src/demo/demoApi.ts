@@ -3,6 +3,7 @@ import {
   documentListResponseSchema,
   maintenanceDocumentSchema,
   MAX_DOCUMENT_BYTES,
+  MAX_DOCUMENT_BYTES_PER_RECORD,
   MAX_DOCUMENTS_PER_RECORD,
   sniffDocumentType,
   type MaintenanceDocument,
@@ -375,7 +376,9 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
       const bytes = await readBytes(file);
       const contentType = sniffDocumentType(bytes);
       if (!contentType) return { status: "unsupported_type" };
-      if (documents.filter((d) => d.recordId === recordId).length >= MAX_DOCUMENTS_PER_RECORD) return { status: "limit_reached" };
+      const mine = documents.filter((d) => d.recordId === recordId);
+      if (mine.length >= MAX_DOCUMENTS_PER_RECORD) return { status: "limit_reached" };
+      if (mine.reduce((sum, d) => sum + d.bytes, 0) + bytes.byteLength > MAX_DOCUMENT_BYTES_PER_RECORD) return { status: "too_much" };
       const document = maintenanceDocumentSchema.parse({ id: nextDocumentId++, recordId, contentType, bytes: bytes.byteLength, createdAt: now().toISOString() });
       documents = [...documents, document];
       // A browser will not open a data: PDF as a page, so only images get an address.
@@ -389,5 +392,6 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
     },
 
     documentUrl: (document) => documentUrls.get(document.id),
+    documentDownloadUrl: (document) => documentUrls.get(document.id),
   };
 }

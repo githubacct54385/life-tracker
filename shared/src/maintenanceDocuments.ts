@@ -2,7 +2,10 @@ import { z } from "zod";
 
 // Documents attached to a car service (MIL-07, ADR-0024): shapes, limits and the file-type check. Used by the API, the client and the demo.
 
-export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+/** The most one document can be. 100 MB is also the most the Worker accepts in one request on the free plan. */
+export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
+/** The most all the documents of one service can add up to, so one service cannot use a large share of the free 10 GB. */
+export const MAX_DOCUMENT_BYTES_PER_RECORD = 250 * 1024 * 1024;
 export const MAX_DOCUMENTS_PER_RECORD = 10;
 export const DOCUMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];

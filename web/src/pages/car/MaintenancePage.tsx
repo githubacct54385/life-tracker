@@ -10,6 +10,7 @@ import { Page } from "../Page";
 import { addableService, allServices, formFromRecord, NEW_PLACE, toRequest, type ServiceForm } from "./maintenanceFormat";
 import { applyFilter, HistoryFilters, LastDoneSection, NO_FILTER, PlacesSection, type HistoryFilterState } from "./MaintenanceHistory";
 import { formatMiles, shortDate } from "./readingFormat";
+import { RecentDocuments } from "./RecentDocuments";
 import { ServiceDocuments } from "./ServiceDocuments";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
@@ -323,6 +324,9 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
 
   return (
     <Page title="Maintenance">
+      <div className="mb-5">
+        <RecentDocuments documents={documents} records={records} />
+      </div>
       <div className="grid gap-5 text-ink lg:grid-cols-2">
         <form onSubmit={(e) => void track(() => submit(e))} className="space-y-3" noValidate>
           <ServiceFields

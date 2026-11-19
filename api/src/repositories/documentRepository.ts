@@ -1,4 +1,4 @@
-import { MAX_DOCUMENTS_PER_RECORD, type DocumentType } from "@life-tracker/shared";
+import { MAX_DOCUMENT_BYTES_PER_RECORD, MAX_DOCUMENTS_PER_RECORD, type DocumentType } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
 
 export interface StoredDocument {
@@ -12,7 +12,9 @@ export interface StoredDocument {
   createdAt: string;
 }
 
-export type InsertDocumentResult = { status: "saved"; document: StoredDocument } | { status: "no_record" } | { status: "full" };
+/** Whether a service can take another document of this size: it exists, has fewer than 10, and would stay within its total. */
+export type RoomResult = "ok" | "no_record" | "full" | "too_much";
+export type InsertDocumentResult = { status: "saved"; document: StoredDocument } | { status: Exclude<RoomResult, "ok"> };
 
 interface Row {
   id: string;
@@ -41,10 +43,25 @@ export interface DocumentRepository {
   find(id: number): Promise<StoredDocument | undefined>;
   /** The storage keys of a service's documents. */
   keysFor(recordId: number): Promise<string[]>;
-  /** Adds a document unless the service does not exist or already has the most allowed. One statement decides, so two uploads cannot both take the last place. */
+  /** Asks before a file is stored, so a refused upload does not write and then delete a large file. The insert checks again. */
+  room(recordId: number, bytes: number): Promise<RoomResult>;
+  /** Adds a document unless the service does not exist, has the most allowed, or would pass its total size. One statement decides, so two uploads cannot both take the last place. */
   insert(recordId: number, objectKey: string, contentType: DocumentType, bytes: number): Promise<InsertDocumentResult>;
   /** True when a row was removed. */
   remove(id: number): Promise<boolean>;
+}
+
+async function roomFor(recordId: number, bytes: number): Promise<RoomResult> {
+  const result = await getPool().query<{ n: number; total: string }>(
+    `SELECT (SELECT count(*) FROM maintenance_documents WHERE record_id = r.id)::int AS n,
+            (SELECT COALESCE(sum(bytes), 0) FROM maintenance_documents WHERE record_id = r.id)::text AS total
+     FROM maintenance_records r WHERE r.id = $1`,
+    [recordId],
+  );
+  const row = result.rows[0];
+  if (!row) return "no_record";
+  if (row.n >= MAX_DOCUMENTS_PER_RECORD) return "full";
+  return Number(row.total) + bytes > MAX_DOCUMENT_BYTES_PER_RECORD ? "too_much" : "ok";
 }
 
 export const documentRepository: DocumentRepository = {
@@ -63,17 +80,21 @@ export const documentRepository: DocumentRepository = {
     return result.rows.map((row) => row.object_key);
   },
 
+  room: roomFor,
+
   async insert(recordId, objectKey, contentType, bytes) {
     const inserted = await getPool().query<Row>(
       `INSERT INTO maintenance_documents (record_id, object_key, content_type, bytes)
-       SELECT r.id, $2, $3, $4 FROM maintenance_records r
-       WHERE r.id = $1 AND (SELECT count(*) FROM maintenance_documents d WHERE d.record_id = r.id) < $5
+       SELECT r.id, $2::text, $3::text, $4::integer FROM maintenance_records r
+       WHERE r.id = $1 AND (SELECT count(*) FROM maintenance_documents d WHERE d.record_id = r.id) < $5::integer
+         AND (SELECT COALESCE(sum(d.bytes), 0) FROM maintenance_documents d WHERE d.record_id = r.id) + $4::integer <= $6::bigint
        RETURNING ${COLUMNS}`,
-      [recordId, objectKey, contentType, bytes, MAX_DOCUMENTS_PER_RECORD],
+      [recordId, objectKey, contentType, bytes, MAX_DOCUMENTS_PER_RECORD, MAX_DOCUMENT_BYTES_PER_RECORD],
     );
     if (inserted.rows[0]) return { status: "saved", document: toDocument(inserted.rows[0]) };
-    const exists = await getPool().query("SELECT 1 FROM maintenance_records WHERE id = $1", [recordId]);
-    return (exists.rowCount ?? 0) > 0 ? { status: "full" } : { status: "no_record" };
+    // Refused: say why. A service that fits now (another upload finished first) is reported as full.
+    const why = await roomFor(recordId, bytes);
+    return { status: why === "ok" ? "full" : why };
   },
 
   async remove(id) {

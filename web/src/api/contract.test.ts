@@ -47,8 +47,12 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     if (input === "/api/maintenance/documents" && init?.method === "GET") return Response.json({ documents: [DOCUMENT] });
     if (input === "/api/maintenance/documents/9" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/maintenance/4/documents" && init?.method === "POST") return Response.json(DOCUMENT, { status: 201 });
-    const refusal = /^\/api\/maintenance\/(5|6|7|8)\/documents$/.exec(input);
-    if (refusal && init?.method === "POST") return Response.json({ error: "refused" }, { status: { 5: 409, 6: 413, 7: 415, 8: 404 }[Number(refusal[1]) as 5 | 6 | 7 | 8] });
+    const refusal = /^\/api\/maintenance\/(5|6|7|8|9)\/documents$/.exec(input);
+    if (refusal && init?.method === "POST") {
+      const answers = { 5: [409, "limit_reached"], 6: [413, "too_large"], 7: [415, "unsupported_type"], 8: [404, "not_found"], 9: [409, "too_much"] } as const;
+      const [status, error] = answers[Number(refusal[1]) as keyof typeof answers];
+      return Response.json({ error }, { status });
+    }
     if (input === "/api/maintenance/places" && init?.method === "GET") return Response.json({ places: [SERVICE.place] });
     if (input === "/api/maintenance" && init?.method === "GET") return Response.json({ records: [SERVICE] });
     if (input === "/api/maintenance" && init?.method === "POST") return Response.json(SERVICE, { status: 201 });
@@ -68,7 +72,7 @@ const implementations: Array<[string, () => Api]> = [
 
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -283,10 +287,12 @@ describe("[AC-MIL-07.3] document answers (client.ts)", () => {
     expect(await api.uploadDocument(6, pngBlob())).toEqual({ status: "too_large" });
     expect(await api.uploadDocument(7, pngBlob())).toEqual({ status: "unsupported_type" });
     expect(await api.uploadDocument(8, pngBlob())).toEqual({ status: "not_found" });
-    expect(sent.map((r) => [r.method, r.url])).toEqual([5, 6, 7, 8].map((id) => ["POST", `/api/maintenance/${id}/documents`]));
+    expect(await api.uploadDocument(9, pngBlob())).toEqual({ status: "too_much" });
+    expect(sent.map((r) => [r.method, r.url])).toEqual([5, 6, 7, 8, 9].map((id) => ["POST", `/api/maintenance/${id}/documents`]));
     expect(sent.every((r) => r.guard === "1")).toBe(true);
     expect(sent.every((r) => (r.body as unknown) instanceof Blob)).toBe(true);
     expect(api.documentUrl({ ...DOCUMENT, contentType: "image/png" } as never)).toBe("/api/maintenance/documents/9");
+    expect(api.documentDownloadUrl({ ...DOCUMENT, contentType: "image/png" } as never)).toBe("/api/maintenance/documents/9?download=1");
   });
 });
 
@@ -300,7 +306,7 @@ describe("demo documents", () => {
       const api = createDemoApi();
       const id = await record(api);
       expect(await api.uploadDocument(id, new Blob(["plain text"], { type: "image/png" }))).toEqual({ status: "unsupported_type" });
-      expect(await api.uploadDocument(id, new Blob([new Uint8Array(MAX_DOCUMENT_BYTES + 1)]))).toEqual({ status: "too_large" });
+      expect(await api.uploadDocument(id, { size: MAX_DOCUMENT_BYTES + 1 } as Blob)).toEqual({ status: "too_large" });
       expect(await api.uploadDocument(9999, pngBlob())).toEqual({ status: "not_found" });
       for (let i = 0; i < MAX_DOCUMENTS_PER_RECORD; i += 1) expect((await api.uploadDocument(id, pngBlob(i + 1))).status).toBe("saved");
       expect(await api.uploadDocument(id, pngBlob())).toEqual({ status: "limit_reached" });
