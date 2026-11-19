@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_BYTES_PER_RECORD, MAX_DOCUMENTS_PER_RECORD, type MaintenanceDocument } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { Button } from "../../ui/Button";
@@ -7,8 +7,11 @@ import { useBusy } from "../../ui/useBusy";
 import { DocumentViewer } from "./DocumentViewer";
 import { formatSize, isPdf, kindOf, totalBytes } from "./documentFormat";
 import { prepareDocument, type ShrinkImage } from "./prepareDocument";
+import { MAX_PAGES, reducePdf, type ReducedPdf } from "./reducePdf";
 
 const MB = 1024 * 1024;
+/** A PDF over this size gets a suggestion to make it smaller. */
+export const SUGGEST_REDUCE_BYTES = 25 * MB;
 
 const MESSAGES = {
   too_large: `That file is over ${MAX_DOCUMENT_BYTES / MB} MB. Choose a smaller one.`,
@@ -26,19 +29,30 @@ const smallButton = "inline-flex min-h-11 min-w-11 items-center justify-center p
 /** A file that was chosen and checked, and waits for the owner to add it or not. */
 interface Staged {
   file: Blob;
+  /** The file as it was chosen, so unticking "Make this PDF smaller" can go back to it. */
+  original: Blob;
   kind: "Photo" | "PDF";
   originalBytes: number;
+  /** True while the file is the smaller copy of a PDF. */
+  reduced: boolean;
 }
+
+export type ReducePdf = (file: Blob, onPage: (page: number, of: number) => void) => Promise<ReducedPdf>;
 
 /**
  * The photos and PDFs attached to one service (MIL-07). There are no file names: a document is "Photo 1" or "PDF 2".
  * A chosen file shows its size first, and is stored only when the owner presses Add.
- * `shrink` is only replaced in tests, because jsdom has no canvas.
+ * A PDF can be made smaller before it is added (pages become pictures, in the browser). The owner sees the size before and after.
+ * `shrink` and `reduce` are only replaced in tests, because jsdom has no canvas.
  */
-export function ServiceDocuments({ recordId, label, documents, onChanged, shrink }: { recordId: number; label: string; documents: MaintenanceDocument[]; onChanged: () => Promise<void>; shrink?: ShrinkImage }) {
+export function ServiceDocuments({ recordId, label, documents, onChanged, shrink, reduce = reducePdf }: { recordId: number; label: string; documents: MaintenanceDocument[]; onChanged: () => Promise<void>; shrink?: ShrinkImage; reduce?: ReducePdf }) {
   const api = useApi();
   const [busy, track] = useBusy();
   const [staged, setStaged] = useState<Staged | null>(null);
+  const [reducing, setReducing] = useState<{ page: number; of: number } | null>(null);
+  const [reduceNote, setReduceNote] = useState<string | null>(null);
+  // Counts the file being worked on, so the result of a reduction the owner has cancelled or replaced is thrown away.
+  const run = useRef(0);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<number | null>(null);
@@ -58,11 +72,14 @@ export function ServiceDocuments({ recordId, label, documents, onChanged, shrink
     setMessage(null);
     setError(null);
     setStaged(null);
+    setReduceNote(null);
+    setReducing(null);
+    run.current += 1;
     await track(async () => {
       try {
         const prepared = await prepareDocument(file, shrink);
         if (prepared.status !== "ready") return setError(MESSAGES[prepared.status === "too_large" ? "too_large" : "unreadable"]);
-        setStaged({ file: prepared.file, kind: file.type.startsWith("image/") ? "Photo" : "PDF", originalBytes: prepared.originalBytes });
+        setStaged({ file: prepared.file, original: prepared.file, kind: file.type.startsWith("image/") ? "Photo" : "PDF", originalBytes: prepared.originalBytes, reduced: false });
       } catch {
         setError(MESSAGES.failed);
       }
@@ -84,6 +101,33 @@ export function ServiceDocuments({ recordId, label, documents, onChanged, shrink
         setError(MESSAGES.failed);
       }
     });
+  }
+
+  function cancel() {
+    run.current += 1;
+    setStaged(null);
+    setReducing(null);
+    setReduceNote(null);
+  }
+
+  async function toggleReduce(on: boolean) {
+    if (!staged || staged.kind !== "PDF") return;
+    setReduceNote(null);
+    if (!on) return setStaged({ ...staged, file: staged.original, originalBytes: staged.original.size, reduced: false });
+    const mine = (run.current += 1);
+    setReducing({ page: 0, of: 0 });
+    try {
+      const result = await reduce(staged.original, (page, of) => run.current === mine && setReducing({ page, of }));
+      if (run.current !== mine) return;
+      if (result.status === "unreadable") return setReduceNote("This PDF could not be made smaller. It may be damaged or protected. The original is kept.");
+      if (result.status === "too_long") return setReduceNote(`This PDF has more than ${MAX_PAGES} pages, which is too many to make smaller here. The original is kept.`);
+      if (result.file.size >= staged.original.size) return setReduceNote("Making it smaller did not help, so the original is kept.");
+      setStaged({ ...staged, file: result.file, originalBytes: staged.original.size, reduced: true });
+    } catch {
+      if (run.current === mine) setReduceNote("This PDF could not be made smaller. The original is kept.");
+    } finally {
+      if (run.current === mine) setReducing(null);
+    }
   }
 
   async function remove(id: number) {
@@ -176,11 +220,33 @@ export function ServiceDocuments({ recordId, label, documents, onChanged, shrink
               Ready to add: {staged.kind}, <b>{formatSize(staged.file.size)}</b>
               {shrunk && <> (made smaller from {formatSize(staged.originalBytes)})</>}
             </p>
+            {staged.kind === "PDF" && (
+              <div className="mt-3">
+                <label className="flex min-h-11 items-center gap-3">
+                  <input type="checkbox" className="size-6" checked={staged.reduced || reducing !== null} disabled={busy || reducing !== null} onChange={(e) => void toggleReduce(e.target.checked)} />
+                  <span>Make this PDF smaller</span>
+                </label>
+                <p className="text-sm text-muted">Each page becomes a picture, so the text can no longer be selected or searched. It happens on this device.</p>
+                {!staged.reduced && reducing === null && staged.original.size > SUGGEST_REDUCE_BYTES && <p className="mt-1 text-sm">This PDF is large. Making it smaller is a good idea.</p>}
+                {reducing !== null && (
+                  <p role="status" className="mt-1 flex items-center gap-2 text-sm">
+                    <span aria-hidden="true" className="lt-spinner" />
+                    {reducing.of > 0 ? `Making it smaller: page ${reducing.page} of ${reducing.of}…` : "Opening the PDF…"}
+                  </p>
+                )}
+                {staged.reduced && (
+                  <p role="status" className="mt-1 text-sm">
+                    {formatSize(staged.originalBytes)} &rarr; <b>{formatSize(staged.file.size)}</b>
+                  </p>
+                )}
+                {reduceNote && <p role="status" className="mt-1 text-sm">{reduceNote}</p>}
+              </div>
+            )}
             <div className="mt-3 flex gap-2">
-              <Button type="button" busy={busy} onClick={() => void add()}>
+              <Button type="button" busy={busy} disabled={reducing !== null} onClick={() => void add()}>
                 Add to this service
               </Button>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => setStaged(null)}>
+              <Button type="button" variant="ghost" disabled={busy} onClick={cancel}>
                 Cancel
               </Button>
             </div>

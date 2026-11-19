@@ -8,6 +8,7 @@ import type { Api } from "../../api/types";
 import { createDemoApi } from "../../demo/demoApi";
 import { formatSize } from "./documentFormat";
 import { prepareDocument } from "./prepareDocument";
+import type { ReducedPdf } from "./reducePdf";
 import { ServiceDocuments } from "./ServiceDocuments";
 
 afterEach(cleanup);
@@ -21,11 +22,19 @@ const pdf = () => file("%PDF-1.7 synthetic", "invoice.pdf", "application/pdf");
 // jsdom has no canvas, so the redraw is replaced by one that returns a small PNG.
 const shrink = vi.fn(async () => new Blob([new Uint8Array(PNG)], { type: "image/png" }));
 
+// The page drawing is replaced too. By default it returns a PDF far smaller than the one chosen.
+const smallPdf = (): ReducedPdf => ({ status: "reduced", file: new Blob(["%PDF-1.4 small"], { type: "application/pdf" }), pages: 2 });
+const reduce = vi.fn(async (_file: Blob, onPage: (page: number, of: number) => void): Promise<ReducedPdf> => {
+  onPage(1, 2);
+  return smallPdf();
+});
+const bigPdf = (mb: number) => new File(["%PDF-1.7 ", new Uint8Array(mb * 1024 * 1024)], "scan.pdf", { type: "application/pdf" });
+
 function Harness({ api, recordId }: { api: Api; recordId: number }) {
   const [documents, setDocuments] = useState<MaintenanceDocument[]>([]);
   const load = useCallback(async () => setDocuments((await api.listDocuments()).documents.filter((d) => d.recordId === recordId)), [api, recordId]);
   useEffect(() => void load(), [load]);
-  return <ServiceDocuments recordId={recordId} label="Oil change on Nov 3" documents={documents} onChanged={load} shrink={shrink} />;
+  return <ServiceDocuments recordId={recordId} label="Oil change on Nov 3" documents={documents} onChanged={load} shrink={shrink} reduce={reduce} />;
 }
 
 const demo = () => createDemoApi({ now: () => new Date(2026, 10, 13, 9, 0, 0) });
@@ -214,5 +223,122 @@ describe("documents on a service", () => {
 describe("sizes", () => {
   it("[AC-MIL-07.11] formats sizes for people", () => {
     expect([1, 900, 1024, 1536, 850 * 1024, 1024 * 1024, 5.2 * 1024 * 1024, 36 * 1024 * 1024].map(formatSize)).toEqual(["1 KB", "1 KB", "1 KB", "2 KB", "850 KB", "1.0 MB", "5.2 MB", "36.0 MB"]);
+  });
+});
+
+describe("making a PDF smaller", () => {
+  const box = () => screen.getByRole("checkbox", { name: "Make this PDF smaller" }) as HTMLInputElement;
+
+  it("[AC-MIL-07.14][AC-MIL-07.16] offers the box for a PDF, off by default, with a warning about text", async () => {
+    await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    expect(box().checked).toBe(false);
+    expect(screen.getByText(/text can no longer be selected or searched/i)).toBeTruthy();
+    expect(reduce).not.toHaveBeenCalledWith(expect.anything(), expect.anything()); // nothing runs until the box is ticked
+  });
+
+  it("[AC-MIL-07.14] does not offer the box for a photo", async () => {
+    await open();
+    choose(bigPhoto());
+    await screen.findByText(/Ready to add/);
+    expect(screen.queryByRole("checkbox", { name: "Make this PDF smaller" })).toBeNull();
+  });
+
+  it("[AC-MIL-07.14] shows the size before and after when ticked, and goes back to the original when unticked", async () => {
+    await open();
+    choose(bigPdf(36));
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    await waitFor(() => expect(screen.getByText("Ready to add: PDF,", { exact: false }).textContent).toBe("Ready to add: PDF, 1 KB (made smaller from 36.0 MB)"));
+    expect(box().checked).toBe(true);
+    await userEvent.click(box());
+    await waitFor(() => expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: PDF, 36.0 MB"));
+    expect(box().checked).toBe(false);
+  });
+
+  it("[AC-MIL-07.17] stores the smaller PDF, with its own size, when Add is pressed", async () => {
+    const { api } = await open();
+    choose(bigPdf(36));
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    await screen.findByText(/made smaller from/);
+    await addIt();
+    await screen.findByText("Added 1 KB.");
+    const [stored] = (await api.listDocuments()).documents;
+    expect(stored!.bytes).toBe(14); // shown as 1 KB;
+    expect(stored!.contentType).toBe("application/pdf");
+  });
+
+  it("[AC-MIL-07.14] shows which page it is on while it works, and cannot be added until it is done", async () => {
+    let finish: (r: ReducedPdf) => void = () => {};
+    reduce.mockImplementationOnce((_f, onPage) => {
+      onPage(3, 12);
+      return new Promise<ReducedPdf>((resolve) => (finish = resolve));
+    });
+    await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    expect(await screen.findByText("Making it smaller: page 3 of 12…")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Add to this service" }) as HTMLButtonElement).disabled).toBe(true);
+    finish(smallPdf());
+    await screen.findByText(/made smaller from/);
+  });
+
+  it("[AC-MIL-07.15] keeps the original, and says so, when the smaller copy is not smaller", async () => {
+    reduce.mockResolvedValueOnce({ status: "reduced", file: new Blob([new Uint8Array(5000)], { type: "application/pdf" }), pages: 1 });
+    await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    expect(await screen.findByText("Making it smaller did not help, so the original is kept.")).toBeTruthy();
+    expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: PDF, 1 KB");
+    expect(box().checked).toBe(false);
+  });
+
+  it("[AC-MIL-07.15] keeps the original, with a clear message, when the PDF cannot be read", async () => {
+    reduce.mockResolvedValueOnce({ status: "unreadable" });
+    await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    expect((await screen.findByText(/could not be made smaller. It may be damaged or protected/)).textContent).toMatch(/original is kept/);
+    expect(box().checked).toBe(false);
+    await addIt();
+    await screen.findByText("Added 1 KB.");
+  });
+
+  it("[AC-MIL-07.15] keeps the original when making it smaller throws", async () => {
+    reduce.mockRejectedValueOnce(new Error("out of memory"));
+    await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    expect(await screen.findByText(/could not be made smaller. The original is kept/)).toBeTruthy();
+  });
+
+  it("[AC-MIL-07.16] suggests the box for a PDF over 25 MB and not for a small one", async () => {
+    await open();
+    choose(bigPdf(26));
+    expect(await screen.findByText("This PDF is large. Making it smaller is a good idea.")).toBeTruthy();
+    cleanup();
+    await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    expect(screen.queryByText(/This PDF is large/)).toBeNull();
+  });
+
+  it("[AC-MIL-07.14] Cancel while it works stores nothing and drops the result", async () => {
+    let finish: (r: ReducedPdf) => void = () => {};
+    reduce.mockImplementationOnce(() => new Promise<ReducedPdf>((resolve) => (finish = resolve)));
+    const { api } = await open();
+    choose(pdf());
+    await screen.findByText(/Ready to add/);
+    await userEvent.click(box());
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    finish(smallPdf());
+    await waitFor(() => expect(screen.queryByText(/Ready to add/)).toBeNull());
+    expect((await api.listDocuments()).documents).toHaveLength(0);
   });
 });
