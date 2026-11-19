@@ -1,13 +1,13 @@
 // Business rules for manually logged workouts (HLT-02). A manual workout is dated when it is saved (AC-HLT-02.1),
 // so the caller never supplies a date. Nothing here touches SQL.
-import type { SaveWorkoutRequest } from "@life-tracker/shared";
+import { isValidTimeZone, type SaveWorkoutRequest } from "@life-tracker/shared";
 import { workoutRepository, type StoredWorkout, type WorkoutRepository } from "../repositories/workoutRepository.js";
 import { calendarDateIn, DEFAULT_OWNER_TIME_ZONE } from "./odometerService.js";
 
 export interface WorkoutService {
   list(limit?: number): Promise<StoredWorkout[]>;
   /** A new manual workout, dated now. */
-  log(input: SaveWorkoutRequest): Promise<StoredWorkout>;
+  log(input: SaveWorkoutRequest, timeZone?: string): Promise<StoredWorkout>;
   /** Changes type, duration or count, and note. Keeps the date and the source. Undefined when it does not exist. */
   edit(id: number, input: SaveWorkoutRequest): Promise<StoredWorkout | undefined>;
   /** Removes a workout for good. False when it does not exist. */
@@ -28,8 +28,8 @@ export function createWorkoutService(repo: WorkoutRepository, options: WorkoutSe
   return {
     list: (limit = 100) => repo.list(limit),
 
-    log: ({ type, minutes, reps, note }) =>
-      repo.insert({ date: calendarDateIn(timeZone, now()), type, minutes: minutes ?? null, reps: reps ?? null, note: noteOrNull(note), source: "manual" }),
+    log: ({ type, minutes, reps, note }, requestZone) =>
+      repo.insert({ date: calendarDateIn(isValidTimeZone(requestZone) ? requestZone : timeZone, now()), type, minutes: minutes ?? null, reps: reps ?? null, note: noteOrNull(note), source: "manual" }),
 
     edit: (id, { type, minutes, reps, note }) => repo.update(id, { type, minutes: minutes ?? null, reps: reps ?? null, note: noteOrNull(note) }),
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { editWeightRequestSchema, saveWeightRequestSchema, saveWeightResultSchema, weightEntrySchema, weightListResponseSchema } from "@life-tracker/shared";
+import { TIME_ZONE_HEADER, editWeightRequestSchema, saveWeightRequestSchema, saveWeightResultSchema, weightEntrySchema, weightListResponseSchema } from "@life-tracker/shared";
 import type { WeightService } from "../services/weightService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
@@ -26,7 +26,7 @@ export function weightRoutes({ logger, weight }: WeightDeps): Hono {
   routes.post("/", async (c) => {
     const body = saveWeightRequestSchema.safeParse(await c.req.json().catch(() => undefined));
     if (!body.success) return c.json({ error: "invalid_request" }, 400);
-    const outcome = await weight.log(body.data.pounds, body.data.replace === true);
+    const outcome = await weight.log(body.data.pounds, body.data.replace === true, c.req.header(TIME_ZONE_HEADER));
     return c.json(saveWeightResultSchema.parse(outcome), outcome.status === "saved" ? 201 : 409);
   });
 

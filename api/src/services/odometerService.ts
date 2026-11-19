@@ -1,19 +1,15 @@
 // Business rules for odometer readings (MIL-01, ADR-0008). The sanity checks themselves are in shared/readingChecks.ts
 // (limit 300 miles a day), so the same code could warn the screen and guard the API. Nothing here touches SQL.
-import { checkReading, type ImportMileageResult, type ImportRow, type ReadingWarning } from "@life-tracker/shared";
+import { calendarDateIn, checkReading, isValidTimeZone, type ImportMileageResult, type ImportRow, type ReadingWarning } from "@life-tracker/shared";
 import { odometerRepository, type OdometerRepository, type StoredReading } from "../repositories/odometerRepository.js";
 
 /**
- * The owner's time zone decides which calendar day "now" is (ADR-0007). The time zone setting arrives with SET-02;
- * until then this default applies.
+ * The owner's time zone decides which calendar day "now" is (ADR-0007). The browser sends its Settings value with each
+ * request (shared/timeZone.ts); this default applies when none arrives or it is not a real zone.
  */
 export const DEFAULT_OWNER_TIME_ZONE = "America/Los_Angeles";
 
-/** The calendar date ("YYYY-MM-DD") of an instant in a time zone. */
-export function calendarDateIn(timeZone: string, instant: Date): string {
-  // The en-CA locale formats dates as YYYY-MM-DD.
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(instant);
-}
+export { calendarDateIn };
 
 export type SaveOutcome =
   | { status: "saved"; reading: StoredReading }
@@ -23,7 +19,7 @@ export type SaveOutcome =
 export interface OdometerService {
   list(limit?: number): Promise<StoredReading[]>;
   /** A new reading, dated now. Warnings must be confirmed first. */
-  log(miles: number, confirmed: boolean): Promise<SaveOutcome>;
+  log(miles: number, confirmed: boolean, timeZone?: string): Promise<SaveOutcome>;
   /** Changes the value of a reading and keeps its original date. Warnings must be confirmed first. */
   edit(id: number, miles: number, confirmed: boolean): Promise<SaveOutcome>;
   /** Removes a reading for good. False when it does not exist. */
@@ -49,8 +45,8 @@ export function createOdometerService(repo: OdometerRepository, options: Odomete
       return (await repo.listAll()).slice(0, limit);
     },
 
-    async log(miles, confirmed) {
-      const date = calendarDateIn(timeZone, now());
+    async log(miles, confirmed, requestZone) {
+      const date = calendarDateIn(isValidTimeZone(requestZone) ? requestZone : timeZone, now());
       const check = checkReading(await repo.listAll(), { date, miles });
       if (check.needsConfirmation && !confirmed) return { status: "needs_confirmation", warnings: check.warnings };
       return { status: "saved", reading: await repo.insert({ date, miles }) };

@@ -31,3 +31,18 @@ describe("labels", () => {
     expect(todayLocal(new Date(2026, 10, 13, 23, 59))).toBe("2026-11-13");
   });
 });
+
+describe("todayLocal follows the owner's time zone", () => {
+  it("[AC-SET-01.5] is the calendar day in the zone from Settings, not the device's own day", () => {
+    const instant = new Date("2026-11-14T03:30:00Z");
+    expect(todayLocal(instant, "America/Los_Angeles")).toBe("2026-11-13");
+    expect(todayLocal(instant, "Asia/Tokyo")).toBe("2026-11-14");
+  });
+
+  it("[AC-SET-01.5] reads the zone from the saved preferences, and a zone the browser does not know falls back to the device's day", () => {
+    localStorage.setItem("life-tracker.preferences", JSON.stringify({ theme: "system", timeZone: "Asia/Tokyo", weightUnit: "lb" }));
+    expect(todayLocal(new Date("2026-11-14T03:30:00Z"))).toBe("2026-11-14");
+    localStorage.clear();
+    expect(todayLocal(new Date(2026, 10, 13, 9, 0), "Not/AZone")).toBe("2026-11-13");
+  });
+});

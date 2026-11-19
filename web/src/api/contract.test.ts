@@ -247,6 +247,34 @@ describe("demo workout behaviour", () => {
   });
 });
 
+describe("client.ts time zone header", () => {
+  it("[AC-SET-01.5] sends the owner's time zone from Settings with every request, reads and writes alike", async () => {
+    const seen: Array<string | null> = [];
+    const api = createClient(
+      async (_input, init) => {
+        seen.push(new Headers(init?.headers).get("x-owner-time-zone"));
+        return Response.json({ readings: [], status: "saved", reading: { id: 1, date: "2026-11-13", miles: 1 } });
+      },
+      { timeZone: () => "Asia/Tokyo" },
+    );
+    await api.listReadings();
+    await api.logReading(1);
+    expect(seen).toEqual(["Asia/Tokyo", "Asia/Tokyo"]);
+  });
+
+  it("[AC-SET-01.5] reads the zone from the saved preferences when none is given", async () => {
+    localStorage.setItem("life-tracker.preferences", JSON.stringify({ theme: "system", timeZone: "Europe/London", weightUnit: "lb" }));
+    let seen: string | null = null;
+    const api = createClient(async (_input, init) => {
+      seen = new Headers(init?.headers).get("x-owner-time-zone");
+      return Response.json({ readings: [] });
+    });
+    await api.listReadings();
+    localStorage.clear();
+    expect(seen).toBe("Europe/London");
+  });
+});
+
 describe("client.ts workout requests", () => {
   it("[AC-HLT-02.1][AC-HLT-02.2] sends only type, minutes and note with the custom header", async () => {
     const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];

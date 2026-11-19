@@ -1,4 +1,5 @@
-import { MAX_GIFT_CENTS, type PaymentMethod } from "@life-tracker/shared";
+import { calendarDateIn, isValidTimeZone, MAX_GIFT_CENTS, type PaymentMethod } from "@life-tracker/shared";
+import { loadPreferences } from "../../settings/preferences";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -39,8 +40,12 @@ export const centsToInput = (cents: number) => (cents / 100).toFixed(2);
 
 export const METHOD_LABEL: Record<PaymentMethod, string> = { check: "Check", card: "Online card service" };
 
-/** Today's local calendar date, "YYYY-MM-DD", the default for the date given. */
-export function todayLocal(now: Date = new Date()): string {
+/**
+ * Today's calendar date, "YYYY-MM-DD", in the owner's time zone from Settings (ADR-0007), so "today" is the same day
+ * the server uses to date a new entry. A zone the browser does not know falls back to the device's own day.
+ */
+export function todayLocal(now: Date = new Date(), timeZone: string = loadPreferences().timeZone): string {
+  if (isValidTimeZone(timeZone)) return calendarDateIn(timeZone, now);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }

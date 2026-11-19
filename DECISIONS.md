@@ -120,7 +120,7 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 ## ADR-0007: Dates, time zones, money
 
 **Decision.**
-- Dates are plain local calendar dates (SQL `date`). One owner time zone is an app setting, used for "this week", "today", and the due-banner.
+- Dates are plain local calendar dates (SQL `date`). One owner time zone is an app setting, used for "this week", "today", and the due-banner. *(Implemented 2026-11-19: the browser sends the Settings value in the `x-owner-time-zone` header on every request. The API uses it, when it is a real zone, to date a new reading, weight or workout, and falls back to America/Los_Angeles otherwise. It is stored in the browser only, so no table or endpoint was needed.)*
 - Apple Health workouts are stored as a UTC start time plus a local date derived at import with the owner's time zone.
 - Money is `decimal(12,2)` in the database and integer cents in code, converted once at the parser boundary. US dollars only.
 - Weight is stored in one unit (pounds). A setting chooses pounds or kilograms for display and entry.

@@ -10,11 +10,13 @@ import {
   saveWeightResultSchema,
   specialContributionListResponseSchema,
   specialContributionSchema,
+  TIME_ZONE_HEADER,
   weightEntrySchema,
   weightListResponseSchema,
   workoutListResponseSchema,
   workoutRecordSchema,
 } from "@life-tracker/shared";
+import { loadPreferences } from "../settings/preferences";
 import type { Api } from "./types";
 import { setWaking } from "./wakeStatus";
 
@@ -35,6 +37,8 @@ export interface ClientOptions {
   /** Wait before the single retry. Tests pass 0. */
   retryDelayMs?: number;
   onWaking?: (waking: boolean) => void;
+  /** The owner's time zone, sent with every request so the server dates new entries in it. Defaults to the Settings value. */
+  timeZone?: () => string;
 }
 
 const jsonBody = (method: "POST" | "PUT", body: unknown): RequestInit => ({
@@ -46,11 +50,12 @@ const jsonBody = (method: "POST" | "PUT", body: unknown): RequestInit => ({
 /** The only place the UI talks to the real API. The fetch function is a parameter so tests can mock the network edge. */
 export function createClient(
   fetchImpl: FetchLike = (input, init) => fetch(input, init),
-  { retryDelayMs = DEFAULT_RETRY_DELAY_MS, onWaking = setWaking }: ClientOptions = {},
+  { retryDelayMs = DEFAULT_RETRY_DELAY_MS, onWaking = setWaking, timeZone = () => loadPreferences().timeZone }: ClientOptions = {},
 ): Api {
   async function send(path: string, init: RequestInit = {}, accepted: number[] = []): Promise<Response> {
     const method = init.method ?? "GET";
     const headers = new Headers(init.headers);
+    headers.set(TIME_ZONE_HEADER, timeZone());
     if (method !== "GET") headers.set(REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE);
     let response = await fetchImpl(path, { ...init, method, headers });
     // AC-FND-05.4: retry once (reads only, so a write is never sent twice) while the UI shows a loading state.
