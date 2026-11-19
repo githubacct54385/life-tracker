@@ -16,7 +16,7 @@ async function addService(page: Page) {
 }
 const chooser = (page: Page) => page.getByLabel(/Add a photo or PDF to|Add another to/).first();
 
-test("[AC-MIL-07.2][AC-MIL-07.3][AC-MIL-07.5][AC-MIL-07.9] a photo is attached, shown, kept after a reload and served privately from R2", { tag: "@AC-MIL-07.5" }, async ({ page }) => {
+test("[AC-MIL-07.2][AC-MIL-07.3][AC-MIL-07.5] a photo is attached, shown, kept after a reload and served privately from R2", { tag: "@AC-MIL-07.5" }, async ({ page }) => {
   const row = await addService(page);
   await chooser(page).setInputFiles({ name: "receipt-of-jane-doe.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByRole("status").filter({ hasText: "Document added." })).toBeVisible();

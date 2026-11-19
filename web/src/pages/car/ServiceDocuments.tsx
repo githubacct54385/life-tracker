@@ -130,10 +130,10 @@ export function ServiceDocuments({ recordId, label, documents, onChanged, shrink
       {full ? (
         <p className="mt-2 text-sm text-muted">{MESSAGES.limit_reached}</p>
       ) : (
-        <label className={`mt-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-ink focus-within:outline-2 focus-within:outline-offset-2 ${busy ? "cursor-progress opacity-80" : "cursor-pointer"}`}>
+        <label className={`relative mt-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-ink focus-within:outline-2 focus-within:outline-offset-2 ${busy ? "cursor-progress opacity-80" : "cursor-pointer"}`}>
           {busy && <span aria-hidden="true" className="lt-spinner" />}
           <span>{busy ? "Adding…" : documents.length === 0 ? "Add a photo or PDF" : "Add another"}</span>
-          <input type="file" className="sr-only" accept="image/*,application/pdf" aria-label={`Add a photo or PDF to ${label}`} disabled={busy} onChange={(e) => void choose(e)} />
+          <input type="file" className="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-progress" accept="image/*,application/pdf" aria-label={`Add a photo or PDF to ${label}`} disabled={busy} onChange={(e) => void choose(e)} />
         </label>
       )}
       <Presence>{message ? <p role="status" className="mt-2 text-sm text-gtext">{message}</p> : null}</Presence>
