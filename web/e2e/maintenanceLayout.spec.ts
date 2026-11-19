@@ -117,7 +117,7 @@ test("[AC-SET-02.3][AC-MIL-06.9] every control in the history and in the open pa
   expect(small).toEqual([]);
 });
 
-test("[AC-MIL-07.18] the list of several chosen files fits a phone, passes axe in both themes, and every control in it is at least 44 px", { tag: "@AC-MIL-07.18" }, async ({ page }) => {
+test("[AC-MIL-07.18][AC-MIL-08.9] the list of several chosen files fits a phone, passes axe in both themes, and every control in it is at least 44 px", { tag: "@AC-MIL-07.18" }, async ({ page }) => {
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
   const PDF = Buffer.from("%PDF-1.4\n% synthetic test document\n");
   await page.setViewportSize({ width: 360, height: 740 });

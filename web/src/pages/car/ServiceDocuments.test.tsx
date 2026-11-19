@@ -59,14 +59,14 @@ const chooseAndAdd = async (f: File) => {
 };
 
 describe("choosing a document", () => {
-  it("[AC-MIL-07.11] shows the size of a chosen photo, and how much smaller it was made, before anything is stored", async () => {
+  it("[AC-MIL-07.11][AC-MIL-08.1] shows the size of a chosen photo, and how much smaller it was made, before anything is stored", async () => {
     const { api } = await open();
     choose(bigPhoto());
     expect((await screen.findByText(/Ready to add/)).textContent).toBe("Ready to add: Photo, 1 KB (made smaller from 3.0 MB)");
     expect((await api.listDocuments()).documents).toHaveLength(0);
   });
 
-  it("[AC-MIL-07.11] shows the size of a chosen PDF, stores it only after Add, and keeps nothing after Cancel", async () => {
+  it("[AC-MIL-07.11][AC-MIL-08.1] shows the size of a chosen PDF, stores it only after Add, and keeps nothing after Cancel", async () => {
     const { api } = await open();
     choose(pdf());
     expect((await screen.findByText(/Ready to add/)).textContent).toBe("Ready to add: PDF, 1 KB");
@@ -79,7 +79,7 @@ describe("choosing a document", () => {
     expect((await api.listDocuments()).documents).toHaveLength(1);
   });
 
-  it("[AC-MIL-07.3] refuses a file over 100 MB before sending it, and says so", async () => {
+  it("[AC-MIL-07.3][AC-MIL-08.3] refuses a file over 100 MB before sending it, and says so", async () => {
     const big = Object.defineProperty(new File([], "huge.pdf", { type: "application/pdf" }), "size", { value: MAX_DOCUMENT_BYTES + 1 });
     expect(await prepareDocument(big)).toEqual({ status: "too_large" });
     const { api } = await open();
@@ -89,14 +89,14 @@ describe("choosing a document", () => {
     expect(upload).not.toHaveBeenCalled();
   });
 
-  it("[AC-MIL-07.3] says so when a photo cannot be read, and sends nothing", async () => {
+  it("[AC-MIL-07.3][AC-MIL-08.3] says so when a photo cannot be read, and sends nothing", async () => {
     const failing = vi.fn(async () => {
       throw new Error("cannot decode");
     });
     expect(await prepareDocument(png(), failing)).toEqual({ status: "unreadable" });
   });
 
-  it("[AC-MIL-07.3] redraws a photo smaller before sending it, but sends a PDF as it is", async () => {
+  it("[AC-MIL-07.3][AC-MIL-08.2] redraws a photo smaller before sending it, but sends a PDF as it is", async () => {
     shrink.mockClear();
     await open();
     await chooseAndAdd(png());
@@ -107,7 +107,7 @@ describe("choosing a document", () => {
     expect(shrink).toHaveBeenCalledTimes(1);
   });
 
-  it("[AC-MIL-07.3] shows the server's refusal for a file that is not a photo or PDF", async () => {
+  it("[AC-MIL-07.3][AC-MIL-08.3] shows the server's refusal for a file that is not a photo or PDF", async () => {
     await open();
     await chooseAndAdd(file("just some text", "notes.pdf", "application/pdf"));
     expect((await screen.findByRole("alert")).textContent).toContain("Only photos (JPEG, PNG or WebP) and PDFs");
@@ -172,7 +172,7 @@ describe("documents on a service", () => {
     expect(screen.getByRole("link", { name: "Download PDF 1" }).getAttribute("href")).toBe("/api/maintenance/documents/1?download=1");
   });
 
-  it("[AC-MIL-07.6] asks before deleting, keeps the document on Keep it, and removes it on Yes", async () => {
+  it("[AC-MIL-07.6][AC-MIL-08.5] asks before deleting, keeps the document on Keep it, and removes it on Yes", async () => {
     const { api } = await open();
     await chooseAndAdd(png());
     await screen.findByRole("button", { name: "View Photo 1" });
@@ -196,7 +196,7 @@ describe("documents on a service", () => {
     expect(screen.getByRole("button", { name: "Delete Photo 1" })).toBeTruthy();
   });
 
-  it("[AC-MIL-07.3] shows a busy state while a document is added and cannot be started twice", async () => {
+  it("[AC-MIL-07.3][AC-MIL-08.4] shows a busy state while a document is added and cannot be started twice", async () => {
     const api = demo();
     let release: () => void = () => {};
     const real = api.uploadDocument.bind(api);
@@ -210,7 +210,7 @@ describe("documents on a service", () => {
     await screen.findByText(/PDF 1/);
   });
 
-  it("[AC-MIL-07.3] says that it did not work when the request fails", async () => {
+  it("[AC-MIL-07.3][AC-MIL-08.4] says that it did not work when the request fails", async () => {
     const api = demo();
     api.uploadDocument = async () => {
       throw new Error("offline");
@@ -414,7 +414,7 @@ describe("choosing several documents at once", () => {
     expect((await api.listDocuments()).documents).toHaveLength(3);
   });
 
-  it("[AC-MIL-07.19] a file that fails stays in the list with a message, and the others are still added", async () => {
+  it("[AC-MIL-07.19][AC-MIL-08.4] a file that fails stays in the list with a message, and the others are still added", async () => {
     const base = demo();
     let calls = 0;
     const api = {
