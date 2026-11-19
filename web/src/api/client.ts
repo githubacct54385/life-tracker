@@ -5,6 +5,7 @@ import {
   importMileageResultSchema,
   maintenanceListResponseSchema,
   maintenanceRecordSchema,
+  servicePlaceSchema,
   placeListResponseSchema,
   readingListResponseSchema,
   REQUEST_GUARD_HEADER,
@@ -172,6 +173,13 @@ export function createClient(
     },
     async deleteMaintenance(id) {
       await send(`/api/maintenance/${id}`, { method: "DELETE" });
+    },
+    async renameServicePlace(id, name) {
+      const response = await send(`/api/maintenance/places/${id}`, { method: "PUT", body: JSON.stringify({ name }), headers: JSON_HEADERS }, [409]);
+      return response.status === 409 ? { status: "name_taken" } : { status: "saved", place: servicePlaceSchema.parse(await response.json()) };
+    },
+    async deleteServicePlace(id) {
+      return (await send(`/api/maintenance/places/${id}`, { method: "DELETE" }, [409])).status === 409 ? "in_use" : "deleted";
     },
   };
 }

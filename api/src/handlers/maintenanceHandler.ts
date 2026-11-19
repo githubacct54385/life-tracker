@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { TIME_ZONE_HEADER, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, saveMaintenanceRequestSchema } from "@life-tracker/shared";
+import { TIME_ZONE_HEADER, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, renamePlaceRequestSchema, saveMaintenanceRequestSchema, servicePlaceSchema } from "@life-tracker/shared";
 import type { MaintenanceService } from "../services/maintenanceService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
@@ -21,6 +21,25 @@ export function maintenanceRoutes({ logger, maintenance }: MaintenanceDeps): Hon
     const places = await maintenance.places();
     logger.info("maintenance.places", { rowCount: places.length });
     return c.json(placeListResponseSchema.parse({ places }));
+  });
+
+  routes.put("/places/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    const body = renamePlaceRequestSchema.safeParse(await c.req.json().catch(() => undefined));
+    if (id === undefined || !body.success) return c.json({ error: "invalid_request" }, 400);
+    const outcome = await maintenance.renamePlace(id, body.data.name);
+    if (outcome.status === "not_found") return c.json({ error: "not_found" }, 404);
+    if (outcome.status === "name_taken") return c.json({ error: "name_taken" }, 409);
+    return c.json(servicePlaceSchema.parse(outcome.place));
+  });
+
+  routes.delete("/places/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (id === undefined) return c.json({ error: "invalid_request" }, 400);
+    const outcome = await maintenance.deletePlace(id);
+    if (outcome === "not_found") return c.json({ error: "not_found" }, 404);
+    if (outcome === "in_use") return c.json({ error: "in_use" }, 409);
+    return c.body(null, 204);
   });
 
   routes.get("/", async (c) => {

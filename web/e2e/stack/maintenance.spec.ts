@@ -13,31 +13,31 @@ test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3][AC-MIL-05.4][AC-OPS-04.3] a shop s
   await page.getByLabel("Note (optional)").fill("Synthetic oil");
   await save(page).click();
   await expect(page.getByRole("status")).toContainText("Saved Oil change, Cabin filter.");
-  const list = page.getByRole("region", { name: "Services" });
+  const list = page.getByRole("region", { name: "Services" }).getByRole("list");
   await expect(list.getByText("Oil change, Cabin filter")).toBeVisible();
   await expect(list.getByText("$89.99")).toBeVisible();
   await expect(list.getByText(/Joe's Garage/)).toBeVisible();
 
   // Next time the place is in the drop-down, and a different letter case does not add a second one.
   await page.reload();
-  await expect(page.getByLabel("Place").locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
+  await expect(page.getByLabel("Place", { exact: true }).locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
   await page.getByRole("checkbox", { name: "Tires" }).check();
-  await page.getByLabel("Place").selectOption("Add a new place…");
+  await page.getByLabel("Place", { exact: true }).selectOption("Add a new place…");
   await page.getByLabel("New place").fill("JOE'S GARAGE");
   await save(page).click();
-  await expect(page.getByRole("region", { name: "Services" }).getByText("Tires")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Services" }).getByRole("list").getByText("Tires")).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("Place").locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
+  await expect(page.getByLabel("Place", { exact: true }).locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
 });
 
 test("[AC-MIL-05.2][AC-MIL-05.4][AC-OPS-04.3] a service done at home is saved with no place and a cost of zero", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
   await page.goto("/car/maintenance");
   await page.getByRole("checkbox", { name: "Air filter" }).check();
   await page.getByRole("radio", { name: "I did it myself" }).check();
-  await expect(page.getByLabel("Place")).toHaveCount(0);
+  await expect(page.getByLabel("Place", { exact: true })).toHaveCount(0);
   await page.getByLabel("Parts cost (optional)").fill("0");
   await save(page).click();
-  const list = page.getByRole("region", { name: "Services" });
+  const list = page.getByRole("region", { name: "Services" }).getByRole("list");
   await expect(list.getByText("Air filter", { exact: true })).toBeVisible();
   await expect(list.getByText(/At home/)).toBeVisible();
   await expect(list.getByText("$0.00")).toBeVisible();
@@ -78,18 +78,18 @@ test("[AC-MIL-05.8][AC-OPS-04.3] a service can be edited and deleted, and the ch
   await page.getByRole("checkbox", { name: "Battery" }).check();
   await page.getByLabel("Cost (optional)").fill("150");
   await save(page).click();
-  await expect(page.getByRole("region", { name: "Services" }).getByText("$150.00")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Services" }).getByRole("list").getByText("$150.00")).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: /^Edit service/ }).click();
   const editForm = page.getByRole("button", { name: "Save change" }).locator("xpath=ancestor::form");
   await editForm.getByLabel("Cost (optional)").fill("175");
   await editForm.getByRole("checkbox", { name: "Alignment" }).check();
   await page.getByRole("button", { name: "Save change" }).click();
-  const list = page.getByRole("region", { name: "Services" });
+  const list = page.getByRole("region", { name: "Services" }).getByRole("list");
   await expect(list.getByText("Battery, Alignment")).toBeVisible();
   await expect(list.getByText("$175.00")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("region", { name: "Services" }).getByText("$175.00")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Services" }).getByRole("list").getByText("$175.00")).toBeVisible();
   await page.getByRole("button", { name: /^Delete service/ }).click();
   await page.getByRole("button", { name: "Yes, delete" }).click();
   await expect(page.getByText(/No services yet/)).toBeVisible();

@@ -1,4 +1,4 @@
-import type { MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -61,4 +61,8 @@ export interface Api {
   editMaintenance(id: number, service: SaveMaintenanceRequest): Promise<MaintenanceRecord>;
   /** Removes a service for good. */
   deleteMaintenance(id: number): Promise<void>;
+  /** Renames a place; its services keep pointing at it. A name another place has (ignoring letter case) is refused (MIL-06). */
+  renameServicePlace(id: number, name: string): Promise<{ status: "saved"; place: ServicePlace } | { status: "name_taken" }>;
+  /** Deletes a place only when no service uses it (MIL-06). */
+  deleteServicePlace(id: number): Promise<"deleted" | "in_use">;
 }

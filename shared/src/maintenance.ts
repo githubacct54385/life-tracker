@@ -73,3 +73,7 @@ export const maintenanceListResponseSchema = z.object({ records: z.array(mainten
 export type MaintenanceListResponse = z.infer<typeof maintenanceListResponseSchema>;
 export const placeListResponseSchema = z.object({ places: z.array(servicePlaceSchema) });
 export type PlaceListResponse = z.infer<typeof placeListResponseSchema>;
+
+/** Body of PUT /api/maintenance/places/:id (MIL-06). */
+export const renamePlaceRequestSchema = z.object({ name: placeNameSchema }).strict();
+export type RenamePlaceRequest = z.infer<typeof renamePlaceRequestSchema>;

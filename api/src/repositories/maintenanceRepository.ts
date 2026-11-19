@@ -51,11 +51,18 @@ const toRecord = (row: Row): StoredMaintenance => ({
 const SELECT = `SELECT r.id, to_char(r.service_date, 'YYYY-MM-DD') AS date, r.services, r.done_by, r.place_id, p.name AS place_name,
   r.cost_cents, r.odometer_miles, r.note FROM maintenance_records r LEFT JOIN service_places p ON p.id = r.place_id`;
 
+export type RenamePlaceResult = { status: "renamed"; place: ServicePlace } | { status: "not_found" } | { status: "name_taken" };
+export type DeletePlaceResult = "deleted" | "not_found" | "in_use";
+
 /** SQL for the maintenance log. No business rules: those live in services/maintenanceService.ts. */
 export interface MaintenanceRepository {
   /** Newest first. */
   list(): Promise<StoredMaintenance[]>;
   listPlaces(): Promise<ServicePlace[]>;
+  /** Changes a place's name; the services keep pointing at it. A name another place already has (ignoring letter case) is refused. */
+  renamePlace(id: number, name: string): Promise<RenamePlaceResult>;
+  /** Removes a place only when no service uses it. */
+  deletePlace(id: number): Promise<DeletePlaceResult>;
   /** The place with this name (ignoring letter case), added when there is none. */
   findOrCreatePlace(name: string): Promise<ServicePlace>;
   insert(fields: MaintenanceFields): Promise<StoredMaintenance>;
@@ -91,6 +98,34 @@ export const maintenanceRepository: MaintenanceRepository = {
     return { id: Number(row.id), name: row.name };
   },
 
+  async renamePlace(id, name) {
+    try {
+      const result = await getPool().query<{ id: string; name: string }>("UPDATE service_places SET name = $2 WHERE id = $1 RETURNING id, name", [id, name]);
+      const row = result.rows[0];
+      return row ? { status: "renamed", place: { id: Number(row.id), name: row.name } } : { status: "not_found" };
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505") return { status: "name_taken" };
+      throw error;
+    }
+  },
+
+  async deletePlace(id) {
+    // One statement decides, so a service saved at the same moment cannot be left pointing at a deleted place.
+    // The foreign key is the last line of defence: it refuses the delete too.
+    try {
+      const result = await getPool().query(
+        "DELETE FROM service_places p WHERE p.id = $1 AND NOT EXISTS (SELECT 1 FROM maintenance_records r WHERE r.place_id = p.id)",
+        [id],
+      );
+      if ((result.rowCount ?? 0) > 0) return "deleted";
+    } catch (error) {
+      if ((error as { code?: string }).code === "23503") return "in_use";
+      throw error;
+    }
+    const exists = await getPool().query("SELECT 1 FROM service_places WHERE id = $1", [id]);
+    return (exists.rowCount ?? 0) > 0 ? "in_use" : "not_found";
+  },
+
   async insert({ date, services, doneBy, placeId, costCents, odometerMiles, note }) {
     const result = await getPool().query<{ id: string }>(
       `INSERT INTO maintenance_records (service_date, services, done_by, place_id, cost_cents, odometer_miles, note)
@@ -113,5 +148,4 @@ export const maintenanceRepository: MaintenanceRepository = {
     const result = await getPool().query("DELETE FROM maintenance_records WHERE id = $1", [id]);
     return (result.rowCount ?? 0) > 0;
   },
-
 };
