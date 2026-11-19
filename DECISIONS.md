@@ -354,8 +354,10 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 
 **Limits that keep the exception small.**
 - Only maintenance documents, only attached to a service, at most 10 per service.
-- JPEG, PNG, WebP or PDF, at most 5 MB, checked from the file's own first bytes and not its name or the type the browser claims.
-- The browser shrinks photos before sending, which drops location and camera data.
+- JPEG, PNG, WebP or PDF, checked from the file's own first bytes and not its name or the type the browser claims.
+- At most **100 MB per file** and **250 MB per service** (raised from 5 MB on 2026-11-19, after a real 36 MB shop scan was refused). 100 MB is also the most the Worker accepts in one request on the free plan. The Worker streams an upload straight into R2 and a download straight out, and never holds a file in memory. A bigger limit would need uploads direct from the browser to R2, which means access keys and bucket CORS; that is not worth it for one user's paperwork. R2's free allowance is 10 GB, so the per-service total stops one service from using a large share of it.
+- The screen shows a file's size before it is stored (the owner presses Add) and the size of every stored document and each service's total, so the owner sees what is being kept.
+- The browser shrinks photos before sending, which drops location and camera data. Photos open full screen in the app; a PDF opens in the browser's own PDF viewer in a new tab (an app-framed PDF would need looser frame headers, and iPhone Safari shows only the first page of a framed PDF). A Download button saves a copy under a made-up name; the copy then lives on the phone outside the app, so it is a deliberate tap and never automatic.
 - Random storage keys. The original file name is not kept. Nothing about a document is logged (hard rule 6).
 - The bucket has no public access. A document is read only through the API after the owner check, with `nosniff` and `Cache-Control: private, no-store`.
 - Deleting a document or its service deletes the file. Demo mode never touches storage (hard rule 7).

@@ -60,7 +60,7 @@ describe.skipIf(!server)("/api/maintenance documents (real Postgres)", () => {
   });
 
   const addService = async () => ((await (await call("POST", "/api/maintenance", JSON.stringify({ date: "2026-11-10", services: ["Oil change"], doneBy: "home" }), { "content-type": "application/json" })).json()) as { id: number }).id;
-  const upload = (id: number, data = PNG) => call("POST", `/api/maintenance/${id}/documents`, data, { "content-type": "image/png" });
+  const upload = (id: number, data = PNG) => call("POST", `/api/maintenance/${id}/documents`, data, { "content-type": "image/png", "content-length": String(data.byteLength) });
 
   it("[AC-MIL-07.3][AC-MIL-07.4] saves a document row for an existing service, refuses an unknown one, and allows at most 10 per service", async () => {
     const id = await addService();
@@ -74,9 +74,22 @@ describe.skipIf(!server)("/api/maintenance documents (real Postgres)", () => {
     expect(keys.every((key) => /^[0-9a-f-]{36}$/.test(key))).toBe(true);
   });
 
+  it("[AC-MIL-07.10] allows a file of up to 100 MB in the table, and refuses a service going past 250 MB in total", async () => {
+    const id = await addService();
+    // Rows only, as the file itself is not needed to test the SQL: 100 + 100 + 50 MB use the whole 250 MB.
+    for (const mb of [100, 100, 50]) expect((await documentRepository.insert(id, crypto.randomUUID(), "application/pdf", mb * 1024 * 1024)).status).toBe("saved");
+    const res = await upload(id);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "too_much" });
+    expect(await documentRepository.room(id, 100)).toBe("too_much");
+    expect(store.files.size).toBe(0);
+    // The table itself refuses a single file over 100 MB, whatever the code says (migration 0010).
+    await expect(documentRepository.insert(await addService(), crypto.randomUUID(), "application/pdf", 100 * 1024 * 1024 + 1)).rejects.toThrow();
+  });
+
   it("[AC-MIL-07.3] refuses a file whose bytes are not an allowed type, and stores neither a row nor a file", async () => {
     const id = await addService();
-    const res = await call("POST", `/api/maintenance/${id}/documents`, new TextEncoder().encode("plain text"), { "content-type": "image/png" });
+    const res = await call("POST", `/api/maintenance/${id}/documents`, new TextEncoder().encode("plain text"), { "content-type": "image/png", "content-length": "10" });
     expect(res.status).toBe(415);
     expect(await documentKeys()).toHaveLength(0);
     expect(store.files.size).toBe(0);

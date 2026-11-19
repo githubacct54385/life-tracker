@@ -79,7 +79,7 @@ There are two kinds, and it matters which is which (OPS-04):
 
 A full-stack test fails if the API answers 5xx or the page logs a console error (`web/e2e/support/stack.ts`, proven by `stack/guard.spec.ts`). Each full-stack test starts from empty tables.
 
-**Full-stack journeys.** Odometer (log, the warning and its confirmation, edit, delete), weight (log, replace, delete), workouts (a timed one and pushups), regular gifts and special contributions, car maintenance (the place drop-down, a service at home, the future-date rule), car-service documents (a photo is redrawn and served privately from R2, a PDF, a refused file, delete), the mileage spreadsheet import (and re-importing adds nothing), and the dashboard showing what was saved (AC-OPS-04.3).
+**Full-stack journeys.** Odometer (log, the warning and its confirmation, edit, delete), weight (log, replace, delete), workouts (a timed one and pushups), regular gifts and special contributions, car maintenance (the place drop-down, a service at home, the future-date rule), car-service documents (a photo is redrawn and served privately from R2, a PDF, a 36 MB PDF streamed through the real Worker, the full-screen viewer, Recent documents and Download, a refused file, delete), the mileage spreadsheet import (and re-importing adds nothing), and the dashboard showing what was saved (AC-OPS-04.3).
 
 **Screen checks.** Layout (no sideways scrolling, navigation at the three widths), accessibility (axe, keyboard, 44 px), and the screens' own detail at the three widths. Behaviour is proven in unit tests and in the full-stack journeys, not here.
 
@@ -142,6 +142,8 @@ Cadence as the suite grows:
 - **Optional later.** Mutation testing (Stryker) on the parsers and the mileage code, to check that the tests would catch a real bug.
 
 ## Commands (once code exists)
+
+Step-by-step setup for a laptop, including a Mac, is in the [README](README.md#run-the-tests-locally).
 
 ```
 pnpm test:unit     # fast, run constantly

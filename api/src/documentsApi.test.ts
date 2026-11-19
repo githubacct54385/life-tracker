@@ -96,17 +96,59 @@ describe("uploading a document", () => {
     expect([...bucket.objects.values()][0]!.contentType).toBe("application/pdf");
   });
 
-  it("[AC-MIL-07.3] refuses a body over 5 MB, by its declared length and by its real length, and stores nothing", async () => {
+  it("[AC-MIL-07.10] streams a 36 MB PDF through to storage in one piece", async () => {
+    const { upload, addService, bucket } = setup();
+    const id = await addService();
+    const big = new Uint8Array(new ArrayBuffer(36 * 1024 * 1024));
+    big.set(PDF);
+    big[big.length - 1] = 7;
+    const res = await upload(id, big);
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as { bytes: number }).bytes).toBe(big.byteLength);
+    const stored = [...bucket.objects.values()][0]!.bytes;
+    expect(stored.byteLength).toBe(big.byteLength);
+    expect(stored[stored.length - 1]).toBe(7);
+  });
+
+  it("[AC-MIL-07.10] refuses a file over 100 MB by its declared length, without reading it, and stores nothing", async () => {
     const { call, addService, bucket } = setup();
     const id = await addService();
-    const big = new Uint8Array(MAX_DOCUMENT_BYTES + 1);
-    big.set(PNG);
-    const declared = await call("POST", `/api/maintenance/${id}/documents`, big, { "content-type": "image/png", "content-length": String(big.byteLength) });
-    expect(declared.status).toBe(413);
-    const exact = new Uint8Array(MAX_DOCUMENT_BYTES);
-    exact.set(PNG);
-    expect((await call("POST", `/api/maintenance/${id}/documents`, exact, { "content-type": "image/png" })).status).toBe(201);
-    expect(bucket.objects.size).toBe(1);
+    const over = String(MAX_DOCUMENT_BYTES + 1);
+    const res = await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png", "content-length": over });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: "too_large" });
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it("[AC-MIL-07.10] a body longer or shorter than it says is refused and nothing is kept", async () => {
+    const { call, addService, bucket, documentRepo } = setup();
+    const id = await addService();
+    const longer = await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG, [1, 2, 3, 4, 5, 6, 7, 8]), { "content-type": "image/png", "content-length": "12" });
+    expect(longer.status).toBe(413);
+    const shorter = await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png", "content-length": "40" });
+    expect(shorter.status).toBe(400);
+    expect(bucket.objects.size).toBe(0);
+    expect(documentRepo.rows).toHaveLength(0);
+  });
+
+  it("[AC-MIL-07.10] an upload that does not say how long it is gets 411", async () => {
+    const { call, addService, bucket } = setup();
+    const id = await addService();
+    expect((await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png" })).status).toBe(411);
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it("[AC-MIL-07.10] refuses a document that would take a service past 250 MB in total, and leaves no file behind", async () => {
+    const { upload, addService, bucket, documentRepo } = setup();
+    const id = await addService();
+    // Rows only: 249.9 MB already used, so even a small file does not fit.
+    await documentRepo.insert(id, "earlier-1", "application/pdf", 100 * 1024 * 1024);
+    await documentRepo.insert(id, "earlier-2", "application/pdf", 100 * 1024 * 1024);
+    await documentRepo.insert(id, "earlier-3", "application/pdf", 49 * 1024 * 1024 + 900 * 1024);
+    const res = await upload(id, new Uint8Array(new ArrayBuffer(300 * 1024)).map((_, i) => PNG[i] ?? 0));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "too_much" });
+    expect(bucket.objects.size).toBe(0);
   });
 
   it("[AC-MIL-07.3] refuses a content type outside the allowed list", async () => {
@@ -136,10 +178,10 @@ describe("uploading a document", () => {
   });
 
   it("[AC-MIL-07.4] stores each file under a random key that carries no file name", async () => {
-    const { call, addService, bucket } = setup();
+    const { call, upload, addService, bucket } = setup();
     const id = await addService();
-    await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png", "content-disposition": 'attachment; filename="invoice-jane-doe.png"' });
-    await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png" });
+    await upload(id, bytes(PNG), "image/png");
+    await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png", "content-length": String(PNG.length), "content-disposition": 'attachment; filename="invoice-jane-doe.png"' });
     const keys = [...bucket.objects.keys()];
     expect(keys).toHaveLength(2);
     for (const key of keys) expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
@@ -168,6 +210,20 @@ describe("reading a document", () => {
     expect(res.headers.get("x-frame-options")).toBe("DENY");
     expect(res.headers.get("cross-origin-resource-policy")).toBe("same-origin");
     expect([...new Uint8Array(await res.arrayBuffer())]).toEqual(PNG);
+  });
+
+  it("[AC-MIL-07.13] a download gets a made-up name that carries nothing from the file, and the same private headers", async () => {
+    const { upload, addService, call } = setup();
+    const id = await addService();
+    const saved = (await (await upload(id, bytes(PDF))).json()) as { id: number };
+    const res = await call("GET", `/api/maintenance/documents/${saved.id}?download=1`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe(`attachment; filename="life-tracker-document-${saved.id}.pdf"`);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    const plain = await call("GET", `/api/maintenance/documents/${saved.id}`);
+    expect(plain.headers.get("content-disposition")).toBe("inline");
   });
 
   it("[AC-MIL-07.5] a JSON answer from the API is still forced to no-store", async () => {

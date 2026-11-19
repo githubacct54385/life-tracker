@@ -5,16 +5,22 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 /** The few R2 bucket methods used here. The real R2Bucket binding satisfies it, and tests pass a plain object. */
 export interface DocumentBucket {
-  put(key: string, value: Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
-  get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
+  put(key: string, value: ReadableStream<Uint8Array> | Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
+  get(key: string): Promise<{ body: ReadableStream<Uint8Array>; size: number } | null>;
   delete(key: string): Promise<void>;
+}
+
+export interface StoredFile {
+  body: ReadableStream<Uint8Array>;
+  size: number;
 }
 
 /** Stored files by key. Keys are random and carry no file name. */
 export interface DocumentStore {
-  put(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
-  /** The file, or undefined when no file has this key (never an error: a missing file must not break a screen). */
-  get(key: string): Promise<Uint8Array | undefined>;
+  /** Streams the file in. `size` is its exact length in bytes: R2 needs it up front to take a stream, and ends the upload if the stream differs. */
+  put(key: string, body: ReadableStream<Uint8Array>, contentType: string, size: number): Promise<void>;
+  /** The file as a stream, or undefined when no file has this key (never an error: a missing file must not break a screen). */
+  get(key: string): Promise<StoredFile | undefined>;
   /** Deleting a key that does not exist succeeds. */
   delete(key: string): Promise<void>;
 }
@@ -32,13 +38,24 @@ function bucketForRequest(): DocumentBucket {
   return bucket;
 }
 
+/** The Workers runtime's stream with a fixed length, which R2 needs to take a stream. It does not exist in Node, where tests use a plain bucket. */
+type FixedLengthStreamConstructor = new (length: number) => { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> };
+
 export const r2DocumentStore: DocumentStore = {
-  async put(key, bytes, contentType) {
-    await bucketForRequest().put(key, bytes, { httpMetadata: { contentType } });
+  async put(key, body, contentType, size) {
+    const bucket = bucketForRequest();
+    const options = { httpMetadata: { contentType } };
+    const FixedLengthStream = (globalThis as { FixedLengthStream?: FixedLengthStreamConstructor }).FixedLengthStream;
+    if (!FixedLengthStream) {
+      await bucket.put(key, body, options);
+      return;
+    }
+    const fixed = new FixedLengthStream(size);
+    await Promise.all([bucket.put(key, fixed.readable, options), body.pipeTo(fixed.writable)]);
   },
   async get(key) {
     const object = await bucketForRequest().get(key);
-    return object ? new Uint8Array(await object.arrayBuffer()) : undefined;
+    return object ? { body: object.body, size: object.size } : undefined;
   },
   async delete(key) {
     await bucketForRequest().delete(key);

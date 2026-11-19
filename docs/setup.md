@@ -33,7 +33,7 @@ Follow [db/setup/README.md](../db/setup/README.md). In short: create a free proj
 
 ### Document bucket (Cloudflare R2)
 Car-service documents (a photo or PDF a shop gave) are stored in a private R2 bucket. Do this once, before the first Release that includes MIL-07, because the deploy fails if the bucket named in `api/wrangler.jsonc` does not exist.
-1. Cloudflare dashboard, **Storage & databases**, **R2 object storage**. R2 may ask for a payment method before it can be enabled. The free allowance (10 GB stored, 1 million writes and 10 million reads a month, no download fees) is far above what a few dozen documents a year use, so the cost stays $0. Check the current numbers on the page.
+1. Cloudflare dashboard, **Storage & databases**, **R2 object storage**. R2 may ask for a payment method before it can be enabled. The app allows up to 100 MB per document and 250 MB per service. The free allowance (10 GB stored, 1 million writes and 10 million reads a month, no download fees) is far above what a few dozen documents a year use, so the cost stays $0. Check the current numbers on the page.
 2. **Create bucket**, name `life-tracker-documents`, location Automatic, storage class Standard.
 3. Leave public access off: do not enable the `r2.dev` address or a custom domain. A document is read only through the API after the owner check.
 4. The Release token needs **Account, Workers R2 Storage, Edit** besides **Edit Cloudflare Workers** ([cloudflare-release-setup.md](cloudflare-release-setup.md)). Without it the deploy cannot attach the bucket.

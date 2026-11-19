@@ -29,6 +29,57 @@ pnpm dev:web      # optional: Vite with hot reload at http://localhost:5173, for
 Check it works: `curl localhost:8787/api/health` returns `{"status":"ok"}`, and `curl localhost:8787/api/health/db` returns the same only when the database answers. No Cloudflare login is needed for local runs.
 
 Wireframes: [the full suite at mobile, tablet, and desktop widths](wireframes-suite.html).
+
+## Run the tests locally
+
+All three levels run on a Mac (Apple Silicon or Intel) and on Linux. CI runs the same commands, so a green run here is a good sign. The steps were written and checked on Linux, and nothing in them is Linux-only, so tell us if a step differs on your Mac.
+
+**Once:** install Node 22 or newer (`brew install node@22`), then pnpm with `corepack enable` (the repo pins the pnpm version), then `pnpm install`.
+
+| Level | Command | What it needs | Time |
+|---|---|---|---|
+| Unit, plus lint and types | `pnpm test:unit`, `pnpm lint`, `pnpm typecheck` | Nothing else | under a minute |
+| Integration (real Postgres) | `pnpm test:int` | A running Docker | a few minutes the first time |
+| End to end (real browser) | `pnpm test:e2e` | Chromium, and a local Postgres for the full-stack part | a few minutes |
+| All of them, as CI does | `pnpm test` | All of the above | |
+
+### Unit tests
+No setup. `pnpm test:unit` runs the shared, api, web and scripts tests. Run one package with `pnpm --filter web test:unit` (or `api`, `shared`). Add a file name to run one test file, for example `pnpm --filter web test:unit ServiceDocuments`.
+
+### Integration tests
+These start a throwaway Postgres in a container and apply the real migrations to it, so they need a Docker that is running.
+
+1. Install and start Docker Desktop (or OrbStack, or Colima).
+2. `pnpm test:int`
+
+The first run downloads the Postgres image. The database is created per run and removed afterwards, so nothing is left behind and nothing of yours is touched. **If Docker is not found, these tests are skipped with a warning, and they show as passed.** Look for "database tests are SKIPPED" in the output. CI never skips them. With Colima, run `colima start` first, and set `DOCKER_HOST` to its socket if the tests cannot find it.
+
+### End-to-end tests
+These build the site, start the real Worker (`wrangler dev`), and drive Chromium with Playwright. No Cloudflare login is needed.
+
+1. Once: `pnpm --filter web exec playwright install chromium`
+2. For the full-stack specs (`web/e2e/stack/`) you also need a local Postgres, which the tests fill with the real migrations. With Homebrew:
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createdb lt_e2e
+export E2E_ADMIN_DATABASE_URL="postgresql://$(whoami)@127.0.0.1:5432/lt_e2e"
+```
+
+3. `pnpm test:e2e`
+
+To run one spec: `pnpm --filter web exec playwright test e2e/stack/maintenance.spec.ts`. To watch it in a visible browser, add `--headed`. A failed test leaves notes about the page under `web/test-results/`.
+
+Things to know:
+- **Without `E2E_ADMIN_DATABASE_URL`** the full-stack specs are skipped (with a message) and the screen-check specs (layout, accessibility) still run.
+- **Use a database that only the tests use.** Its name must contain `e2e` and it must be on your computer, or the tests refuse to start. They **empty it at the start of every run**.
+- **They change `api/.dev.vars`.** The tests replace the `DATABASE_URL` line there with the test database's login (other lines are left alone), and remove it when `E2E_ADMIN_DATABASE_URL` is not set. If you use `.dev.vars` for `pnpm dev`, save your own `DATABASE_URL` line first and put it back afterwards.
+- **Ports 8788 and 9099** must be free. Close any other copy of the tests first, because two runs at once break each other.
+- Document uploads use the local R2 that `wrangler dev` provides, so no Cloudflare bucket is touched.
+
+More about what each level covers is in [TESTING.md](TESTING.md).
+
 ## How changes reach production
 
 1. Branch from `main`, named after the story (`mil-03-mileage-graphs`).
