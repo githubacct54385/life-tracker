@@ -1,4 +1,7 @@
-import type { MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { DocumentListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+
+/** What happens to an uploaded document (MIL-07). The server decides; nothing is stored unless the status is "saved". */
+export type UploadDocumentResult = { status: "saved"; document: MaintenanceDocument } | { status: "too_large" | "unsupported_type" | "limit_reached" | "not_found" };
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -65,4 +68,12 @@ export interface Api {
   renameServicePlace(id: number, name: string): Promise<{ status: "saved"; place: ServicePlace } | { status: "name_taken" }>;
   /** Deletes a place only when no service uses it (MIL-06). */
   deleteServicePlace(id: number): Promise<"deleted" | "in_use">;
+  /** Every document attached to a service, oldest first (MIL-07). There are no file names: they are never kept. */
+  listDocuments(): Promise<DocumentListResponse>;
+  /** Attaches a photo or PDF to a service. The server checks the type from the file's own bytes, the 5 MB limit and the 10 per service. */
+  uploadDocument(recordId: number, file: Blob): Promise<UploadDocumentResult>;
+  /** Removes a document and its stored file for good. */
+  deleteDocument(id: number): Promise<void>;
+  /** Where to show or open a document. Undefined when the browser cannot open it (a PDF in the demo). */
+  documentUrl(document: MaintenanceDocument): string | undefined;
 }

@@ -1,4 +1,6 @@
-// Server-side size and type limits for endpoints that take an upload (AC-SET-03.2, hard rule 5: files are never stored).
+import { DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "@life-tracker/shared";
+
+// Server-side size and type limits for endpoints that take an upload (AC-SET-03.2, hard rule 5: files are never stored, except maintenance documents under ADR-0024).
 // Every such endpoint calls `readUpload` with its own policy before parsing anything. The spreadsheet itself is read in
 // the browser (ADR-0009), so the mileage import endpoint receives validated JSON rows and uses IMPORT_JSON_UPLOAD.
 
@@ -22,6 +24,16 @@ export type UploadResult =
 export const IMPORT_JSON_UPLOAD: UploadPolicy = {
   maxBytes: 512 * 1024,
   contentTypes: ["application/json"],
+  signatures: [],
+};
+
+/**
+ * A maintenance document (MIL-07, ADR-0024): at most 5 MB. The browser may send any of the four types or a generic
+ * binary type; the real type is read from the file's first bytes by the service (`sniffDocumentType`), never from this header.
+ */
+export const DOCUMENT_UPLOAD: UploadPolicy = {
+  maxBytes: MAX_DOCUMENT_BYTES,
+  contentTypes: [...DOCUMENT_TYPES, "application/octet-stream"],
   signatures: [],
 };
 

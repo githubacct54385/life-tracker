@@ -38,3 +38,16 @@ describe("security headers", () => {
     expect(res.headers.get("x-frame-options")).toBe("DENY");
   });
 });
+
+describe("security headers for documents", () => {
+  it("[AC-MIL-07.5] keeps `private, no-store` from a document and still adds the whole header set", () => {
+    const res = withSecurityHeaders(new Response("x", { headers: { "cache-control": "private, no-store", "content-type": "image/png" } }), { api: true });
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("content-security-policy")).toBe(CONTENT_SECURITY_POLICY);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("[AC-MIL-07.5] an API response that asks to be cached is forced back to no-store", () => {
+    expect(withSecurityHeaders(new Response("{}", { headers: { "cache-control": "public, max-age=600" } }), { api: true }).headers.get("cache-control")).toBe("no-store");
+  });
+});

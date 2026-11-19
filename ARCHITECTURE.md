@@ -30,12 +30,14 @@ flowchart LR
     end
 
     neon[("Neon Postgres")]
+    r2[("R2 bucket: maintenance documents (private)")]
 
     phone --> access
     desk --> access
     access -. "sign in" .-> gh
     access --> worker
     worker -- "app role (read/write)" --> neon
+    worker -- "DOCUMENTS binding (ADR-0024)" --> r2
     worker -. "logs" .-> logs
 
     dev --> main
@@ -44,7 +46,7 @@ flowchart LR
     rel -- "2. wrangler deploy" --> worker
 ```
 
-Merging to `main` does not touch Cloudflare or Neon. Only the Release workflow does.
+Merging to `main` does not touch Cloudflare or Neon. Only the Release workflow does. The R2 bucket has no public address: the Worker is its only reader, after the owner check (ADR-0024). Its file access sits in `repositories/documentStore.ts`, the one place that touches R2, and the Worker hands each request its bucket the same way it hands it its database.
 
 ## 2. Main code files and what they do
 

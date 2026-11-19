@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { MAINTENANCE_TYPES, MAX_MAINTENANCE_NOTE_LENGTH, MAX_SERVICE_NAME_LENGTH, type MaintenanceRecord, type ServicePlace } from "@life-tracker/shared";
+import { MAINTENANCE_TYPES, MAX_MAINTENANCE_NOTE_LENGTH, MAX_SERVICE_NAME_LENGTH, type MaintenanceDocument, type MaintenanceRecord, type ServicePlace } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { Button } from "../../ui/Button";
 import { Presence } from "../../ui/Presence";
@@ -10,6 +10,7 @@ import { Page } from "../Page";
 import { addableService, allServices, formFromRecord, NEW_PLACE, toRequest, type ServiceForm } from "./maintenanceFormat";
 import { applyFilter, HistoryFilters, LastDoneSection, NO_FILTER, PlacesSection, type HistoryFilterState } from "./MaintenanceHistory";
 import { formatMiles, shortDate } from "./readingFormat";
+import { ServiceDocuments } from "./ServiceDocuments";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 const labelClass = "block font-bold text-ink";
@@ -160,7 +161,7 @@ function ServiceFields({ idPrefix, form, places, today, onChange }: FieldsProps)
 }
 
 /** One saved service in the list, with edit and delete. */
-function ServiceRow({ record, places, today, onChanged }: { record: MaintenanceRecord; places: ServicePlace[]; today: string; onChanged: () => Promise<void> }) {
+function ServiceRow({ record, places, documents, today, onChanged }: { record: MaintenanceRecord; places: ServicePlace[]; documents: MaintenanceDocument[]; today: string; onChanged: () => Promise<void> }) {
   const api = useApi();
   const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
@@ -249,6 +250,7 @@ function ServiceRow({ record, places, today, onChanged }: { record: MaintenanceR
         ) : null}
       </Presence>
       <Presence>{error ? <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p> : null}</Presence>
+      <ServiceDocuments recordId={record.id} label={label} documents={documents} onChanged={onChanged} />
     </li>
   );
 }
@@ -261,6 +263,7 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
   const [odometerEdited, setOdometerEdited] = useState(false);
   const [records, setRecords] = useState<MaintenanceRecord[] | null>(null);
   const [places, setPlaces] = useState<ServicePlace[]>([]);
+  const [documents, setDocuments] = useState<MaintenanceDocument[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -276,6 +279,12 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
       setLoadFailed(false);
     } catch {
       setLoadFailed(true);
+    }
+    // Documents are an extra: if they cannot be loaded the services still show, just without their documents.
+    try {
+      setDocuments((await api.listDocuments()).documents);
+    } catch {
+      setDocuments([]);
     }
   }, [api]);
 
@@ -331,6 +340,7 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
           <Button type="submit" disabled={checked.request === undefined} busy={busy}>
             Save service
           </Button>
+          <p className="text-sm text-muted">After saving, add a photo or PDF of the receipt from the service in the list.</p>
           <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
           <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
         </form>
@@ -363,7 +373,7 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
                 ) : (
                   <ul className="mt-2">
                     {shown.map((record) => (
-                      <ServiceRow key={record.id} record={record} places={places} today={today} onChanged={refresh} />
+                      <ServiceRow key={record.id} record={record} places={places} documents={documents.filter((d) => d.recordId === record.id)} today={today} onChanged={refresh} />
                     ))}
                   </ul>
                 )}

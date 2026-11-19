@@ -1,5 +1,11 @@
 import {
   checkReading,
+  documentListResponseSchema,
+  maintenanceDocumentSchema,
+  MAX_DOCUMENT_BYTES,
+  MAX_DOCUMENTS_PER_RECORD,
+  sniffDocumentType,
+  type MaintenanceDocument,
   giftListResponseSchema,
   giftSchema,
   groupGiftsByMonth,
@@ -29,6 +35,18 @@ import {
   type WorkoutRecord,
 } from "@life-tracker/shared";
 import type { Api } from "../api/types";
+
+/** The bytes of a Blob, read in the browser. The demo keeps them in memory only and never sends them anywhere. */
+function readBytes(file: Blob): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+const toDataUrl = (bytes: Uint8Array, type: string) => `data:${type};base64,${btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(""))}`;
 
 /** Local calendar date of an instant, "YYYY-MM-DD". */
 function localDate(now: Date): string {
@@ -125,6 +143,10 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
     { id: 1, date: "2026-10-12", services: ["Wipers"], doneBy: "home", place: null, costCents: 1800, odometerMiles: 47_700, note: "Front pair" },
   ];
   let nextServiceId = 3;
+  // Demo documents stay in this page's memory (AC-MIL-07.8). Nothing is stored or sent anywhere.
+  let documents: MaintenanceDocument[] = [];
+  let nextDocumentId = 1;
+  const documentUrls = new Map<number, string>();
   const placeFor = (name: string | undefined): ServicePlace | null => {
     const trimmed = name?.trim();
     if (!trimmed) return null;
@@ -321,6 +343,8 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteMaintenance(id) {
       services = services.filter((s) => s.id !== id);
+      for (const doc of documents.filter((d) => d.recordId === id)) documentUrls.delete(doc.id);
+      documents = documents.filter((d) => d.recordId !== id);
     },
 
     async renameServicePlace(id, name) {
@@ -340,5 +364,30 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
       places = places.filter((p) => p.id !== id);
       return "deleted";
     },
+
+    async listDocuments() {
+      return documentListResponseSchema.parse({ documents });
+    },
+
+    async uploadDocument(recordId, file) {
+      if (!services.some((s) => s.id === recordId)) return { status: "not_found" };
+      if (file.size > MAX_DOCUMENT_BYTES) return { status: "too_large" };
+      const bytes = await readBytes(file);
+      const contentType = sniffDocumentType(bytes);
+      if (!contentType) return { status: "unsupported_type" };
+      if (documents.filter((d) => d.recordId === recordId).length >= MAX_DOCUMENTS_PER_RECORD) return { status: "limit_reached" };
+      const document = maintenanceDocumentSchema.parse({ id: nextDocumentId++, recordId, contentType, bytes: bytes.byteLength, createdAt: now().toISOString() });
+      documents = [...documents, document];
+      // A browser will not open a data: PDF as a page, so only images get an address.
+      if (contentType !== "application/pdf") documentUrls.set(document.id, toDataUrl(bytes, contentType));
+      return { status: "saved", document };
+    },
+
+    async deleteDocument(id) {
+      documents = documents.filter((d) => d.id !== id);
+      documentUrls.delete(id);
+    },
+
+    documentUrl: (document) => documentUrls.get(document.id),
   };
 }

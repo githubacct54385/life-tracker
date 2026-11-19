@@ -1,11 +1,14 @@
 import { Hono } from "hono";
-import { TIME_ZONE_HEADER, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, renamePlaceRequestSchema, saveMaintenanceRequestSchema, servicePlaceSchema } from "@life-tracker/shared";
+import { TIME_ZONE_HEADER, documentListResponseSchema, maintenanceDocumentSchema, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, renamePlaceRequestSchema, saveMaintenanceRequestSchema, servicePlaceSchema } from "@life-tracker/shared";
+import { DOCUMENT_UPLOAD, readUpload } from "../http/uploadLimits.js";
+import type { DocumentService } from "../services/documentService.js";
 import type { MaintenanceService } from "../services/maintenanceService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
 export interface MaintenanceDeps {
   logger: Logger;
   maintenance: MaintenanceService;
+  documents?: DocumentService;
 }
 
 const parseId = (raw: string): number | undefined => (/^[1-9]\d{0,15}$/.test(raw) ? Number(raw) : undefined);
@@ -14,8 +17,57 @@ const parseId = (raw: string): number | undefined => (/^[1-9]\d{0,15}$/.test(raw
  * Routes under /api/maintenance. The owner has already been checked by the app's middleware (every route, every method).
  * `/places` is registered before `/:id` so it is never read as an id.
  */
-export function maintenanceRoutes({ logger, maintenance }: MaintenanceDeps): Hono {
+export function maintenanceRoutes({ logger, maintenance, documents }: MaintenanceDeps): Hono {
   const routes = new Hono();
+
+  // Documents (MIL-07). Registered before `/:id`. Only counts and status codes are logged, never a name, key, size or content (AC-MIL-07.7).
+  routes.get("/documents", async (c) => {
+    if (!documents) return c.json({ error: "not_found" }, 404);
+    const list = await documents.list();
+    logger.info("maintenance.documents", { rowCount: list.length });
+    return c.json(documentListResponseSchema.parse({ documents: list }));
+  });
+
+  routes.get("/documents/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (!documents || id === undefined) return c.json({ error: id === undefined ? "invalid_request" : "not_found" }, id === undefined ? 400 : 404);
+    const found = await documents.read(id);
+    if (found.status !== "found") return c.json({ error: "not_found" }, 404);
+    // The stored type, never sniffed by the browser, and never kept by it or by a shared cache (AC-MIL-07.5).
+    return new Response(new Uint8Array(found.bytes), {
+      status: 200,
+      headers: {
+        "content-type": found.contentType,
+        "content-length": String(found.bytes.byteLength),
+        "x-content-type-options": "nosniff",
+        "cache-control": "private, no-store",
+        "content-disposition": "inline",
+      },
+    });
+  });
+
+  routes.delete("/documents/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (!documents || id === undefined) return c.json({ error: id === undefined ? "invalid_request" : "not_found" }, id === undefined ? 400 : 404);
+    try {
+      return (await documents.remove(id)) ? c.body(null, 204) : c.json({ error: "not_found" }, 404);
+    } catch (error) {
+      logger.error("maintenance.document_delete_failed", { errorType: errorTypeOf(error) });
+      return c.json({ error: "internal" }, 500);
+    }
+  });
+
+  routes.post("/:id/documents", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (!documents || id === undefined) return c.json({ error: id === undefined ? "invalid_request" : "not_found" }, id === undefined ? 400 : 404);
+    const upload = await readUpload(c.req.raw, DOCUMENT_UPLOAD);
+    if (!upload.ok) return c.json({ error: upload.error }, upload.status);
+    const outcome = await documents.upload(id, upload.bytes);
+    if (outcome.status === "unsupported_type") return c.json({ error: "unsupported_type" }, 415);
+    if (outcome.status === "no_record") return c.json({ error: "not_found" }, 404);
+    if (outcome.status === "full") return c.json({ error: "limit_reached" }, 409);
+    return c.json(maintenanceDocumentSchema.parse(outcome.document), 201);
+  });
 
   routes.get("/places", async (c) => {
     const places = await maintenance.places();

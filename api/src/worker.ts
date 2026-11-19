@@ -10,12 +10,15 @@ import { maintenanceService } from "./services/maintenanceService.js";
 import { weightService } from "./services/weightService.js";
 import { odometerService } from "./services/odometerService.js";
 import { workoutService } from "./services/workoutService.js";
-import { runWithDatabase } from "./services/requestScope.js";
+import { documentService } from "./services/documentService.js";
+import { runWithDatabase, runWithDocuments, type DocumentBucket } from "./services/requestScope.js";
 import { logger } from "./telemetry/logger.js";
 
 export interface Env extends AccessSettings {
   /** Neon connection string for the app role. A Worker secret (never in the repo, never logged). */
   DATABASE_URL?: string;
+  /** The private R2 bucket for maintenance documents (ADR-0024), bound by wrangler.jsonc. Never public. */
+  DOCUMENTS?: DocumentBucket;
   /** Static files from web/dist, bound by wrangler.jsonc. */
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
@@ -32,11 +35,11 @@ export function createWorker(deps: AppDeps) {
       if (redirect) return withSecurityHeaders(redirect, { api: false });
       const api = isApiPath(new URL(request.url).pathname);
       const response = api
-        ? await runWithDatabase(env.DATABASE_URL, async () => app.fetch(request, env), (done) => ctx?.waitUntil(done))
+        ? await runWithDatabase(env.DATABASE_URL, () => runWithDocuments(env.DOCUMENTS, async () => app.fetch(request, env)), (done) => ctx?.waitUntil(done))
         : await env.ASSETS.fetch(request);
       return withSecurityHeaders(response, { api });
     },
   };
 }
 
-export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService, workouts: workoutService, weight: weightService, maintenance: maintenanceService });
+export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService, workouts: workoutService, weight: weightService, maintenance: maintenanceService, documents: documentService });
