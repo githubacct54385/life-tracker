@@ -28,6 +28,7 @@ const reduce = vi.fn(async (_file: Blob, onPage: (page: number, of: number) => v
   onPage(1, 2);
   return smallPdf();
 });
+const bigPdfFile = (mb: number) => Object.defineProperty(new File(["%PDF-1.7 "], "scan.pdf", { type: "application/pdf" }), "size", { value: mb * 1024 * 1024 });
 const bigPdf = (mb: number) => new File(["%PDF-1.7 ", new Uint8Array(mb * 1024 * 1024)], "scan.pdf", { type: "application/pdf" });
 
 function Harness({ api, recordId }: { api: Api; recordId: number }) {
@@ -48,7 +49,7 @@ async function open(api: Api = demo(), existing = 0) {
   );
   return { api, recordId };
 }
-const chooser = () => screen.getByLabelText("Add a photo or PDF to Oil change on Nov 3") as HTMLInputElement;
+const chooser = () => screen.getByLabelText("Add photos or PDFs to Oil change on Nov 3") as HTMLInputElement;
 // The input accepts only photos and PDFs, so fireEvent is used to hand it any file, as a drag or an old browser could.
 const choose = (f: File) => fireEvent.change(chooser(), { target: { files: [f] } });
 const addIt = async () => userEvent.click(await screen.findByRole("button", { name: "Add to this service" }));
@@ -124,7 +125,7 @@ describe("choosing a document", () => {
   it("[AC-MIL-07.4] stops offering to add at 10 and says why", async () => {
     await open(undefined, MAX_DOCUMENTS_PER_RECORD);
     expect(await screen.findByText(/10 documents is the most for one service/)).toBeTruthy();
-    expect(screen.queryByLabelText(/Add a photo or PDF/)).toBeNull();
+    expect(screen.queryByLabelText(/Add photos or PDFs/)).toBeNull();
   });
 });
 
@@ -340,5 +341,170 @@ describe("making a PDF smaller", () => {
     finish(smallPdf());
     await waitFor(() => expect(screen.queryByText(/Ready to add/)).toBeNull());
     expect((await api.listDocuments()).documents).toHaveLength(0);
+  });
+});
+
+describe("choosing several documents at once", () => {
+  const chooseMany = (files: File[]) => fireEvent.change(chooser(), { target: { files } });
+  const huge = () => Object.defineProperty(new File([], "huge.pdf", { type: "application/pdf" }), "size", { value: MAX_DOCUMENT_BYTES + 1 });
+  const addAll = async () => userEvent.click(await screen.findByRole("button", { name: "Add all to this service" }));
+  const pdfBox = (name: string) => screen.getByRole("checkbox", { name });
+
+  it("[AC-MIL-07.18] the file chooser accepts several files", async () => {
+    await open();
+    expect(chooser().multiple).toBe(true);
+    expect(screen.getByText("You can choose several at once.")).toBeTruthy();
+  });
+
+  it("[AC-MIL-07.18] lists every chosen file with its size and the total, and stores nothing until Add", async () => {
+    const { api } = await open();
+    chooseMany([png(1), pdf(), bigPhoto()]);
+    expect((await screen.findByText(/Ready to add/)).textContent).toBe("Ready to add: 3 files, 1 KB in all");
+    const items = screen.getAllByRole("listitem").filter((li) => /^(Photo|PDF) \d/.test(li.textContent ?? ""));
+    expect(items.map((li) => li.textContent)).toEqual([expect.stringContaining("Photo 1 · 1 KB"), expect.stringContaining("PDF 2 · 1 KB"), expect.stringContaining("Photo 3 · 1 KB (made smaller from 3.0 MB)")]);
+    expect((await api.listDocuments()).documents).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText(/Ready to add/)).toBeNull();
+    expect((await api.listDocuments()).documents).toHaveLength(0);
+  });
+
+  it("[AC-MIL-07.18] any one file can be removed from the list, and the last one left reads as a single file", async () => {
+    await open();
+    chooseMany([png(1), png(2), png(3)]);
+    await waitFor(() => expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: 3 files, 1 KB in all"));
+    await userEvent.click(screen.getByRole("button", { name: "Remove Photo 2 from the list" }));
+    expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: 2 files, 1 KB in all");
+    await userEvent.click(screen.getByRole("button", { name: "Remove Photo 1 from the list" }));
+    expect(screen.getByText(/Ready to add/).textContent).toContain("Ready to add: Photo, 1 KB");
+    expect(screen.queryByRole("button", { name: /^Remove/ })).toBeNull();
+  });
+
+  it("[AC-MIL-07.18] each PDF has its own box to make it smaller, and ticking one leaves the others alone", async () => {
+    await open();
+    chooseMany([pdf(), png(1), pdf()]);
+    await screen.findByText(/Ready to add/);
+    expect(screen.queryByRole("checkbox", { name: "Make Photo 2 smaller" })).toBeNull();
+    await userEvent.click(pdfBox("Make PDF 3 smaller"));
+    expect(await screen.findByText(/1 KB → 14 B|1 KB &rarr; 14 B|→/)).toBeTruthy();
+    expect((pdfBox("Make PDF 3 smaller") as HTMLInputElement).checked).toBe(true);
+    expect((pdfBox("Make PDF 1 smaller") as HTMLInputElement).checked).toBe(false);
+    expect(reduce).toHaveBeenCalledTimes(1);
+  });
+
+  it("[AC-MIL-07.19] adds the files one after another, shows how far it is, and empties the list", async () => {
+    const base = demo();
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let calls = 0;
+    const api = {
+      ...base,
+      uploadDocument: async (id: number, file: Blob) => {
+        calls += 1;
+        if (calls === 2) await gate; // hold the second one so the progress can be seen
+        return base.uploadDocument(id, file);
+      },
+    } as Api;
+    await open(api);
+    chooseMany([png(1), png(2), png(3)]);
+    await addAll();
+    expect(await screen.findByText("Adding 2 of 3…")).toBeTruthy();
+    release();
+    expect((await screen.findByText(/^Added 3 documents/)).textContent).toBe("Added 3 documents, 1 KB in all.");
+    expect(screen.queryByText(/Ready to add/)).toBeNull();
+    expect((await api.listDocuments()).documents).toHaveLength(3);
+  });
+
+  it("[AC-MIL-07.19] a file that fails stays in the list with a message, and the others are still added", async () => {
+    const base = demo();
+    let calls = 0;
+    const api = {
+      ...base,
+      uploadDocument: async (id: number, file: Blob) => {
+        calls += 1;
+        if (calls === 2) throw new Error("network");
+        return base.uploadDocument(id, file);
+      },
+    } as Api;
+    await open(api);
+    chooseMany([png(1), png(2), png(3)]);
+    await addAll();
+    expect((await screen.findByText(/^Added 2 documents/)).textContent).toBe("Added 2 documents, 1 KB in all.");
+    expect((await screen.findByRole("alert")).textContent).toBe("That did not work. Try again.");
+    expect(screen.getByText(/Ready to add/).textContent).toContain("Ready to add: Photo, 1 KB"); // only the failed one is left
+    expect(screen.getAllByText("That did not work. Try again.").length).toBeGreaterThan(1); // on the file too
+    expect((await api.listDocuments()).documents).toHaveLength(2);
+    await addIt(); // trying again works
+    await screen.findByText("Added 1 KB.");
+    expect((await api.listDocuments()).documents).toHaveLength(3);
+  });
+
+  it("[AC-MIL-07.19] when the service becomes full, adding stops with a clear message and the rest stay in the list", async () => {
+    const base = demo();
+    let calls = 0;
+    const api = {
+      ...base,
+      uploadDocument: async (id: number, file: Blob) => {
+        calls += 1;
+        if (calls === 2) return { status: "too_much" } as const;
+        return base.uploadDocument(id, file);
+      },
+    } as Api;
+    await open(api);
+    chooseMany([png(1), png(2), png(3)]);
+    await addAll();
+    expect((await screen.findByRole("alert")).textContent).toContain("One service can hold 250 MB of documents in all");
+    expect(screen.getByText("Added 1 KB.")).toBeTruthy();
+    expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: 2 files, 1 KB in all");
+    expect(calls).toBe(2); // the third was not even tried
+  });
+
+  it("[AC-MIL-07.19] says the service is full when the server says so for the 10-document limit", async () => {
+    const base = demo();
+    const api = { ...base, uploadDocument: async () => ({ status: "limit_reached" }) as const } as Api;
+    await open(api);
+    chooseMany([png(1), png(2)]);
+    await addAll();
+    expect((await screen.findByRole("alert")).textContent).toBe("10 documents is the most for one service. Delete one to add another.");
+    expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: 2 files, 1 KB in all");
+  });
+
+  it("[AC-MIL-07.20] leaves out files that do not fit in the room left, and says how many", async () => {
+    await open(demo(), MAX_DOCUMENTS_PER_RECORD - 2);
+    await screen.findByText("Add more");
+    chooseMany([png(1), png(2), png(3), png(4)]);
+    expect((await screen.findByText(/Ready to add/)).textContent).toBe("Ready to add: 2 files, 1 KB in all");
+    expect((await screen.findByRole("alert")).textContent).toBe("2 of 4 files were left out: 2 would not fit (10 documents is the most for one service).");
+    expect(screen.queryByLabelText(/Add photos or PDFs/)).toBeNull(); // no room is left to choose more
+  });
+
+  it("[AC-MIL-07.20] leaves out a file over 100 MB or one that cannot be read, and lists the rest", async () => {
+    const failing = vi.fn().mockRejectedValueOnce(new Error("bad image")).mockResolvedValue(new Blob([new Uint8Array(PNG)], { type: "image/png" }));
+    const base = demo();
+    const recordId = (await base.listMaintenance()).records[0]!.id;
+    render(
+      <ApiProvider api={base}>
+        <ServiceDocuments recordId={recordId} label="Oil change on Nov 3" documents={[]} onChanged={async () => {}} shrink={failing} />
+      </ApiProvider>,
+    );
+    chooseMany([png(1), huge(), pdf(), png(2)]);
+    expect((await screen.findByText(/Ready to add/)).textContent).toBe("Ready to add: 2 files, 1 KB in all");
+    expect((await screen.findByRole("alert")).textContent).toBe("2 of 4 files were left out: 1 over 100 MB, 1 could not be read.");
+  });
+
+  it("[AC-MIL-07.20] says when the files together are more than one service can hold", async () => {
+    await open();
+    chooseMany([bigPdfFile(100), bigPdfFile(100), bigPdfFile(60)]);
+    expect(await screen.findByText(/more than the 250 MB one service can hold/)).toBeTruthy();
+  });
+
+  it("[AC-MIL-07.18] more files can be chosen while some are waiting, up to the room left", async () => {
+    await open(demo(), MAX_DOCUMENTS_PER_RECORD - 3);
+    await screen.findByText("Add more");
+    chooseMany([png(1), png(2)]);
+    await waitFor(() => expect(screen.getByText(/Ready to add/).textContent).toBe("Ready to add: 2 files, 1 KB in all"));
+    expect(screen.getByText("Choose more")).toBeTruthy();
+    chooseMany([png(3), png(4)]);
+    expect((await screen.findByText(/Ready to add/)).textContent).toBe("Ready to add: 3 files, 1 KB in all");
+    expect((await screen.findByRole("alert")).textContent).toBe("1 of 2 files was left out: 1 would not fit (10 documents is the most for one service).");
   });
 });

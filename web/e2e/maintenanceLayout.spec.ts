@@ -116,3 +116,33 @@ test("[AC-SET-02.3][AC-MIL-06.9] every control in the history and in the open pa
   small.push(...(await measure()));
   expect(small).toEqual([]);
 });
+
+test("[AC-MIL-07.18] the list of several chosen files fits a phone, passes axe in both themes, and every control in it is at least 44 px", { tag: "@AC-MIL-07.18" }, async ({ page }) => {
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  const PDF = Buffer.from("%PDF-1.4\n% synthetic test document\n");
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto("/car/maintenance");
+  await page.getByLabel(/Add photos or PDFs to Oil change, Air filter/).first().setInputFiles([
+    { name: "a.png", mimeType: "image/png", buffer: PNG },
+    { name: "b.pdf", mimeType: "application/pdf", buffer: PDF },
+    { name: "c.pdf", mimeType: "application/pdf", buffer: PDF },
+  ]);
+  await expect(page.getByText(/Ready to add: 3 files/)).toBeVisible();
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  const small = await page.evaluate(() => {
+    const out: string[] = [];
+    const panel = [...document.querySelectorAll<HTMLElement>("div")].find((d) => d.textContent?.startsWith("Ready to add"))!;
+    for (const el of panel.querySelectorAll<HTMLElement>("button, input")) {
+      const target = el instanceof HTMLInputElement && el.type === "checkbox" ? (el.closest("label") ?? el) : el;
+      const r = target.getBoundingClientRect();
+      if (r.width < 43.5 || r.height < 43.5) out.push(`"${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)}`);
+    }
+    return out;
+  });
+  expect(small).toEqual([]);
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    expect(result.violations.map((v) => `${scheme}: ${v.id}: ${v.nodes[0]?.html.slice(0, 90)}`)).toEqual([]);
+  }
+});
