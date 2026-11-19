@@ -40,6 +40,23 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # A throwaway Postgres for the browser tests (OPS-04). They run the real Worker and API against it, applying the real
+    # migrations and the real least-privilege app role. It lives only for this job.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          # No password: the database only exists inside this job and listens on the runner's own loopback port.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: lt_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lt_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - name: Look for app code
@@ -105,6 +122,8 @@ jobs:
           done
           echo "::warning::System libraries were not installed. If the end-to-end tests cannot start the browser, this is why."
           exit 0
-      - name: End-to-end tests
+      - name: End-to-end tests (real Worker, API and Postgres; some screen checks fake the API, see TESTING.md)
         if: steps.app.outputs.present == 'true'
+        env:
+          E2E_ADMIN_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/lt_e2e
         run: pnpm test:e2e

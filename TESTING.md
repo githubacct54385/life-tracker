@@ -4,7 +4,7 @@ We use the **test pyramid**: many fast unit tests, fewer integration tests, and 
 
 ```
           /\
-         /e2e\        ~10 to 15 tests    real browser, whole app, slow
+         /e2e\        a few dozen        real browser, whole app, slow
         /------\
        / integ  \     ~20% of tests      real Postgres, real handlers
       /----------\
@@ -68,26 +68,38 @@ Test names carry the AC ID. See [AGENTS.md](AGENTS.md) for the format and the `s
 
 ### 3. End-to-end tests (Playwright)
 
-**What they are.** The real built app in a real browser, served locally (`wrangler dev`), talking to the real API and a test database. Slow, so we keep the set small and only for journeys that cross every layer.
+**What they are.** The real built app in a real browser, served locally (`wrangler dev`). Slow, so we keep the set small.
 
-**Starting set (about 10 to 15 tests)**
+There are two kinds, and it matters which is which (OPS-04):
 
-| Journey | AC |
-|---|---|
-| Owner signs in and sees the app; another account sees access denied | AC-FND-02.1, AC-FND-02.2 |
-| Offline shows the offline message and no private data | AC-FND-05.3 |
-| Mileage spreadsheet import: choose file, preview, import, see the readings | AC-MIL-04 (happy path only) |
-| Log an odometer reading, see it in the weekly list | AC-MIL-01 |
-| Log a weight and a workout | AC-HLT-01, AC-HLT-02 |
-| Demo mode makes zero API requests (any request to the API fails the test) | AC-DEM-01.2 |
-| Layout: no horizontal scroll and correct navigation at 360, 768, and 1280 px | AC-FND-04, AC-DSH-01.4 |
-| Accessibility scan (axe) on main screens | AC-SET-02 |
+| Kind | Where | What is real | What is faked |
+|---|---|---|---|
+| **Full stack** | `web/e2e/stack/` | The built app, the Worker, the owner check with a synthetic Access token, the API, the SQL, the real migrations, the least-privilege `lt_app` database role, and a real Postgres | Nothing |
+| **Screen checks** (these specs fake the API) | the other files in `web/e2e/` | The built app, the Worker and the owner check | The API answers: the specs use `page.route` to give fixed synthetic data, so a layout or accessibility check sees the same screen at 360, 768 and 1280 px every time |
+
+A full-stack test fails if the API answers 5xx or the page logs a console error (`web/e2e/support/stack.ts`, proven by `stack/guard.spec.ts`). Each full-stack test starts from empty tables.
+
+**Full-stack journeys.** Odometer (log, the warning and its confirmation, edit, delete), weight (log, replace, delete), workouts (a timed one and pushups), regular gifts and special contributions, car maintenance (the place drop-down, a service at home, the future-date rule), the mileage spreadsheet import (and re-importing adds nothing), and the dashboard showing what was saved (AC-OPS-04.3).
+
+**Screen checks.** Layout (no sideways scrolling, navigation at the three widths), accessibility (axe, keyboard, 44 px), and the screens' own detail at the three widths. Behaviour is proven in unit tests and in the full-stack journeys, not here.
+
+**Also in this set.** Owner signs in and another account is refused (AC-FND-02.1, 02.2), offline shows the offline message (AC-FND-05.3), and demo mode makes zero API requests (AC-DEM-01.2).
 
 **How**
-- Only layout tests use the three-width matrix. Other tests run at one width (mobile for quick actions).
+- Only layout tests use the three-width matrix. Other tests run at one width.
 - Prefer role-based locators (`getByRole`). Avoid sleeps; wait for conditions.
 - Auth uses a synthetic owner and a synthetic non-owner (synthetic signed Access tokens). There is no bypass in the app.
-- Every test creates its own data through the API or a seed script and cleans up.
+- The tests run one at a time, because the full-stack ones share one database.
+- **The database.** `web/e2e/support/prepareDatabase.mjs` runs first. It empties the schema, applies the real migrations with `pnpm migrate`, creates the `lt_app` role with `db/setup/app-role-grants.sql`, and writes its connection string to the git-ignored `api/.dev.vars`. It refuses any database that is not on this computer or whose name does not contain `e2e`.
+- **In CI** a `postgres` service container is started and `E2E_ADMIN_DATABASE_URL` is set. If it is missing in CI the job fails.
+- **Locally** start any Postgres, create an empty database with `e2e` in its name, and run:
+
+```
+export E2E_ADMIN_DATABASE_URL=postgresql://postgres:<password>@127.0.0.1:5432/lt_e2e
+pnpm test:e2e
+```
+
+Without it, the full-stack tests are skipped with a message, and the screen checks still run.
 
 ### Manual checks
 
@@ -134,7 +146,7 @@ Cadence as the suite grows:
 ```
 pnpm test:unit     # fast, run constantly
 pnpm test:int      # starts a database container
-pnpm test:e2e      # builds, starts the local server, runs Playwright
+pnpm test:e2e      # builds, starts the local server, runs Playwright (full-stack tests need E2E_ADMIN_DATABASE_URL)
 pnpm test          # all three, as CI does
 node scripts/ac-coverage.mjs [--strict]
 ```
