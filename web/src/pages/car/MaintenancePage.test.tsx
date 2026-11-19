@@ -82,7 +82,7 @@ describe("Maintenance screen", () => {
     await userEvent.selectOptions(screen.getByLabelText("Place"), "Joe's Garage");
     await userEvent.click(save());
     await screen.findByRole("status");
-    const list = screen.getByRole("region", { name: "Services" });
+    const list = within(screen.getByRole("region", { name: "Services" })).getByRole("list");
     expect(within(list).getAllByText(/Joe's Garage/).length).toBe(2);
   });
 
@@ -146,7 +146,7 @@ describe("Maintenance screen", () => {
     const editForm = screen.getByRole("button", { name: "Save change" }).closest("form")!;
     await userEvent.click(within(editForm).getByRole("radio", { name: "I did it myself" }));
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
-    const list = screen.getByRole("region", { name: "Services" });
+    const list = within(screen.getByRole("region", { name: "Services" })).getByRole("list");
     expect(await within(list).findAllByText(/At home/)).toHaveLength(2);
     expect(within(list).queryByText(/Joe's Garage/)).toBeNull();
   });
@@ -156,7 +156,7 @@ describe("Maintenance screen", () => {
     await userEvent.click(await screen.findByRole("button", { name: /^Delete service: Wipers/ }));
     expect(screen.getByText("Delete this service? It is removed for good.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Keep it" }));
-    const list = () => within(screen.getByRole("region", { name: "Services" }));
+    const list = () => within(within(screen.getByRole("region", { name: "Services" })).getByRole("list"));
     expect(list().getByText("Wipers")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: /^Delete service: Wipers/ }));
     await userEvent.click(screen.getByRole("button", { name: "Yes, delete" }));

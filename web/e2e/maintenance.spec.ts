@@ -19,11 +19,11 @@ test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3] the maintenance screen offers the 
     await page.setViewportSize({ width, height });
     await page.goto("/car/maintenance");
     await expect(page.getByRole("checkbox", { name: "Oil change" })).toBeVisible();
-    await expect(page.getByLabel("Place")).toBeVisible();
+    await expect(page.getByLabel("Place", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Odometer (optional)")).toHaveValue("48402");
     await expect(page.getByText("Oil change, Air filter")).toBeVisible();
     await page.getByRole("radio", { name: "I did it myself" }).check();
-    await expect(page.getByLabel("Place")).toHaveCount(0);
+    await expect(page.getByLabel("Place", { exact: true })).toHaveCount(0);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `${width}px`).toBeLessThanOrEqual(0);
   }
@@ -43,7 +43,7 @@ test("[AC-MIL-05.5][AC-MIL-05.9] saving sends the date, the services, the place 
   await signInAs(context, OWNER);
   await page.goto("/car/maintenance");
   await page.getByRole("checkbox", { name: "Brakes" }).check();
-  await page.getByLabel("Place").selectOption("Joe's Garage");
+  await page.getByLabel("Place", { exact: true }).selectOption("Joe's Garage");
   await page.getByLabel("Date").fill("2026-11-01");
   await page.getByLabel("Cost (optional)").fill("249.50");
   await page.getByRole("button", { name: "Save service" }).click();

@@ -47,6 +47,9 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     if (input === "/api/maintenance" && init?.method === "POST") return Response.json(SERVICE, { status: 201 });
     if (input === "/api/maintenance/4" && init?.method === "PUT") return Response.json(SERVICE);
     if (input === "/api/maintenance/4" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === "/api/maintenance/places/1" && init?.method === "PUT") return JSON.parse(init.body as string).name === "Taken" ? Response.json({ error: "name_taken" }, { status: 409 }) : Response.json({ id: 1, name: "Joe's Auto" });
+    if (input === "/api/maintenance/places/1" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === "/api/maintenance/places/2" && init?.method === "DELETE") return Response.json({ error: "in_use" }, { status: 409 });
     return Response.json({ error: "not found" }, { status: 404 });
   }) as typeof fetch;
 }
@@ -58,7 +61,7 @@ const implementations: Array<[string, () => Api]> = [
 
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -249,6 +252,16 @@ describe.each(implementations)("[AC-MIL-05.9] maintenance contract: %s", (_name,
   });
 });
 
+describe("[AC-MIL-06.5] place contract (client.ts)", () => {
+  it("renames a place, reports a taken name, and reports a place that is in use", async () => {
+    const api = createClient(fakeNetwork());
+    expect(await api.renameServicePlace(1, "Joe's Auto")).toEqual({ status: "saved", place: { id: 1, name: "Joe's Auto" } });
+    expect(await api.renameServicePlace(1, "Taken")).toEqual({ status: "name_taken" });
+    expect(await api.deleteServicePlace(1)).toBe("deleted");
+    expect(await api.deleteServicePlace(2)).toBe("in_use");
+  });
+});
+
 describe("demo maintenance behaviour", () => {
   const friday = () => new Date(2026, 10, 13, 9, 0, 0);
   const base = { date: "2026-11-10", services: ["Tires"], doneBy: "shop" as const };
@@ -282,6 +295,19 @@ describe("demo maintenance behaviour", () => {
     expect((await api.listMaintenance()).records[0]!.services).toEqual(["Brakes"]);
     await api.deleteMaintenance(saved.id);
     expect((await api.listMaintenance()).records.map((r) => r.id)).not.toContain(saved.id);
+  });
+
+  it("[AC-MIL-06.5] renames a place for its services too, refuses a taken name, and deletes only an unused place", async () => {
+    const api = createDemoApi({ now: friday });
+    const unused = (await api.logMaintenance({ ...base, placeName: "Acme Tire" })).place!;
+    expect(await api.renameServicePlace(1, "JOE'S garage")).toMatchObject({ status: "saved" });
+    expect(await api.renameServicePlace(1, "acme tire")).toEqual({ status: "name_taken" });
+    expect((await api.listMaintenance()).records.find((r) => r.place?.id === 1)!.place!.name).toBe("JOE'S garage");
+    expect(await api.deleteServicePlace(1)).toBe("in_use");
+    const record = (await api.listMaintenance()).records.find((r) => r.place?.id === unused.id)!;
+    await api.deleteMaintenance(record.id);
+    expect(await api.deleteServicePlace(unused.id)).toBe("deleted");
+    expect((await api.listServicePlaces()).places.map((p) => p.id)).toEqual([1]);
   });
 });
 
