@@ -1,0 +1,64 @@
+name: PR screenshots
+
+# Takes before/after screenshots of the screens a pull request names, uploads them as assets of the `pr-screenshots`
+# release, and fills the Screenshots table in the pull request (ADR-0019, amended by OPS-05). Nothing is run by hand and
+# no tool access from the agent is needed: the built-in token does the upload and the edit.
+#
+# A pull request opts in with one line under its Screenshots heading, for example:   Screens: Home=/, Car=/car
+# Without that line the workflow does nothing. Images are named pr-<number>-... and deleted by pr-screenshots-cleanup.yml.
+#
+# Only types that a push or opening causes, so that editing the description (which this workflow does) cannot start it again.
+# Pull requests from forks are skipped: they get a read-only token, and this repository has one owner.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-screenshots-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # the release and its assets
+  pull-requests: write # the pull request description
+
+jobs:
+  screenshots:
+    name: screenshots
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Does the pull request name any screens?
+        id: screens
+        run: |
+          body=$(gh api "repos/${GH_REPO}/pulls/${{ github.event.pull_request.number }}" --jq '.body // ""')
+          if printf '%s' "$body" | grep -qiE '^[[:space:]]*Screens:[[:space:]]*[^[:space:]]'; then
+            echo "named=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "named=false" >> "$GITHUB_OUTPUT"
+            echo "No Screens line in the pull request, so there are no screenshots to take. Add one like: Screens: Home=/, Car=/car"
+          fi
+      - uses: pnpm/action-setup@v6
+        if: steps.screens.outputs.named == 'true'
+      - uses: actions/setup-node@v7
+        if: steps.screens.outputs.named == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        if: steps.screens.outputs.named == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Install browser
+        if: steps.screens.outputs.named == 'true'
+        timeout-minutes: 5
+        run: pnpm --filter web exec playwright install chromium
+      - name: Take the screenshots and fill the table
+        if: steps.screens.outputs.named == 'true'
+        run: pnpm pr-screenshots --pr ${{ github.event.pull_request.number }} --from-body

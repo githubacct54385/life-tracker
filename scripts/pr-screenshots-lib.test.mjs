@@ -67,3 +67,53 @@ describe("pr-screenshots helpers", () => {
     expect(() => replaceScreenshotTable("## Other\n", "| T |")).toThrow(/Screenshots/);
   });
 });
+
+describe("parseScreensLine", () => {
+  it("[AC-OPS-05.1] reads the screens from a Screens line anywhere in the body, separated by commas or semicolons", async () => {
+    const { parseScreensLine } = await import("./pr-screenshots-lib.mjs");
+    const body = "## Story\n\nSomething.\n\n## Screenshots\n\nScreens: Home=/, Log odometer=/car/log; Settings=/settings\n\n| Screen |\n|---|\n";
+    expect(parseScreensLine(body)).toEqual({
+      screens: [
+        { name: "Home", path: "/" },
+        { name: "Log odometer", path: "/car/log" },
+        { name: "Settings", path: "/settings" },
+      ],
+      problems: [],
+    });
+    expect(parseScreensLine("screens: Car=/car\r\nnext").screens).toEqual([{ name: "Car", path: "/car" }]);
+  });
+
+  it("[AC-OPS-05.1] no line, an empty line, or no body means no screens and no problems", async () => {
+    const { parseScreensLine } = await import("./pr-screenshots-lib.mjs");
+    for (const body of ["", null, undefined, "## Screenshots\n\nNo UI change\n", "Screens:", "Screens:   \n"]) {
+      expect(parseScreensLine(body), String(body)).toEqual({ screens: [], problems: [] });
+    }
+  });
+
+  it("[AC-OPS-05.1] a malformed entry is reported and the good ones are kept", async () => {
+    const { parseScreensLine } = await import("./pr-screenshots-lib.mjs");
+    const result = parseScreensLine("Screens: Home=/, Broken, =/x, NoSlash=car, Car=/car");
+    expect(result.screens).toEqual([{ name: "Home", path: "/" }, { name: "Car", path: "/car" }]);
+    expect(result.problems).toHaveLength(3);
+    expect(result.problems[0]).toContain("Name=/path");
+  });
+});
+
+describe("imageFiles", () => {
+  it("[AC-OPS-05.2] lists the before and the after images of every screen, so both are uploaded", async () => {
+    const { imageFiles, assetName } = await import("./pr-screenshots-lib.mjs");
+    const viewports = ["mobile", "tablet", "desktop"];
+    const found = (phase) => Object.fromEntries(["Home", "Car"].map((name) => [name, Object.fromEntries(viewports.map((v) => [v, assetName(74, name, v, phase)]))]));
+    const files = imageFiles(found("before"), found("after"));
+    expect(files).toHaveLength(12);
+    expect(files.filter((f) => f.endsWith("-before.png"))).toHaveLength(6);
+    expect(files.filter((f) => f.endsWith("-after.png"))).toHaveLength(6);
+    expect(new Set(files).size).toBe(12);
+  });
+
+  it("[AC-OPS-05.2] a screen that has no before (it is new) just has its after images, and a missing before is fine", async () => {
+    const { imageFiles } = await import("./pr-screenshots-lib.mjs");
+    expect(imageFiles({}, { New: { mobile: "a.png" } })).toEqual(["a.png"]);
+    expect(imageFiles(undefined, { New: { mobile: "a.png" } })).toEqual(["a.png"]);
+  });
+});

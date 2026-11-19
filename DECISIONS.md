@@ -254,6 +254,8 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 
 ## ADR-0019: Pull request screenshots are release assets, added by the agent
 
+> **Amended by OPS-05 (2026-11-19).** The upload now runs in GitHub Actions, not in the agent's session. A pull request names its changed screens on a `Screens: Home=/, Car=/car` line under its Screenshots heading, and `.github/workflows/pr-screenshots.yml` runs `pnpm pr-screenshots --pr <n> --from-body` with the built-in token (contents and pull-requests write). Reason: the agent's cloud session cannot use GitHub's GraphQL API or upload release assets, so the script failed there at the GitHub steps (pnpm's "ELIFECYCLE" line was only its echo of the exit code). The script also now uses the REST API only. Everything else below stands: release assets, the `pr-<number>-` names, and the cleanup workflow.
+
 **Decision.** Screenshots for a pull request are taken, uploaded, and attached by `scripts/pr-screenshots.mjs` (`pnpm pr-screenshots`), with no manual step for the owner.
 - It builds `main` (before) and the branch (after), serves each with the Static Web Apps CLI using a synthetic owner identity, and screenshots each named screen at 360, 768, and 1280 px.
 - Images are uploaded to one prerelease tagged `pr-screenshots`, named `pr-<number>-<screen>-<width>-<before|after>.png`, and the Screenshots table in the pull request is rewritten with links. A screen missing on `main` is marked "new screen".
