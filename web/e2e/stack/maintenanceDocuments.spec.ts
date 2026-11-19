@@ -144,3 +144,52 @@ test("[AC-MIL-07.12][AC-MIL-07.13] a photo opens full screen from the Recent doc
   await expect(dialog).toHaveCount(0);
   expect(await page.content()).not.toContain("jane-doe");
 });
+
+/** A real two-page PDF, written here: Helvetica text on each page, plus one object of filler so the file is `extraBytes` larger. Nothing real in it. */
+function realPdf(extraBytes: number): Buffer {
+  const text = (n: number) => `BT /F1 36 Tf 72 700 Td (Synthetic page ${n}) Tj ET`;
+  const bodies = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Count 2 /Kids [3 0 R 5 0 R] >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>",
+    `<< /Length ${text(1).length} >>\nstream\n${text(1)}\nendstream`,
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
+    `<< /Length ${text(2).length} >>\nstream\n${text(2)}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  const chunks: Buffer[] = [Buffer.from("%PDF-1.4\n")];
+  const offsets: number[] = [];
+  let at = chunks[0]!.length;
+  const add = (b: Buffer) => (chunks.push(b), (at += b.length));
+  bodies.forEach((body, i) => {
+    offsets.push(at);
+    add(Buffer.from(`${i + 1} 0 obj\n${body}\nendobj\n`));
+  });
+  offsets.push(at);
+  add(Buffer.concat([Buffer.from(`8 0 obj\n<< /Length ${extraBytes} >>\nstream\n`), Buffer.alloc(extraBytes, 0x41), Buffer.from("\nendstream\nendobj\n")]));
+  const xref = at;
+  const rows = offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("");
+  add(Buffer.from(`xref\n0 9\n0000000000 65535 f \n${rows}trailer\n<< /Size 9 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`));
+  return Buffer.concat(chunks);
+}
+
+test("[AC-MIL-07.14][AC-MIL-07.17] ticking Make this PDF smaller shrinks a real PDF in the browser, and the smaller copy is what is stored", { tag: "@AC-MIL-07.14" }, async ({ page }) => {
+  test.setTimeout(120_000);
+  const row = await addService(page);
+  const original = realPdf(30 * 1024 * 1024);
+  await chooser(page).setInputFiles({ name: "scan.pdf", mimeType: "application/pdf", buffer: original });
+  await expect(page.getByText(/Ready to add: PDF, 30\.0 MB/)).toBeVisible();
+  await expect(page.getByText("This PDF is large. Making it smaller is a good idea.")).toBeVisible();
+  await page.getByRole("checkbox", { name: "Make this PDF smaller" }).check();
+  const ready = page.getByText(/Ready to add: PDF, .* \(made smaller from 30\.0 MB\)/);
+  await expect(ready).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("status").filter({ hasText: "30.0 MB →" })).toBeVisible();
+  await page.getByRole("button", { name: "Add to this service" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /^Added .*(KB|MB)\.$/ })).toBeVisible({ timeout: 60_000 });
+  const link = row.getByRole("link", { name: /Open PDF 1/ });
+  const body = await (await page.request.get((await link.getAttribute("href"))!)).body();
+  expect(body.length).toBeLessThan(1024 * 1024);
+  expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(body.toString("latin1")).toMatch(/\/Count 2 /);
+  expect(body.toString("latin1")).toContain("/DCTDecode");
+});
