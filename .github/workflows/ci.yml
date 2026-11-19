@@ -47,7 +47,8 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ci-only-${{ github.run_id }}
+          # No password: the database only exists inside this job and listens on the runner's own loopback port.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: lt_e2e
         ports:
           - 5432:5432
@@ -124,5 +125,5 @@ jobs:
       - name: End-to-end tests (real Worker, API and Postgres; some screen checks fake the API, see TESTING.md)
         if: steps.app.outputs.present == 'true'
         env:
-          E2E_ADMIN_DATABASE_URL: postgresql://postgres:ci-only-${{ github.run_id }}@127.0.0.1:5432/lt_e2e
+          E2E_ADMIN_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/lt_e2e
         run: pnpm test:e2e

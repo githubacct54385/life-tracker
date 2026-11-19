@@ -8,7 +8,7 @@
 // Safety: it only runs against a local database whose name contains "e2e", because it drops the schemas first.
 // The password is made up on each run and only ever written to the git-ignored api/.dev.vars.
 //
-// E2E_ADMIN_DATABASE_URL, for example postgresql://postgres:postgres@127.0.0.1:5432/lt_e2e (CI sets it for its Postgres service).
+// E2E_ADMIN_DATABASE_URL, for example postgresql://postgres@127.0.0.1:5432/lt_e2e (CI sets it for its Postgres service).
 // Without it, nothing is prepared and the real-stack specs skip when run locally. In CI it is required.
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
