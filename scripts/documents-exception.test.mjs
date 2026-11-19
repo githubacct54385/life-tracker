@@ -15,7 +15,8 @@ describe("the stored-documents exception", () => {
     expect(adr).toContain("private Cloudflare R2 bucket");
     expect(adr).toMatch(/Only maintenance documents/);
     expect(adr).toMatch(/at most 10 per service/);
-    expect(adr).toMatch(/at most 5 MB/);
+    expect(adr).toMatch(/100 MB per file/);
+    expect(adr).toMatch(/250 MB per service/);
   });
 
   it("[AC-MIL-07.1] AGENTS.md hard rule 5 and SPEC.md point to ADR-0024", () => {
