@@ -104,6 +104,18 @@ Notes:
 
 **How weeks are calculated (ADR-0008, amended 2026-11-10).** Weeks run Friday to Thursday. A week's reading is the earliest one taken in it, so a reading added on Saturday still counts for that Friday's week (the period is then 8 days). Miles for a period are the difference between consecutive weekly readings. The app never guesses a missing reading: a week with no reading is shown as a gap, and the screen is flexible about late readings and missed weeks (a reading is always dated when it is entered).
 
+**Maintenance log (decided 2026-11-19, MIL-05 to MIL-08).**
+
+| Feature | Priority |
+|---|---|
+| Log a service: one or more types from a fixed list (oil change, tires, brakes, battery, air filter, wipers, alignment) or the owner's own, done at a shop or "I did it myself", the place (a drop-down of places used before), cost, date (defaults to today, can be changed), odometer (filled from the latest reading), note | MVP |
+| History, "last done" per type and miles since, filters, edit and delete, rename places | MVP |
+| Attach documents to a service (photo, screenshot or PDF), kept in private Cloudflare R2 (ADR-0024, an exception to the no-stored-files rule) | MVP |
+| Reminders and "next due": not built. The owner uses Apple Calendar. An "add to calendar" (.ics) button is a possible later extra. | Later |
+| Fuel fill-ups and miles per gallon | Not planned: the owner's finance app already has fuel spending, and the owner does not want to enter it twice |
+| Registration, insurance and inspection dates | Not planned for now |
+
+
 ### 6.6 Giving (charitable)
 
 | Feature | Priority |

@@ -24,7 +24,7 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub or Cloudflare Access) in any file. Use GitHub secrets and Cloudflare Worker secrets.
 3. **Never commit** `*.csv`, `*.xlsx`, Apple Health exports, or local settings. Test and demo fixtures are generated in code, not stored as data files.
 4. **Fail closed.** If the owner cannot be confirmed, the API returns nothing.
-5. **Do not store uploaded files.** Parse (in the browser where possible), keep the parsed rows, discard the file.
+5. **Do not store uploaded files.** Parse (in the browser where possible), keep the parsed rows, discard the file. The one exception is documents the owner attaches to a car service, kept in private storage under the limits in [ADR-0024](DECISIONS.md#adr-0024-maintenance-documents-are-stored-privately-in-cloudflare-r2).
 6. **No private data in logs or telemetry.** All logging goes through `telemetry/logger.ts` and its field allow-list.
 7. **Demo mode never calls the real API.**
 8. Commit with the GitHub noreply email only. `scripts/check-hygiene.sh` checks this in CI.
