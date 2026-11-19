@@ -3,8 +3,13 @@
 // assets, and fills the Screenshots table in the pull request. No manual steps (ADR-0019, AGENTS.md).
 //
 //   pnpm pr-screenshots --pr 10 --screen "Home=/" [--screen "Name=/path" ...]
+//   pnpm pr-screenshots --pr 10 --from-body      (the screens come from a `Screens: Home=/, Car=/car` line in the PR body)
 //   Options: --no-before  (skip building main; every screen is shown as new)
 //            --dry-run    (write images to a local folder only; no upload, no pull request edit)
+//   Browser: set PR_SCREENSHOTS_CHROMIUM to the path of a Chromium if Playwright's own is not installed.
+//
+// GitHub Actions runs this with --from-body for every pull request that has a Screens line (.github/workflows/pr-screenshots.yml),
+// so nobody has to run it by hand. It uses GitHub's REST API only (`gh api`), because GraphQL is blocked in some environments.
 //
 // Only synthetic data may ever be on screen: the app is served by `wrangler dev` with a synthetic owner
 // token signed by a throwaway key (the same approach as the end-to-end tests), and the repo is public so
@@ -17,23 +22,47 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, parseScreen, replaceScreenshotTable, screenshotTable } from "./pr-screenshots-lib.mjs";
+import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotTable } from "./pr-screenshots-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], ...opts });
 
+/** "owner/name" without GraphQL: from the Actions environment, GH_REPO, or the origin remote. */
+function repoSlug() {
+  const fromEnv = process.env.GITHUB_REPOSITORY || process.env.GH_REPO;
+  if (fromEnv) return fromEnv;
+  const url = run("git", ["remote", "get-url", "origin"]).trim();
+  // Works for github.com URLs and for proxied ones: the last two path segments are owner and name.
+  const match = /[:/]([^/:]+\/[^/]+?)(?:\.git)?$/.exec(url);
+  if (!match) throw new Error("Could not tell the repository from the origin remote. Set GH_REPO=owner/name.");
+  return match[1];
+}
+
+/** Which step was running, so a failure names it. pnpm's own "ELIFECYCLE" line at the end only repeats the exit code. */
+async function step(name, fn) {
+  try {
+    return await fn();
+  } catch (error) {
+    const message = error instanceof Error ? error.message.split("\n")[0] : String(error);
+    const failure = new Error(`${name} failed: ${message}`);
+    failure.step = name;
+    throw failure;
+  }
+}
+
 function parseArgs(argv) {
-  const out = { screens: [], before: true, dryRun: false, pr: undefined };
+  const out = { screens: [], before: true, dryRun: false, fromBody: false, pr: undefined };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--pr") out.pr = Number(argv[++i]);
     else if (a === "--screen") out.screens.push(parseScreen(argv[++i] ?? ""));
     else if (a === "--no-before") out.before = false;
     else if (a === "--dry-run") out.dryRun = true;
+    else if (a === "--from-body") out.fromBody = true;
     else throw new Error(`Unknown argument: ${a}`);
   }
   if (!Number.isInteger(out.pr) || out.pr < 1) throw new Error("--pr <number> is required");
-  if (out.screens.length === 0) throw new Error('At least one --screen "Name=/path" is required');
+  if (out.screens.length === 0 && !out.fromBody) throw new Error('At least one --screen "Name=/path" (or --from-body) is required');
   return out;
 }
 
@@ -98,7 +127,7 @@ async function withSite(treeRoot, port, fn) {
 }
 
 async function shoot(chromium, baseUrl, token, screens, outDir, pr, phase) {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.PR_SCREENSHOTS_CHROMIUM ? { executablePath: process.env.PR_SCREENSHOTS_CHROMIUM } : {});
   const found = {};
   try {
     for (const screen of screens) {
@@ -143,6 +172,18 @@ function buildBefore() {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  let slug;
+  const getRepo = () => (slug ??= repoSlug());
+  const readBody = () => run("gh", ["api", `repos/${getRepo()}/pulls/${args.pr}`, "--jq", ".body // \"\""]);
+  if (args.fromBody) {
+    const { screens, problems } = parseScreensLine(readBody());
+    for (const problem of problems) console.warn(problem);
+    if (screens.length === 0) {
+      console.log("The pull request has no Screens line, so there are no screenshots to take. Add one like: Screens: Home=/, Car=/car");
+      return;
+    }
+    args.screens = screens;
+  }
   const { chromium } = createRequire(path.join(root, "web/package.json"))("@playwright/test");
   const outDir = mkdtempSync(path.join(tmpdir(), "pr-shots-out-"));
   const cleanup = [outDir];
@@ -180,15 +221,25 @@ async function main() {
     return;
   }
 
-  const repo = run("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]).trim();
-  try {
-    run("gh", ["release", "view", RELEASE_TAG]);
-  } catch {
-    run("gh", ["release", "create", RELEASE_TAG, "--prerelease", "--latest=false", "--target", "main", "--title", "PR screenshots (temporary)", "--notes", "Images for open pull requests. Deleted automatically when the pull request closes. Synthetic demo data only."]);
-  }
-
+  const repo = getRepo();
   const files = Object.values({ ...before, ...after }).flatMap((byViewport) => Object.values(byViewport)).map((f) => path.join(outDir, f));
-  run("gh", ["release", "upload", RELEASE_TAG, "--clobber", ...files]);
+  try {
+    await step("Preparing the pr-screenshots release", () => {
+      try {
+        run("gh", ["release", "view", RELEASE_TAG, "--repo", repo]);
+      } catch {
+        run("gh", ["release", "create", RELEASE_TAG, "--repo", repo, "--prerelease", "--latest=false", "--target", "main", "--title", "PR screenshots (temporary)", "--notes", "Images for open pull requests. Deleted automatically when the pull request closes. Synthetic demo data only."]);
+      }
+    });
+    await step("Uploading the images to the release", () => run("gh", ["release", "upload", RELEASE_TAG, "--repo", repo, "--clobber", ...files]));
+  } catch (error) {
+    // Keep what was taken, so the work is not lost, and say plainly what failed.
+    const keep = path.join(root, "web/test-results/pr-screenshots");
+    mkdirSync(keep, { recursive: true });
+    cpSync(outDir, keep, { recursive: true });
+    error.message += `\nThe screenshots were taken and are kept in ${keep}. Building, pnpm and the browser worked; only the GitHub step failed. (The ELIFECYCLE line below comes from pnpm, which prints it whenever a script exits with an error.) In GitHub Actions this works with the built-in token; from a session that blocks GitHub uploads, let the pr-screenshots workflow do it.`;
+    throw error;
+  }
 
   const toUrls = (found) => (found ? Object.fromEntries(Object.entries(found).map(([vp, file]) => [vp, assetUrl(repo, file)])) : null);
   const results = args.screens.map((s) => {
@@ -196,10 +247,12 @@ async function main() {
     return { name: s.name, before: hasBefore ? toUrls(before[s.name]) : null, after: toUrls(after[s.name]) };
   });
 
-  const body = run("gh", ["pr", "view", String(args.pr), "--json", "body", "-q", ".body"]);
-  const bodyFile = path.join(outDir, "body.md");
-  writeFileSync(bodyFile, replaceScreenshotTable(body, screenshotTable(results)));
-  run("gh", ["pr", "edit", String(args.pr), "--body-file", bodyFile]);
+  await step("Updating the pull request description", () => {
+    const body = readBody();
+    const bodyFile = path.join(outDir, "body.md");
+    writeFileSync(bodyFile, replaceScreenshotTable(body, screenshotTable(results)));
+    run("gh", ["api", "--method", "PATCH", `repos/${repo}/pulls/${args.pr}`, "-F", `body=@${bodyFile}`]);
+  });
   console.log(`Uploaded ${files.length} images and updated the Screenshots table in pull request #${args.pr}.`);
   for (const dir of cleanup) rmSync(dir, { recursive: true, force: true });
 }

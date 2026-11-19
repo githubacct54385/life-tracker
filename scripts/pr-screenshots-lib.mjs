@@ -30,6 +30,27 @@ export function parseScreen(text) {
   return { name, path };
 }
 
+/**
+ * Reads the screens a pull request names, from a line such as `Screens: Home=/, Car=/car` anywhere in its body.
+ * Returns { screens, problems }: every entry that parses, and a message for each one that does not. No line, or an
+ * empty one, gives no screens and no problems (the pull request just has no screenshots to take).
+ */
+export function parseScreensLine(body) {
+  const line = (body ?? "").replace(/\r\n/g, "\n").split("\n").find((l) => /^\s*Screens:/i.test(l));
+  if (!line) return { screens: [], problems: [] };
+  const entries = line.replace(/^\s*Screens:/i, "").split(/[,;]/).map((e) => e.trim()).filter(Boolean);
+  const screens = [];
+  const problems = [];
+  for (const entry of entries) {
+    try {
+      screens.push(parseScreen(entry));
+    } catch {
+      problems.push(`Could not read "${entry}". Write each screen as Name=/path.`);
+    }
+  }
+  return { screens, problems };
+}
+
 function cell(viewport, url) {
   if (!url) return "new screen, no before";
   return `<a href="${url}"><img src="${url}" width="${viewport.shown}" alt=""></a>`;

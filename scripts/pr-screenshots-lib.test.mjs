@@ -67,3 +67,34 @@ describe("pr-screenshots helpers", () => {
     expect(() => replaceScreenshotTable("## Other\n", "| T |")).toThrow(/Screenshots/);
   });
 });
+
+describe("parseScreensLine", () => {
+  it("[AC-OPS-05.1] reads the screens from a Screens line anywhere in the body, separated by commas or semicolons", async () => {
+    const { parseScreensLine } = await import("./pr-screenshots-lib.mjs");
+    const body = "## Story\n\nSomething.\n\n## Screenshots\n\nScreens: Home=/, Log odometer=/car/log; Settings=/settings\n\n| Screen |\n|---|\n";
+    expect(parseScreensLine(body)).toEqual({
+      screens: [
+        { name: "Home", path: "/" },
+        { name: "Log odometer", path: "/car/log" },
+        { name: "Settings", path: "/settings" },
+      ],
+      problems: [],
+    });
+    expect(parseScreensLine("screens: Car=/car\r\nnext").screens).toEqual([{ name: "Car", path: "/car" }]);
+  });
+
+  it("[AC-OPS-05.1] no line, an empty line, or no body means no screens and no problems", async () => {
+    const { parseScreensLine } = await import("./pr-screenshots-lib.mjs");
+    for (const body of ["", null, undefined, "## Screenshots\n\nNo UI change\n", "Screens:", "Screens:   \n"]) {
+      expect(parseScreensLine(body), String(body)).toEqual({ screens: [], problems: [] });
+    }
+  });
+
+  it("[AC-OPS-05.1] a malformed entry is reported and the good ones are kept", async () => {
+    const { parseScreensLine } = await import("./pr-screenshots-lib.mjs");
+    const result = parseScreensLine("Screens: Home=/, Broken, =/x, NoSlash=car, Car=/car");
+    expect(result.screens).toEqual([{ name: "Home", path: "/" }, { name: "Car", path: "/car" }]);
+    expect(result.problems).toHaveLength(3);
+    expect(result.problems[0]).toContain("Name=/path");
+  });
+});
