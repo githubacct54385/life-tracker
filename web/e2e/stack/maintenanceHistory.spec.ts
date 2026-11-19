@@ -89,6 +89,6 @@ test("[AC-MIL-06.5][AC-OPS-04.3] a place can be renamed and the service keeps it
 test("[AC-MIL-06.6][AC-OPS-04.3] with no services the summary says what to do next", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
   await page.goto("/car/maintenance");
   await expect(page.getByText(/Nothing is recorded yet. Save a service/)).toBeVisible();
-  await expect(page.getByText("Not recorded yet")).toHaveCount(7);
+  await expect(page.getByText("Not recorded yet")).toHaveCount(9);
   await expect(page.getByText(/No services yet/)).toBeVisible();
 });
