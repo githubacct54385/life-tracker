@@ -1,8 +1,10 @@
 import {
+  documentListResponseSchema,
   giftListResponseSchema,
   giftSchema,
   healthResponseSchema,
   importMileageResultSchema,
+  maintenanceDocumentSchema,
   maintenanceListResponseSchema,
   maintenanceRecordSchema,
   servicePlaceSchema,
@@ -181,5 +183,21 @@ export function createClient(
     async deleteServicePlace(id) {
       return (await send(`/api/maintenance/places/${id}`, { method: "DELETE" }, [409])).status === 409 ? "in_use" : "deleted";
     },
+    async listDocuments() {
+      return documentListResponseSchema.parse(await request("/api/maintenance/documents"));
+    },
+    // The file is the whole body. Its type is read from its own bytes on the server, so the header is only a generic label.
+    // A refusal is an answer, not a failure: the server says why and nothing was stored.
+    async uploadDocument(recordId, file) {
+      const init = { method: "POST", body: file, headers: { "content-type": "application/octet-stream" } };
+      const response = await send(`/api/maintenance/${recordId}/documents`, init, [404, 409, 413, 415]);
+      if (response.status === 201) return { status: "saved", document: maintenanceDocumentSchema.parse(await response.json()) };
+      const refusals = { 404: "not_found", 409: "limit_reached", 413: "too_large", 415: "unsupported_type" } as const;
+      return { status: refusals[response.status as keyof typeof refusals] };
+    },
+    async deleteDocument(id) {
+      await send(`/api/maintenance/documents/${id}`, { method: "DELETE" });
+    },
+    documentUrl: (document) => `/api/maintenance/documents/${document.id}`,
   };
 }

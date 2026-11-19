@@ -15,3 +15,4 @@ export * from "./weightLog.js";
 export * from "./timeZone.js";
 export * from "./maintenance.js";
 export * from "./maintenanceHistory.js";
+export * from "./maintenanceDocuments.js";

@@ -1,9 +1,11 @@
 // Business rules for the car maintenance log (MIL-05). Nothing here touches SQL.
 //  * A service cannot be dated in the future (the owner's time zone decides what today is, ADR-0007).
 //  * A shop is found by name, ignoring letter case, or added once. A service done at home has no place.
+//  * Removing a service removes its documents too (MIL-07).
 //  * A service never touches the odometer readings: its mileage is just a number kept with it.
 import { calendarDateIn, isValidTimeZone, type SaveMaintenanceRequest, type ServicePlace } from "@life-tracker/shared";
 import { maintenanceRepository, type MaintenanceFields, type MaintenanceRepository, type StoredMaintenance } from "../repositories/maintenanceRepository.js";
+import { documentService, type DocumentService } from "./documentService.js";
 import { DEFAULT_OWNER_TIME_ZONE } from "./odometerService.js";
 
 export type MaintenanceOutcome = { status: "saved"; record: StoredMaintenance } | { status: "future_date" } | { status: "not_found" };
@@ -27,6 +29,8 @@ export interface MaintenanceService {
 export interface MaintenanceServiceOptions {
   now?: () => Date;
   timeZone?: string;
+  /** Deletes a service's stored files before the service goes (MIL-07). Left out, a service has no documents to remove. */
+  documents?: Pick<DocumentService, "removeAllFor">;
 }
 
 const blankToNull = (text: string | undefined) => (text === undefined || text.trim() === "" ? null : text.trim());
@@ -72,8 +76,12 @@ export function createMaintenanceService(repo: MaintenanceRepository, options: M
       return record ? { status: "saved", record } : { status: "not_found" };
     },
 
-    remove: (id) => repo.remove(id),
+    async remove(id) {
+      // Files first: if a file cannot be deleted this throws, the service is kept, and the delete can be tried again (AC-MIL-07.6).
+      await options.documents?.removeAllFor(id);
+      return repo.remove(id);
+    },
   };
 }
 
-export const maintenanceService = createMaintenanceService(maintenanceRepository);
+export const maintenanceService = createMaintenanceService(maintenanceRepository, { documents: documentService });

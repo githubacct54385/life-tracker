@@ -11,6 +11,7 @@ Cloudflare, GitHub and Neon rename menus often. If a name below is gone, look fo
 | `DATABASE_ADMIN_URL` (Neon admin login, direct connection) | GitHub `production` environment secret | The Release workflow, to run migrations |
 | `DATABASE_URL` (Neon `lt_app` login, pooled connection) | Cloudflare Worker secret | The Worker, at run time |
 | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, `OWNER_EMAIL` | Cloudflare Worker secrets | The Worker, to check the owner's Access token |
+| `DOCUMENTS` (R2 bucket binding, `life-tracker-documents`) | `api/wrangler.jsonc` (a name, not a secret) | The Worker, for car-service documents (ADR-0024) |
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | GitHub `production` environment secret | The Release workflow, to deploy |
 | GitHub OAuth app client ID and secret | Cloudflare Zero Trust (identity provider) | Sign-in through GitHub |
 
@@ -28,6 +29,18 @@ Follow [db/setup/README.md](../db/setup/README.md). In short: create a free proj
 3. Set up owner-only login with Cloudflare Access: follow [cloudflare-access-setup.md](cloudflare-access-setup.md). It ends with the three Access secrets on the Worker.
 4. Add `DATABASE_URL` as a Worker secret (Worker, Settings, Variables and secrets, **Secret**).
 5. Create the deploy token and add the GitHub secrets: follow [cloudflare-release-setup.md](cloudflare-release-setup.md).
+6. Create the document bucket (MIL-07, ADR-0024), described next.
+
+### Document bucket (Cloudflare R2)
+Car-service documents (a photo or PDF a shop gave) are stored in a private R2 bucket. Do this once, before the first Release that includes MIL-07, because the deploy fails if the bucket named in `api/wrangler.jsonc` does not exist.
+1. Cloudflare dashboard, **Storage & databases**, **R2 object storage**. R2 may ask for a payment method before it can be enabled. The free allowance (10 GB stored, 1 million writes and 10 million reads a month, no download fees) is far above what a few dozen documents a year use, so the cost stays $0. Check the current numbers on the page.
+2. **Create bucket**, name `life-tracker-documents`, location Automatic, storage class Standard.
+3. Leave public access off: do not enable the `r2.dev` address or a custom domain. A document is read only through the API after the owner check.
+4. The Release token needs **Account, Workers R2 Storage, Edit** besides **Edit Cloudflare Workers** ([cloudflare-release-setup.md](cloudflare-release-setup.md)). Without it the deploy cannot attach the bucket.
+5. The binding is the `r2_buckets` entry in `api/wrangler.jsonc` (name `DOCUMENTS`). There is no key, token or secret for the bucket in the Worker.
+6. Optional: a second bucket named `life-tracker-documents-staging` for testing uploads without touching real documents. Nothing binds it yet; it is for a staging Worker if one is added.
+7. R2 cannot restore a deleted file the way Neon can restore the database. The app asks before deleting a document. To keep a copy, download the documents you care about.
+8. Check it with the AC-MIL-07.9 entry in [manual-checks.md](manual-checks.md).
 
 ## 4. First release
 GitHub, Actions, **Release**, Run workflow on `main`, then approve the `production` environment. Open the run summary to see the commit and the migrations applied. Open the site in a private window: it should ask you to sign in, and `/api/health` should answer after you do.

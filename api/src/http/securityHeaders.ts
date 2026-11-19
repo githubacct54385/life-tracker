@@ -38,6 +38,7 @@ const BASE_HEADERS: Record<string, string> = {
 export function withSecurityHeaders(response: Response, options: { api: boolean }): Response {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(BASE_HEADERS)) headers.set(name, value);
-  if (options.api) headers.set("cache-control", "no-store");
+  // Documents say `private, no-store` themselves (AC-MIL-07.5). Anything else from the API is forced to no-store.
+  if (options.api && headers.get("cache-control") !== "private, no-store") headers.set("cache-control", "no-store");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }

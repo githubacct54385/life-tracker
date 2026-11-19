@@ -8,7 +8,8 @@ Cloudflare renames menus often. The names below were right when this was written
 1. Cloudflare dashboard, your profile (top right), **API Tokens**, **Create Token**.
 2. Use the **Edit Cloudflare Workers** template.
 3. Narrow it: under Account Resources pick **Include, your account** only. Under Zone Resources pick the least it allows (the app has no custom domain yet, so none is needed; remove the zone permissions if the template lets you). Add an expiry date you will remember (for example one year).
-4. Create the token and copy it once. Cloudflare will not show it again.
+4. For the car-service documents (MIL-07, ADR-0024), also add the permission **Account, Workers R2 Storage, Edit**. Without it the deploy cannot attach the R2 bucket. If the token already exists, open it in the dashboard, add that permission, and save: the token value does not change, so no GitHub secret needs updating.
+5. Create the token and copy it once. Cloudflare will not show it again.
 
 ## 2. Find the account ID
 Workers & Pages, Overview. The **Account ID** is on the right. It is not a password, but this project keeps account identifiers out of the repository anyway.

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDemoApi } from "../demo/demoApi";
 import { createClient } from "./client";
+import { MAX_DOCUMENT_BYTES, MAX_DOCUMENTS_PER_RECORD } from "@life-tracker/shared";
 import type { Api } from "./types";
 
 // One suite, two implementations (ADR-0014). `client.ts` runs against a fake network edge that answers the way
@@ -10,6 +11,7 @@ const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_00
 const WARNING = { status: "needs_confirmation", warnings: [{ kind: "lower_than_previous", previous: { date: "2026-11-06", miles: 48_550 } }] };
 
 const SERVICE = { id: 4, date: "2026-11-10", services: ["Oil change"], doneBy: "shop", place: { id: 1, name: "Joe's Garage" }, costCents: 8999, odometerMiles: 48_300, note: null };
+const DOCUMENT = { id: 9, recordId: 4, contentType: "image/png", bytes: 11, createdAt: "2026-11-13T12:00:00Z" };
 const WORKOUT = { id: 7, date: "2026-11-13", type: "Run", minutes: 30, reps: null, note: null, source: "manual" };
 
 function fakeNetwork(sent: { method?: string; body?: string; guard?: string | null; url: string }[] = []): typeof fetch {
@@ -42,6 +44,11 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     if (input === "/api/workouts/7" && init?.method === "PUT") return Response.json(WORKOUT);
     if (input === "/api/workouts/7" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/odometer/9" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === "/api/maintenance/documents" && init?.method === "GET") return Response.json({ documents: [DOCUMENT] });
+    if (input === "/api/maintenance/documents/9" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === "/api/maintenance/4/documents" && init?.method === "POST") return Response.json(DOCUMENT, { status: 201 });
+    const refusal = /^\/api\/maintenance\/(5|6|7|8)\/documents$/.exec(input);
+    if (refusal && init?.method === "POST") return Response.json({ error: "refused" }, { status: { 5: 409, 6: 413, 7: 415, 8: 404 }[Number(refusal[1]) as 5 | 6 | 7 | 8] });
     if (input === "/api/maintenance/places" && init?.method === "GET") return Response.json({ places: [SERVICE.place] });
     if (input === "/api/maintenance" && init?.method === "GET") return Response.json({ records: [SERVICE] });
     if (input === "/api/maintenance" && init?.method === "POST") return Response.json(SERVICE, { status: 201 });
@@ -61,7 +68,7 @@ const implementations: Array<[string, () => Api]> = [
 
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -249,6 +256,70 @@ describe.each(implementations)("[AC-MIL-05.9] maintenance contract: %s", (_name,
     const first = list.records[0]!;
     expect(await api.editMaintenance(first.id, request)).toMatchObject({ id: first.id });
     await expect(api.deleteMaintenance(first.id)).resolves.toBeUndefined();
+  });
+});
+
+// The first bytes of a PNG, then filler. Synthetic: not a real image.
+const pngBlob = (extra = 3) => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...new Array(extra).fill(1)])]);
+
+describe.each(implementations)("[AC-MIL-07.8] document contract: %s", (_name, make) => {
+  it("attaches a document to a service, lists it, gives it an address and removes it", async () => {
+    const api = make();
+    const record = (await api.listMaintenance()).records[0]!;
+    const saved = await api.uploadDocument(record.id, pngBlob());
+    expect(saved).toMatchObject({ status: "saved", document: { recordId: record.id, contentType: "image/png", bytes: 11 } });
+    if (saved.status !== "saved") throw new Error("not saved");
+    expect((await api.listDocuments()).documents.map((d) => d.recordId)).toContain(record.id);
+    expect(typeof api.documentUrl(saved.document)).toBe("string");
+    await expect(api.deleteDocument(saved.document.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("[AC-MIL-07.3] document answers (client.ts)", () => {
+  it("reports each refusal the server can give, and sends the file as the body with the custom header and no file name", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    const api = createClient(fakeNetwork(sent), { retryDelayMs: 0 });
+    expect(await api.uploadDocument(5, pngBlob())).toEqual({ status: "limit_reached" });
+    expect(await api.uploadDocument(6, pngBlob())).toEqual({ status: "too_large" });
+    expect(await api.uploadDocument(7, pngBlob())).toEqual({ status: "unsupported_type" });
+    expect(await api.uploadDocument(8, pngBlob())).toEqual({ status: "not_found" });
+    expect(sent.map((r) => [r.method, r.url])).toEqual([5, 6, 7, 8].map((id) => ["POST", `/api/maintenance/${id}/documents`]));
+    expect(sent.every((r) => r.guard === "1")).toBe(true);
+    expect(sent.every((r) => (r.body as unknown) instanceof Blob)).toBe(true);
+    expect(api.documentUrl({ ...DOCUMENT, contentType: "image/png" } as never)).toBe("/api/maintenance/documents/9");
+  });
+});
+
+describe("demo documents", () => {
+  const record = async (api: Api) => (await api.listMaintenance()).records[0]!.id;
+
+  it("[AC-MIL-07.3][AC-MIL-07.8] checks the type from the bytes, the size and the limit of 10, and keeps files in memory only", async () => {
+    const fetchSpy = vi.fn(() => Promise.reject(new Error("network call in demo mode")));
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      const api = createDemoApi();
+      const id = await record(api);
+      expect(await api.uploadDocument(id, new Blob(["plain text"], { type: "image/png" }))).toEqual({ status: "unsupported_type" });
+      expect(await api.uploadDocument(id, new Blob([new Uint8Array(MAX_DOCUMENT_BYTES + 1)]))).toEqual({ status: "too_large" });
+      expect(await api.uploadDocument(9999, pngBlob())).toEqual({ status: "not_found" });
+      for (let i = 0; i < MAX_DOCUMENTS_PER_RECORD; i += 1) expect((await api.uploadDocument(id, pngBlob(i + 1))).status).toBe("saved");
+      expect(await api.uploadDocument(id, pngBlob())).toEqual({ status: "limit_reached" });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("[AC-MIL-07.8] shows an image from memory, has no address for a PDF, and removes documents with their service", async () => {
+    const api = createDemoApi();
+    const id = await record(api);
+    const image = await api.uploadDocument(id, pngBlob());
+    const pdf = await api.uploadDocument(id, new Blob([new TextEncoder().encode("%PDF-1.7 synthetic")]));
+    if (image.status !== "saved" || pdf.status !== "saved") throw new Error("not saved");
+    expect(api.documentUrl(image.document)).toMatch(/^data:image\/png;base64,/);
+    expect(api.documentUrl(pdf.document)).toBeUndefined();
+    await api.deleteMaintenance(id);
+    expect((await api.listDocuments()).documents).toEqual([]);
   });
 });
 
