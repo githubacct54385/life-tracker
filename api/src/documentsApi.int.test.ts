@@ -76,8 +76,8 @@ describe.skipIf(!server)("/api/maintenance documents (real Postgres)", () => {
 
   it("[AC-MIL-07.10] allows a file of up to 100 MB in the table, and refuses a service going past 250 MB in total", async () => {
     const id = await addService();
-    // Rows only, as the file itself is not needed to test the SQL: 100 + 100 + 49.9 MB are already used.
-    for (const mb of [100, 100, 49.9]) expect((await documentRepository.insert(id, crypto.randomUUID(), "application/pdf", Math.round(mb * 1024 * 1024))).status).toBe("saved");
+    // Rows only, as the file itself is not needed to test the SQL: 100 + 100 + 50 MB use the whole 250 MB.
+    for (const mb of [100, 100, 50]) expect((await documentRepository.insert(id, crypto.randomUUID(), "application/pdf", mb * 1024 * 1024)).status).toBe("saved");
     const res = await upload(id);
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "too_much" });

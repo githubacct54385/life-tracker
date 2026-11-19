@@ -143,6 +143,8 @@ Cadence as the suite grows:
 
 ## Commands (once code exists)
 
+Step-by-step setup for a laptop, including a Mac, is in the [README](README.md#run-the-tests-locally).
+
 ```
 pnpm test:unit     # fast, run constantly
 pnpm test:int      # starts a database container
