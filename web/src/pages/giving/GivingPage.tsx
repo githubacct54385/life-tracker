@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { givingYearToDate, monthlyRegularGiving, type GiftRecord, type SpecialContributionRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
+import { HubLink } from "../../ui/HubLink";
+import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
 import { dateLabel, formatCents, monthLabel, todayLocal } from "./giftFormat";
 
 const card = "rounded-2xl border border-line bg-card p-4 text-ink";
-const linkClass = "block min-h-11 rounded-xl border border-line bg-card p-4 text-ink";
 
 /**
  * Giving home (GIV-03): year totals for regular, special and combined giving, and regular giving grouped by the month
@@ -57,16 +57,12 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
     <Page title="Giving">
       <div className="space-y-4 text-ink">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Link to="/giving/log" className={linkClass}>
-            Log a gift
-          </Link>
-          <Link to="/giving/special" className={linkClass}>
-            Special contributions
-          </Link>
+          <HubLink to="/giving/log" icon="gift" title="Log a gift" description="Record a regular gift for a month" />
+          <HubLink to="/giving/special" icon="giving" title="Special contributions" description="Gifts outside the monthly pattern" />
         </div>
 
         {failed && <p role="alert">That did not work. Try again.</p>}
-        {!failed && !loaded && <p className="text-muted">Loading…</p>}
+        {!failed && !loaded && <Skeleton lines={3} />}
         {empty && <p className="text-muted">No giving recorded yet. Log a gift to see your totals and your month-by-month history here.</p>}
 
         {loaded && !empty && totals && months && (

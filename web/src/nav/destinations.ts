@@ -1,12 +1,14 @@
-export type Destination = { label: string; path: string };
+import type { IconName } from "../ui/Icon";
+
+export type Destination = { label: string; path: string; icon: IconName };
 
 // ADR-0017 as amended by ADR-0021. There is no Money destination.
-export const HOME: Destination = { label: "Home", path: "/" };
-export const GIVING: Destination = { label: "Giving", path: "/giving" };
-export const HEALTH: Destination = { label: "Health", path: "/health" };
-export const CAR: Destination = { label: "Car", path: "/car" };
-export const MORE: Destination = { label: "More", path: "/more" };
-export const SETTINGS: Destination = { label: "Settings", path: "/settings" };
+export const HOME: Destination = { label: "Home", path: "/", icon: "home" };
+export const GIVING: Destination = { label: "Giving", path: "/giving", icon: "giving" };
+export const HEALTH: Destination = { label: "Health", path: "/health", icon: "health" };
+export const CAR: Destination = { label: "Car", path: "/car", icon: "car" };
+export const MORE: Destination = { label: "More", path: "/more", icon: "more" };
+export const SETTINGS: Destination = { label: "Settings", path: "/settings", icon: "settings" };
 
 /** Phone tab bar and tablet icon rail: Settings lives inside More. */
 export const COMPACT_NAV: Destination[] = [HOME, GIVING, HEALTH, CAR, MORE];

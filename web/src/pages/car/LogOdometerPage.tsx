@@ -1,4 +1,5 @@
 import { Button } from "../../ui/Button.js";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { Presence } from "../../ui/Presence.js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
@@ -239,7 +240,7 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
             Recent readings
           </h2>
           {readings === null ? (
-            <p className="mt-2 text-muted">Loading…</p>
+            <Skeleton lines={3} />
           ) : readings.length === 0 ? (
             <p className="mt-2 text-muted">No readings yet. Enter this week&rsquo;s odometer reading above, then save.</p>
           ) : (

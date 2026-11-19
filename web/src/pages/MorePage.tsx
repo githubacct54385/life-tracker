@@ -1,12 +1,10 @@
-import { Link } from "react-router";
+import { HubLink } from "../ui/HubLink";
 import { Page } from "./Page";
 
 export function MorePage() {
   return (
     <Page title="More">
-      <Link to="/settings" className="block rounded-xl border border-line bg-card p-4 text-ink">
-        Settings
-      </Link>
+      <HubLink to="/settings" icon="settings" title="Settings" description="Appearance, units and sign out" />
     </Page>
   );
 }

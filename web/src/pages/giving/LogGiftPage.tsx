@@ -1,4 +1,5 @@
 import { Button } from "../../ui/Button.js";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { groupGiftsByMonth, MAX_DESCRIPTION_LENGTH, PAYMENT_METHODS, type GiftRecord, type PaymentMethod, type SaveGiftRequest } from "@life-tracker/shared";
@@ -238,7 +239,7 @@ export function LogGiftPage() {
             Gifts by month
           </h2>
           {months === null ? (
-            <p className="mt-2 text-muted">Loading…</p>
+            <Skeleton lines={3} />
           ) : months.length === 0 ? (
             <p className="mt-2 text-muted">No gifts yet. Fill in the form and save your first gift.</p>
           ) : (

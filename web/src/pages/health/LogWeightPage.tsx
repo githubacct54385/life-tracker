@@ -1,4 +1,5 @@
 import { Button } from "../../ui/Button.js";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { Presence } from "../../ui/Presence.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -244,7 +245,7 @@ export function LogWeightPage() {
             Weight trend
           </h2>
           {entries === null ? (
-            <p className="mt-2 text-muted">Loading…</p>
+            <Skeleton lines={3} />
           ) : entries.length === 0 ? (
             <p className="mt-2 text-muted">No weights yet. Enter today&rsquo;s weight to start the chart.</p>
           ) : (
@@ -257,7 +258,7 @@ export function LogWeightPage() {
             Entries
           </h2>
           {entries === null ? (
-            <p className="mt-2 text-muted">Loading…</p>
+            <Skeleton lines={3} />
           ) : entries.length === 0 ? (
             <p className="mt-2 text-muted">No weights yet. Enter today&rsquo;s weight above, then save.</p>
           ) : (

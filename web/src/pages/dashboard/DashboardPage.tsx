@@ -19,10 +19,13 @@ import { formatMiles, shortDate } from "../car/readingFormat";
 import { formatCents, todayLocal } from "../giving/giftFormat";
 import { formatMinutes } from "../health/workoutFormat";
 import { formatWeight } from "../health/weightFormat";
+import { Icon } from "../../ui/Icon.js";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { Page } from "../Page";
 
-const card = "rounded-2xl border border-line bg-card p-4 text-ink";
-const action = "flex min-h-11 items-center justify-center rounded-xl border border-line bg-card px-4 py-3 text-center font-bold text-ink";
+// The whole card is the link (the title's link is stretched over it), so a tap anywhere on a tile opens its screen.
+const card = "relative rounded-2xl border border-line bg-card p-4 text-ink transition-shadow hover:border-g300 hover:shadow-sm focus-within:border-g500";
+const action = "flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 py-3 text-center font-bold text-ink hover:border-g300 hover:shadow-sm";
 
 type Load<T> = { state: "loading" } | { state: "error" } | { state: "ok"; value: T };
 
@@ -46,11 +49,12 @@ function Tile<T>({ id, title, load, to, empty, children }: { id: string; title: 
   return (
     <section aria-labelledby={id} className={card}>
       <h2 id={id} className="text-sm font-bold text-muted">
-        <Link to={to} className="underline">
+        <Link to={to} className="-my-3 flex items-center justify-between gap-2 rounded-md py-3 after:absolute after:inset-0 after:rounded-2xl">
           {title}
+          <Icon name="chevron" className="size-4" />
         </Link>
       </h2>
-      {load.state === "loading" && <p className="mt-2 text-muted">Loading…</p>}
+      {load.state === "loading" && <Skeleton lines={2} className="mt-3" />}
       {load.state === "error" && <p className="mt-2">Could not load this. Try again later.</p>}
       {load.state === "ok" && (empty?.(load.value) ?? children(load.value))}
     </section>
@@ -175,15 +179,19 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Link to="/health/weight" className={action}>
+              <Icon name="scale" className="size-5 text-gtext" />
               Add weight
             </Link>
             <Link to="/health/workouts" className={action}>
+              <Icon name="dumbbell" className="size-5 text-gtext" />
               Add workout
             </Link>
             <Link to="/car/log" className={action}>
+              <Icon name="gauge" className="size-5 text-gtext" />
               Log odometer
             </Link>
             <Link to="/giving/log" className={action}>
+              <Icon name="gift" className="size-5 text-gtext" />
               Add giving
             </Link>
           </div>

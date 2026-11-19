@@ -1,4 +1,5 @@
 import { Button } from "../../ui/Button.js";
+import { Skeleton } from "../../ui/Skeleton.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
@@ -216,7 +217,7 @@ export function SpecialContributionsPage() {
             {list !== null && list.length > 0 && <span aria-label="Special contributions total">{formatCents(specialContributionTotal(list))}</span>}
           </h2>
           {list === null ? (
-            <p className="mt-2 text-muted">Loading…</p>
+            <Skeleton lines={3} />
           ) : list.length === 0 ? (
             <p className="mt-2 text-muted">No special contributions yet. Add one with the form, with a description.</p>
           ) : (

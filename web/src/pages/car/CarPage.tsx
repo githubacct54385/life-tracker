@@ -1,19 +1,14 @@
-import { Link } from "react-router";
+import { HubLink } from "../../ui/HubLink";
 import { Page } from "../Page";
 
 export function CarPage() {
   return (
     <Page title="Car">
-      <Link to="/car/log" className="block rounded-xl border border-line bg-card p-4 text-ink">
-        Log odometer
-      </Link>
-      <Link to="/car/stats" className="mt-3 block rounded-xl border border-line bg-card p-4 text-ink">
-        Mileage stats
-      </Link>
-
-      <Link to="/car/import" className="mt-3 block rounded-xl border border-line bg-card p-4 text-ink">
-        Import history
-      </Link>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <HubLink to="/car/log" icon="gauge" title="Log odometer" description="Add this week's reading" />
+        <HubLink to="/car/stats" icon="chart" title="Mileage stats" description="Weekly miles and trends" />
+        <HubLink to="/car/import" icon="upload" title="Import history" description="Bring in your spreadsheet" />
+      </div>
     </Page>
   );
 }
