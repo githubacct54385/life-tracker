@@ -22,7 +22,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotTable } from "./pr-screenshots-lib.mjs";
+import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, imageFiles, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotTable } from "./pr-screenshots-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], ...opts });
@@ -222,7 +222,7 @@ async function main() {
   }
 
   const repo = getRepo();
-  const files = Object.values({ ...before, ...after }).flatMap((byViewport) => Object.values(byViewport)).map((f) => path.join(outDir, f));
+  const files = imageFiles(before, after).map((f) => path.join(outDir, f));
   try {
     await step("Preparing the pr-screenshots release", () => {
       try {

@@ -98,3 +98,22 @@ describe("parseScreensLine", () => {
     expect(result.problems[0]).toContain("Name=/path");
   });
 });
+
+describe("imageFiles", () => {
+  it("[AC-OPS-05.2] lists the before and the after images of every screen, so both are uploaded", async () => {
+    const { imageFiles, assetName } = await import("./pr-screenshots-lib.mjs");
+    const viewports = ["mobile", "tablet", "desktop"];
+    const found = (phase) => Object.fromEntries(["Home", "Car"].map((name) => [name, Object.fromEntries(viewports.map((v) => [v, assetName(74, name, v, phase)]))]));
+    const files = imageFiles(found("before"), found("after"));
+    expect(files).toHaveLength(12);
+    expect(files.filter((f) => f.endsWith("-before.png"))).toHaveLength(6);
+    expect(files.filter((f) => f.endsWith("-after.png"))).toHaveLength(6);
+    expect(new Set(files).size).toBe(12);
+  });
+
+  it("[AC-OPS-05.2] a screen that has no before (it is new) just has its after images, and a missing before is fine", async () => {
+    const { imageFiles } = await import("./pr-screenshots-lib.mjs");
+    expect(imageFiles({}, { New: { mobile: "a.png" } })).toEqual(["a.png"]);
+    expect(imageFiles(undefined, { New: { mobile: "a.png" } })).toEqual(["a.png"]);
+  });
+});

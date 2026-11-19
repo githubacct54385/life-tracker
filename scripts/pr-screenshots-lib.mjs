@@ -51,6 +51,15 @@ export function parseScreensLine(body) {
   return { screens, problems };
 }
 
+/**
+ * Every image to upload, from the "before" and "after" results ({ screenName: { viewportKey: fileName } }).
+ * Both are listed. (Merging them into one object would let "after" overwrite "before", because both are keyed by screen
+ * name, and the before images would never be uploaded.)
+ */
+export function imageFiles(before, after) {
+  return [before, after].flatMap((found) => Object.values(found ?? {})).flatMap((byViewport) => Object.values(byViewport));
+}
+
 function cell(viewport, url) {
   if (!url) return "new screen, no before";
   return `<a href="${url}"><img src="${url}" width="${viewport.shown}" alt=""></a>`;
