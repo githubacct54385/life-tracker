@@ -217,7 +217,7 @@ export function LogWeightPage() {
           </label>
           <input id="new-weight" ref={field} className={inputClass} inputMode="decimal" autoComplete="off" value={text} onChange={(e) => { setText(e.target.value); setMessage(null); setReplace(null); }} />
           {text.trim() !== "" && pounds === undefined && <p className="text-sm">Enter a weight in {unit === "kg" ? "kilograms" : "pounds"}, like {unit === "kg" ? "78.2" : "172.4"}.</p>}
-          <p className="text-sm">Saved as of today. Change {unit === "kg" ? "kilograms" : "pounds"} in Settings.</p>
+          <p className="text-sm">Saved with today&rsquo;s date. Change {unit === "kg" ? "kilograms" : "pounds"} in Settings.</p>
           <Button type="submit" disabled={pounds === undefined} busy={busy}>
             Save weight
           </Button>

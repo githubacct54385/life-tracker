@@ -121,13 +121,16 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
 
   return (
     <li className="border-b border-line py-3 last:border-b-0">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="text-muted">{dateLabel(gift.dateGiven)}</span>
-        {gift.description && <span>{gift.description}</span>}
-        <b>{formatCents(gift.cents)}</b>
-        <span className="text-muted">{METHOD_LABEL[gift.method]}</span>
+      <div className="grid grid-cols-[1fr_auto] items-start gap-x-3">
+        <div className="min-w-0">
+          {gift.description && <p className="break-words font-medium">{gift.description}</p>}
+          <p className="text-sm text-muted">
+            <span>{dateLabel(gift.dateGiven)}</span> &middot; <span>{METHOD_LABEL[gift.method]}</span>
+          </p>
+        </div>
+        <b className="tabular-nums">{formatCents(gift.cents)}</b>
         {mode === "view" && (
-          <span className="flex gap-3">
+          <span className="col-span-2 flex justify-end gap-3">
             <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit gift: ${label}`} onClick={() => setMode("edit")}>
               Edit
             </button>

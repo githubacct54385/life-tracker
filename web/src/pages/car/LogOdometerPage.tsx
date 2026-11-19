@@ -37,7 +37,7 @@ function WarningBanner({ warnings, busy, onConfirm, onCancel }: { warnings: Read
 }
 
 /** One reading in the list, with edit (value only, the date stays) and delete (for good). */
-function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; onChanged: () => Promise<void> }) {
+function ReadingRow({ reading, since, onChanged }: { reading: OdometerReadingRecord; /** Miles since the reading before this one, when there is one. */ since?: number; onChanged: () => Promise<void> }) {
   const api = useApi();
   const [busy, track] = useBusy();
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
@@ -79,7 +79,10 @@ function ReadingRow({ reading, onChanged }: { reading: OdometerReadingRecord; on
     <li className="border-b border-line py-3 last:border-b-0">
       <div className="flex items-center justify-between gap-3">
         <span className="text-muted">{shortDate(reading.date)}</span>
-        <b>{formatMiles(reading.miles)} mi</b>
+        <span className="text-center">
+          <b className="tabular-nums">{formatMiles(reading.miles)} mi</b>
+          {since !== undefined && since >= 0 && <span className="block text-xs text-muted">+{formatMiles(since)} mi</span>}
+        </span>
         {mode === "view" && (
           <span className="flex gap-2">
             <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline" aria-label={`Edit reading from ${shortDate(reading.date)}`} onClick={() => { setText(String(reading.miles)); setMode("edit"); }}>
@@ -176,6 +179,11 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
   }, [refresh]);
 
   const miles = parseMiles(text);
+  // Miles driven since the reading before each one (by date, then order saved), for the list.
+  const sinceMap = new Map<number, number>();
+  const byDate = [...(readings ?? [])].sort((a, b) => (a.date === b.date ? a.id - b.id : a.date < b.date ? -1 : 1));
+  byDate.forEach((r, i) => i > 0 && sinceMap.set(r.id, r.miles - byDate[i - 1]!.miles));
+  const latest = byDate[byDate.length - 1];
 
   async function save(confirmed: boolean) {
     if (miles === undefined) return;
@@ -223,7 +231,8 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
             />
             <span aria-hidden="true">mi</span>
           </div>
-          <p className="text-sm">Saved as of now</p>
+          {latest && <p className="text-sm text-muted">Last reading: {formatMiles(latest.miles)} mi on {shortDate(latest.date)}.</p>}
+          <p className="text-sm text-muted">Saved with today&rsquo;s date.</p>
           {text.trim() !== "" && miles === undefined && <p className="text-sm">Enter whole miles, up to 9,999,999.</p>}
           <Presence>{warnings ? <WarningBanner warnings={warnings} busy={busy} onConfirm={() => void track(() => save(true))} onCancel={() => { setWarnings(null); field.current?.focus(); }} /> : null}</Presence>
           {!warnings && (
@@ -252,7 +261,7 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
                 .sort((a, b) => (a.date < b.date ? 1 : -1))
                 .map((item) =>
                   item.kind === "reading" ? (
-                    <ReadingRow key={item.reading.id} reading={item.reading} onChanged={refresh} />
+                    <ReadingRow key={item.reading.id} reading={item.reading} since={sinceMap.get(item.reading.id)} onChanged={refresh} />
                   ) : (
                     <li key={`gap-${item.date}`} aria-label={`No reading for the week of ${shortDate(item.date)}`} className="border-b border-line py-3 text-muted last:border-b-0">
                       Week of {shortDate(item.date)}: <b>no reading</b>

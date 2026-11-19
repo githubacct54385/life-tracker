@@ -192,7 +192,7 @@ export function LogWorkoutPage() {
       <div className="grid gap-5 text-ink lg:grid-cols-2">
         <form onSubmit={(e) => void track(() => submit(e))} className="space-y-3" noValidate>
           <WorkoutFields idPrefix="new" {...form} typeRef={typeField} onChange={(next) => { setForm((f) => ({ ...f, ...next })); setMessage(null); }} />
-          <p className="text-sm">Saved as of now</p>
+          <p className="text-sm text-muted">Saved with today&rsquo;s date.</p>
           <Button type="submit" disabled={amount === undefined} busy={busy}>
             Save workout
           </Button>
