@@ -82,13 +82,13 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
               <h2 id="giving-totals" className="font-bold">
                 {totalLabel}
               </h2>
-              <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+              <dl className="mt-2 grid grid-cols-[1fr_auto] gap-y-1">
                 <dt>Regular giving</dt>
-                <dd className="text-right font-bold">{formatCents(totals.regularCents)}</dd>
+                <dd className="text-right font-bold tabular-nums">{formatCents(totals.regularCents)}</dd>
                 <dt>Special contributions</dt>
-                <dd className="text-right font-bold">{formatCents(totals.specialCents)}</dd>
-                <dt className="border-t border-line pt-1">Combined</dt>
-                <dd className="border-t border-line pt-1 text-right font-bold">{formatCents(totals.combinedCents)}</dd>
+                <dd className="text-right font-bold tabular-nums">{formatCents(totals.specialCents)}</dd>
+                <dt className="mt-1 border-t border-line pt-2">Combined</dt>
+                <dd className="mt-1 border-t border-line pt-2 text-right font-bold tabular-nums">{formatCents(totals.combinedCents)}</dd>
               </dl>
             </section>
 
@@ -98,10 +98,17 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
               </h2>
               <ul>
                 {months.map((m) => (
-                  <li key={m.month} className="border-b border-line py-3 last:border-b-0" aria-label={monthLabel(m.month)}>
+                  <li key={m.month} className={`border-b border-line last:border-b-0 ${m.count === 0 && !m.noGift ? "py-2 text-muted" : "py-3"}`} aria-label={monthLabel(m.month)}>
                     <div className="flex flex-wrap items-center justify-between gap-x-3">
-                      <span className="font-bold">{monthLabel(m.month)}</span>
-                      {m.noGift ? <span className="rounded-full border border-line bg-sunk px-2 py-0.5 text-sm font-bold">No gift</span> : <span className="font-bold">{formatCents(m.cents)}</span>}
+                      <span className={m.count === 0 && !m.noGift ? "" : "font-bold"}>{monthLabel(m.month)}</span>
+                      {m.noGift ? (
+                        <span className="rounded-full border border-line bg-sunk px-2 py-0.5 text-sm font-bold">No gift</span>
+                      ) : m.count === 0 ? (
+                        // Before the first gift ever recorded: history from before the app, so a quiet dash, not "$0.00".
+                        <span aria-label="No record">&ndash;</span>
+                      ) : (
+                        <span className="font-bold tabular-nums">{formatCents(m.cents)}</span>
+                      )}
                     </div>
                     {m.count > 0 && (
                       <ul className="mt-1 text-sm text-muted">
@@ -109,12 +116,12 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
                           .filter((g) => g.forMonth === m.month)
                           .sort((a, b) => (a.dateGiven === b.dateGiven ? a.id - b.id : a.dateGiven < b.dateGiven ? -1 : 1))
                           .map((g) => (
-                            <li key={g.id} className="flex flex-wrap justify-between gap-x-3">
+                            <li key={g.id} className="grid grid-cols-[1fr_auto] gap-x-3">
                               <span>
                                 {dateLabel(g.dateGiven)}
                                 {g.description ? `, ${g.description}` : ""}
                               </span>
-                              <span>{formatCents(g.cents)}</span>
+                              <span className="tabular-nums">{formatCents(g.cents)}</span>
                             </li>
                           ))}
                       </ul>

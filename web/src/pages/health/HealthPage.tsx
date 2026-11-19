@@ -32,9 +32,9 @@ function TotalsTable({ caption, firstHeading, rows }: { caption: string; firstHe
         {rows.map((row) => (
           <tr key={row.key} className="border-t border-line">
             <th scope="row" className="py-2 font-normal">{row.label}</th>
-            <td className="py-2 text-right">{row.count}</td>
-            <td className="py-2 text-right">{formatMinutes(row.minutes)}</td>
-            {showReps && <td className="py-2 text-right">{row.reps.toLocaleString("en-US")}</td>}
+            <td className="py-2 text-right tabular-nums">{row.count}</td>
+            <td className="py-2 text-right tabular-nums">{row.minutes === 0 ? <span aria-label="No timed workouts">&ndash;</span> : formatMinutes(row.minutes)}</td>
+            {showReps && <td className="py-2 text-right tabular-nums">{row.reps.toLocaleString("en-US")}</td>}
           </tr>
         ))}
       </tbody>

@@ -23,7 +23,7 @@ test(
       await page.setViewportSize({ width, height });
       await page.goto("/car/log");
       await expect(page.getByLabel("Odometer reading")).toBeFocused();
-      await expect(page.getByText("Nov 6")).toBeVisible();
+      await expect(page.getByText("Nov 6", { exact: true })).toBeVisible();
       await expect(page.locator('input[type="date"], input[type="datetime-local"], input[type="time"]')).toHaveCount(0);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(0);
