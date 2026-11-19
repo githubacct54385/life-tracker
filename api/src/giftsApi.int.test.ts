@@ -1,3 +1,5 @@
+import { createMaintenanceService } from "./services/maintenanceService.js";
+import { fakeMaintenanceRepo } from "./testing/fakeMaintenanceRepository.js";
 // The gift endpoints end to end: owner check, handler, service, repository, and a real Postgres created from the real migrations.
 import { createWeightService } from "./services/weightService.js";
 import { fakeWeightRepo } from "./testing/fakeWeightRepository.js";
@@ -33,7 +35,7 @@ describe.skipIf(!server)("/api/gifts (real Postgres)", () => {
       odometer: createOdometerService(fakeRepo()),
       gifts: createGiftService(giftRepository),
       workouts: createWorkoutService(fakeWorkoutRepo()),
-      weight: createWeightService(fakeWeightRepo()),
+      weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
       keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {

@@ -1,3 +1,5 @@
+import { createMaintenanceService } from "./services/maintenanceService.js";
+import { fakeMaintenanceRepo } from "./testing/fakeMaintenanceRepository.js";
 // The odometer endpoints end to end: owner check, handler, service, repository, and a real Postgres created from the real migration.
 import { createWeightService } from "./services/weightService.js";
 import { fakeWeightRepo } from "./testing/fakeWeightRepository.js";
@@ -28,7 +30,7 @@ describe.skipIf(!server)("/api/odometer (real Postgres)", () => {
     const logger = createLogger((_level, line) => logged.push(line));
     // Friday 2026-11-13, 04:00 in Los Angeles.
     const odometer = createOdometerService(odometerRepository, { now: () => new Date("2026-11-13T12:00:00Z") });
-    const app = createApp({ logger, checkDatabase: async () => true, odometer, gifts: createGiftService(fakeGiftRepo()), workouts: createWorkoutService(fakeWorkoutRepo()), weight: createWeightService(fakeWeightRepo()), keys: issuer.keys });
+    const app = createApp({ logger, checkDatabase: async () => true, odometer, gifts: createGiftService(fakeGiftRepo()), workouts: createWorkoutService(fakeWorkoutRepo()), weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()), keys: issuer.keys });
     call = async (method, url, body, token = ownerToken, guard = true) => {
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (token) headers["cf-access-jwt-assertion"] = token;

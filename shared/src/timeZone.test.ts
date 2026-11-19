@@ -20,7 +20,7 @@ describe("calendarDateIn", () => {
 
   it("[AC-SET-01.5] property: the result is always a calendar date, and differs from UTC by at most one day", () => {
     fc.assert(
-      fc.property(fc.date({ min: new Date("2020-01-01"), max: new Date("2035-01-01") }), fc.constantFrom("UTC", "Asia/Tokyo", "America/Los_Angeles", "Pacific/Auckland", "America/St_Johns"), (instant, zone) => {
+      fc.property(fc.date({ min: new Date("2020-01-01"), max: new Date("2035-01-01"), noInvalidDate: true }), fc.constantFrom("UTC", "Asia/Tokyo", "America/Los_Angeles", "Pacific/Auckland", "America/St_Johns"), (instant, zone) => {
         const local = calendarDateIn(zone, instant);
         expect(local).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         const diff = Math.abs(Date.parse(local) - Date.parse(calendarDateIn("UTC", instant))) / 86_400_000;
