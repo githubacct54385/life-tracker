@@ -15,7 +15,7 @@ async function addService(page: Page) {
   await expect(page.getByRole("status")).toContainText("Saved Oil change.");
   return page.getByRole("region", { name: "Services" }).locator("ul[id^='group-'] > li").first();
 }
-const chooser = (page: Page) => page.getByLabel(/Add a photo or PDF to/).first();
+const chooser = (page: Page) => page.getByLabel(/Add photos or PDFs to/).first();
 type Upload = { name: string; mimeType: string; buffer: Buffer };
 /** Chooses a file, then presses Add, as a person does: the size is shown first and nothing is stored until Add. */
 async function addDocument(page: Page, file: Upload) {
@@ -193,4 +193,25 @@ test("[AC-MIL-07.14][AC-MIL-07.17] ticking Make this PDF smaller shrinks a real 
   expect(body.subarray(0, 5).toString()).toBe("%PDF-");
   expect(body.toString("latin1")).toMatch(/\/Count 2 /);
   expect(body.toString("latin1")).toContain("/DCTDecode");
+});
+
+test("[AC-MIL-07.18][AC-MIL-07.19] three files are chosen at once, listed with their sizes, and stored one after another through the real Worker and R2", { tag: "@AC-MIL-07.18" }, async ({ page }) => {
+  const row = await addService(page);
+  await chooser(page).setInputFiles([
+    { name: "one.png", mimeType: "image/png", buffer: PNG },
+    { name: "two.pdf", mimeType: "application/pdf", buffer: PDF },
+    { name: "three.png", mimeType: "image/png", buffer: PNG },
+  ]);
+  await expect(page.getByText(/Ready to add: 3 files/)).toBeVisible();
+  await expect(row.getByRole("button", { name: "Remove PDF 2 from the list" })).toBeVisible();
+  const before = (await (await page.request.get("/api/maintenance/documents")).json()) as { documents: unknown[] };
+  expect(before.documents).toHaveLength(0); // nothing is stored until Add
+  await row.getByRole("button", { name: "Remove PDF 2 from the list" }).click(); // take one out again
+  await expect(page.getByText(/Ready to add: 2 files/)).toBeVisible();
+  await row.getByRole("button", { name: "Add all to this service" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /^Added 2 documents/ })).toBeVisible({ timeout: 30_000 });
+  await expect(row.getByText(/2 · .* in all/)).toBeVisible();
+  const after = (await (await page.request.get("/api/maintenance/documents")).json()) as { documents: Array<{ contentType: string }> };
+  expect(after.documents).toHaveLength(2);
+  expect(after.documents.every((d) => d.contentType === "image/jpeg")).toBe(true); // photos are redrawn as JPEG in the browser
 });
