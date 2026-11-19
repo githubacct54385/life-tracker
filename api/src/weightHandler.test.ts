@@ -1,3 +1,5 @@
+import { createMaintenanceService } from "./services/maintenanceService.js";
+import { fakeMaintenanceRepo } from "./testing/fakeMaintenanceRepository.js";
 // The weight endpoints with an in-memory repository, so they run without Docker (the same cases run against Postgres in weightApi.int.test.ts).
 import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE } from "@life-tracker/shared";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -27,7 +29,7 @@ describe("/api/weight", () => {
       odometer: createOdometerService(fakeRepo()),
       gifts: createGiftService(fakeGiftRepo()),
       workouts: createWorkoutService(fakeWorkoutRepo()),
-      weight: createWeightService(fakeWeightRepo(), { now: () => new Date("2026-11-18T20:00:00Z") }),
+      weight: createWeightService(fakeWeightRepo(), { now: () => new Date("2026-11-18T20:00:00Z") }), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
       keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {

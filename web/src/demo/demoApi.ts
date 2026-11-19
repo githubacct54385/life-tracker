@@ -18,6 +18,12 @@ import {
   type WeightEntryRecord,
   workoutListResponseSchema,
   workoutRecordSchema,
+  maintenanceListResponseSchema,
+  maintenanceRecordSchema,
+  placeListResponseSchema,
+  saveMaintenanceRequestSchema,
+  type MaintenanceRecord,
+  type ServicePlace,
   type OdometerReadingRecord,
   type WorkoutRecord,
 } from "@life-tracker/shared";
@@ -111,6 +117,26 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   const newestWeights = () => [...weights].sort((a, b) => (a.date < b.date ? 1 : -1));
   let workouts = seedWorkouts();
   let nextWorkoutId = 4;
+  let places: ServicePlace[] = [{ id: 1, name: "Joe's Garage" }];
+  let nextPlaceId = 2;
+  let services: MaintenanceRecord[] = [
+    { id: 2, date: "2026-11-03", services: ["Oil change", "Air filter"], doneBy: "shop", place: { id: 1, name: "Joe's Garage" }, costCents: 8999, odometerMiles: 48_150, note: null },
+    { id: 1, date: "2026-10-12", services: ["Wipers"], doneBy: "home", place: null, costCents: 1800, odometerMiles: 47_700, note: "Front pair" },
+  ];
+  let nextServiceId = 3;
+  const placeFor = (name: string | undefined): ServicePlace | null => {
+    const trimmed = name?.trim();
+    if (!trimmed) return null;
+    const found = places.find((p) => p.name.toLowerCase() === trimmed.toLowerCase());
+    if (found) return found;
+    const place = { id: nextPlaceId++, name: trimmed };
+    places = [...places, place];
+    return place;
+  };
+  const newestServices = () => [...services].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
+  const checkNotFuture = (date: string) => {
+    if (date > localDate(now())) throw new Error("A service cannot be dated in the future");
+  };
   const newestWorkouts = () => [...workouts].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
   const newestFirst = () => [...readings].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
 
@@ -247,6 +273,53 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteWorkout(id) {
       workouts = workouts.filter((w) => w.id !== id);
+    },
+
+    async listMaintenance() {
+      return maintenanceListResponseSchema.parse({ records: newestServices() });
+    },
+
+    async listServicePlaces() {
+      return placeListResponseSchema.parse({ places: [...places].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())) });
+    },
+
+    async logMaintenance(request) {
+      const input = saveMaintenanceRequestSchema.parse(request);
+      checkNotFuture(input.date);
+      const record = maintenanceRecordSchema.parse({
+        id: nextServiceId++,
+        date: input.date,
+        services: input.services,
+        doneBy: input.doneBy,
+        place: input.doneBy === "shop" ? placeFor(input.placeName) : null,
+        costCents: input.costCents ?? null,
+        odometerMiles: input.odometerMiles ?? null,
+        note: input.note?.trim() || null,
+      });
+      services = [...services, record];
+      return record;
+    },
+
+    async editMaintenance(id, request) {
+      const input = saveMaintenanceRequestSchema.parse(request);
+      if (!services.some((s) => s.id === id)) throw new Error("Service not found");
+      checkNotFuture(input.date);
+      const record = maintenanceRecordSchema.parse({
+        id,
+        date: input.date,
+        services: input.services,
+        doneBy: input.doneBy,
+        place: input.doneBy === "shop" ? placeFor(input.placeName) : null,
+        costCents: input.costCents ?? null,
+        odometerMiles: input.odometerMiles ?? null,
+        note: input.note?.trim() || null,
+      });
+      services = services.map((s) => (s.id === id ? record : s));
+      return record;
+    },
+
+    async deleteMaintenance(id) {
+      services = services.filter((s) => s.id !== id);
     },
   };
 }
