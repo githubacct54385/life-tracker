@@ -3,7 +3,7 @@ import { z } from "zod";
 // Request and response shapes for the car maintenance log (MIL-05). Used by the API client, the demo API and the Worker.
 
 /** The services offered as ticks. The owner can also type their own. */
-export const MAINTENANCE_TYPES = ["Oil change", "Tires", "Brakes", "Battery", "Air filter", "Wipers", "Alignment"] as const;
+export const MAINTENANCE_TYPES = ["Oil change", "Tires", "Rotate tires", "Multi-point inspection", "Brakes", "Battery", "Air filter", "Wipers", "Alignment"] as const;
 export const MAX_SERVICE_NAME_LENGTH = 40;
 export const MAX_SERVICES_PER_RECORD = 8;
 export const MAX_PLACE_NAME_LENGTH = 80;

@@ -33,7 +33,7 @@ describe("Last done", () => {
     const oil = (await lastDone().findByText("Oil change")).closest("li")!;
     expect(oil.textContent).toContain("Nov 3");
     expect(oil.textContent).toContain("48,150 mi");
-    expect(lastDone().getAllByRole("listitem")).toHaveLength(7);
+    expect(lastDone().getAllByRole("listitem")).toHaveLength(9);
     expect(within(lastDone().getByText("Tires").closest("li")!).getByText("Not recorded yet")).toBeTruthy();
   });
 
@@ -43,7 +43,7 @@ describe("Last done", () => {
     open(api);
     const row = (await lastDone().findByText("Cabin filter")).closest("li")!;
     expect(row.textContent).toContain("Nov 10");
-    expect(lastDone().getAllByRole("listitem")).toHaveLength(8);
+    expect(lastDone().getAllByRole("listitem")).toHaveLength(10);
   });
 
   it("[AC-MIL-06.3] shows the miles driven since each service, from the latest odometer reading", async () => {
@@ -160,7 +160,7 @@ describe("Loading, empty and failed states", () => {
     const api = { ...base, listMaintenance: async () => ({ records: [] }), listServicePlaces: async () => ({ places: [] }) } as Api;
     open(api);
     expect(await lastDone().findByText(/Nothing is recorded yet. Save a service/)).toBeTruthy();
-    expect(lastDone().getAllByText("Not recorded yet")).toHaveLength(7);
+    expect(lastDone().getAllByText("Not recorded yet")).toHaveLength(9);
     expect(within(history()).getByText(/No services yet. Choose what was done above, then save./)).toBeTruthy();
   });
 

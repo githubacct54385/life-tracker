@@ -6,7 +6,7 @@ const ok = (v: unknown) => saveMaintenanceRequestSchema.safeParse(v).success;
 
 describe("service types", () => {
   it("[AC-MIL-05.1] offers the fixed list, and accepts a type the owner typed", () => {
-    expect([...MAINTENANCE_TYPES]).toEqual(["Oil change", "Tires", "Brakes", "Battery", "Air filter", "Wipers", "Alignment"]);
+    expect([...MAINTENANCE_TYPES]).toEqual(["Oil change", "Tires", "Rotate tires", "Multi-point inspection", "Brakes", "Battery", "Air filter", "Wipers", "Alignment"]);
     expect(ok({ ...base, services: ["Oil change", "Cabin filter"] })).toBe(true);
   });
 

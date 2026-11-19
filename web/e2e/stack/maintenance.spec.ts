@@ -21,11 +21,11 @@ test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3][AC-MIL-05.4][AC-OPS-04.3] a shop s
   // Next time the place is in the drop-down, and a different letter case does not add a second one.
   await page.reload();
   await expect(page.getByLabel("Place", { exact: true }).locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
-  await page.getByRole("checkbox", { name: "Tires" }).check();
+  await page.getByRole("checkbox", { name: "Tires", exact: true }).check();
   await page.getByLabel("Place", { exact: true }).selectOption("Add a new place…");
   await page.getByLabel("New place").fill("JOE'S GARAGE");
   await save(page).click();
-  await expect(page.getByRole("region", { name: "Services" }).getByRole("list").getByText("Tires")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Services" }).getByRole("list").getByText("Tires", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("Place", { exact: true }).locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
 });
@@ -62,7 +62,7 @@ test("[AC-MIL-05.6][AC-OPS-04.3] the odometer starts as the latest reading, and 
 
 test("[AC-MIL-05.5][AC-OPS-04.3] a date in the future cannot be saved, in the screen or in the API", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
   await page.goto("/car/maintenance");
-  await page.getByRole("checkbox", { name: "Tires" }).check();
+  await page.getByRole("checkbox", { name: "Tires", exact: true }).check();
   await page.getByLabel("Date").fill("2999-01-01");
   await expect(save(page)).toBeDisabled();
   await expect(page.getByText("A service cannot be dated in the future.")).toBeVisible();

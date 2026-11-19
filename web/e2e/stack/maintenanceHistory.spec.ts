@@ -12,7 +12,7 @@ async function saveReading(page: import("@playwright/test").Page, miles: string)
 
 async function addService(page: import("@playwright/test").Page, opts: { type: string; place?: string; cost?: string; odometer?: string; home?: boolean }) {
   await page.goto("/car/maintenance");
-  await page.getByRole("checkbox", { name: opts.type }).check();
+  await page.getByRole("checkbox", { name: opts.type, exact: true }).check();
   if (opts.home) await page.getByRole("radio", { name: "I did it myself" }).check();
   else if (opts.place) {
     const select = page.getByLabel("Place", { exact: true });
@@ -35,7 +35,7 @@ test("[AC-MIL-06.2][AC-MIL-06.3][AC-OPS-04.3] the summary shows when each type w
   const oil = summary.getByRole("listitem").filter({ hasText: "Oil change" });
   await expect(oil).toContainText("48,150 mi");
   await expect(oil).toContainText("252 mi since");
-  await expect(summary.getByRole("listitem").filter({ hasText: "Tires" })).toContainText("Not recorded yet");
+  await expect(summary.getByRole("listitem").filter({ hasText: /^Tires/ })).toContainText("Not recorded yet");
 });
 
 test("[AC-MIL-06.1][AC-MIL-06.4][AC-OPS-04.3] the history can be limited to one type or one place, with the total of what is shown", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
@@ -89,6 +89,6 @@ test("[AC-MIL-06.5][AC-OPS-04.3] a place can be renamed and the service keeps it
 test("[AC-MIL-06.6][AC-OPS-04.3] with no services the summary says what to do next", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
   await page.goto("/car/maintenance");
   await expect(page.getByText(/Nothing is recorded yet. Save a service/)).toBeVisible();
-  await expect(page.getByText("Not recorded yet")).toHaveCount(7);
+  await expect(page.getByText("Not recorded yet")).toHaveCount(9);
   await expect(page.getByText(/No services yet/)).toBeVisible();
 });
