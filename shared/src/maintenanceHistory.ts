@@ -45,10 +45,24 @@ export interface HistoryFilter {
   service?: string;
   /** Only services done at this place. */
   placeId?: number;
+  /** Only services whose types, place name or note contain this text (ignoring letter case). Blank means no limit. */
+  text?: string;
+}
+
+/** True when `text` appears in what was done, the place's name or the note. */
+export function matchesText(record: MaintenanceRecord, text: string): boolean {
+  const needle = key(text);
+  if (needle === "") return true;
+  return [...record.services, record.place?.name ?? "", record.doneBy === "home" ? "at home" : "", record.note ?? ""].some((part) => part.toLowerCase().includes(needle));
 }
 
 export function filterHistory(records: readonly MaintenanceRecord[], filter: HistoryFilter): MaintenanceRecord[] {
-  return records.filter((r) => (filter.service === undefined || r.services.some((s) => key(s) === key(filter.service!))) && (filter.placeId === undefined || r.place?.id === filter.placeId));
+  return records.filter(
+    (r) =>
+      (filter.service === undefined || r.services.some((s) => key(s) === key(filter.service!))) &&
+      (filter.placeId === undefined || r.place?.id === filter.placeId) &&
+      (filter.text === undefined || matchesText(r, filter.text)),
+  );
 }
 
 /** Sum of the costs that are known. Services with no cost add nothing. */

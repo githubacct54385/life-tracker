@@ -108,8 +108,9 @@ Notes:
 
 | Feature | Priority |
 |---|---|
-| Log a service: one or more types from a fixed list (oil change, tires, brakes, battery, air filter, wipers, alignment) or the owner's own, done at a shop or "I did it myself", the place (a drop-down of places used before), cost, date (defaults to today, can be changed), odometer (filled from the latest reading), note | MVP |
+| Log a service: one or more types from a fixed list (oil change, tires, rotate tires, multi-point inspection, brakes, battery, air filter, wipers, alignment) or the owner's own, done at a shop or "I did it myself", the place (a drop-down of places used before), cost, date (defaults to today, can be changed), odometer (filled from the latest reading), note | MVP |
 | History, "last done" per type and miles since, filters, edit and delete, rename places | MVP |
+| The Maintenance page opens on the history (MIL-06, 2026-11-19): services as cards under month headings with count and cost, a switch for By date, By place or By service, search and filters, and "Last done" as a strip that opens. "Log a service" opens the form as a panel (a sheet on a phone, a side panel on a computer), so the form is not on the page until it is wanted. | MVP |
 | Attach documents to a service (photo, screenshot or PDF), kept in private Cloudflare R2 (ADR-0024, an exception to the no-stored-files rule) | MVP |
 | Reminders and "next due": not built. The owner uses Apple Calendar. An "add to calendar" (.ics) button is a possible later extra. | Later |
 | Fuel fill-ups and miles per gallon | Not planned: the owner's finance app already has fuel spending, and the owner does not want to enter it twice |

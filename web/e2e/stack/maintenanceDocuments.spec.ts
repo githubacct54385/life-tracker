@@ -8,11 +8,12 @@ const PDF = Buffer.from("%PDF-1.4\n% synthetic test document\n");
 
 async function addService(page: Page) {
   await page.goto("/car/maintenance");
+  await page.getByRole("button", { name: "Log a service" }).click();
   await page.getByRole("checkbox", { name: "Oil change" }).check();
   await page.getByRole("radio", { name: "I did it myself" }).check();
   await page.getByRole("button", { name: "Save service" }).click();
   await expect(page.getByRole("status")).toContainText("Saved Oil change.");
-  return page.getByRole("region", { name: "Services" }).getByRole("list").getByRole("listitem").first();
+  return page.getByRole("region", { name: "Services" }).locator("ul[id^='group-'] > li").first();
 }
 const chooser = (page: Page) => page.getByLabel(/Add a photo or PDF to/).first();
 type Upload = { name: string; mimeType: string; buffer: Buffer };

@@ -10,7 +10,7 @@ const WIDTHS = [
 ];
 const RECORD = { id: 1, date: "2026-11-03", services: ["Oil change", "Air filter"], doneBy: "shop", place: { id: 1, name: "Joe's Garage" }, costCents: 8999, odometerMiles: 48_150, note: "A long synthetic note that should wrap rather than push the page sideways at any width" };
 
-test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3] the maintenance screen offers the services, the shop choice and its places, and nothing scrolls sideways at 360, 768 and 1280 px", { tag: "@AC-MIL-05.1" }, async ({ page, context }) => {
+test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3] the maintenance screen opens on the history, offers the services, the shop choice and its places in a panel, and nothing scrolls sideways at 360, 768 and 1280 px", { tag: "@AC-MIL-05.1" }, async ({ page, context }) => {
   await page.route("**/api/maintenance/places", (route) => route.fulfill({ json: { places: [RECORD.place] } }));
   await page.route("**/api/maintenance", (route) => route.fulfill({ json: { records: [RECORD] } }));
   await page.route("**/api/odometer", (route) => route.fulfill({ json: { readings: [{ id: 2, date: "2026-11-06", miles: 48_402 }] } }));
@@ -18,10 +18,12 @@ test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3] the maintenance screen offers the 
   for (const { width, height } of WIDTHS) {
     await page.setViewportSize({ width, height });
     await page.goto("/car/maintenance");
+    await expect(page.getByRole("region", { name: "Services" }).locator("ul[id^='group-'] > li").getByText("Air filter", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${width}px, history`).toBeLessThanOrEqual(0);
+    await page.getByRole("button", { name: "Log a service" }).click();
     await expect(page.getByRole("checkbox", { name: "Oil change" })).toBeVisible();
     await expect(page.getByLabel("Place", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Odometer (optional)")).toHaveValue("48402");
-    await expect(page.getByText("Oil change, Air filter")).toBeVisible();
     await page.getByRole("radio", { name: "I did it myself" }).check();
     await expect(page.getByLabel("Place", { exact: true })).toHaveCount(0);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -42,6 +44,7 @@ test("[AC-MIL-05.5][AC-MIL-05.9] saving sends the date, the services, the place 
   });
   await signInAs(context, OWNER);
   await page.goto("/car/maintenance");
+  await page.getByRole("button", { name: "Log a service" }).click();
   await page.getByRole("checkbox", { name: "Brakes" }).check();
   await page.getByLabel("Place", { exact: true }).selectOption("Joe's Garage");
   await page.getByLabel("Date").fill("2026-11-01");

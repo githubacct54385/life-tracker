@@ -1,6 +1,8 @@
 import { expect, test } from "../support/stack";
 
 // MIL-06, full stack. Nothing is faked: the summary, filters and place changes go through the real API and database.
+const cardsOf = (page: import("@playwright/test").Page) => page.getByRole("region", { name: "Services" }).locator("ul[id^='group-'] > li");
+const openLog = (page: import("@playwright/test").Page) => page.getByRole("button", { name: "Log a service" }).click();
 const save = (page: import("@playwright/test").Page) => page.getByRole("button", { name: "Save service" });
 
 async function saveReading(page: import("@playwright/test").Page, miles: string) {
@@ -12,6 +14,7 @@ async function saveReading(page: import("@playwright/test").Page, miles: string)
 
 async function addService(page: import("@playwright/test").Page, opts: { type: string; place?: string; cost?: string; odometer?: string; home?: boolean }) {
   await page.goto("/car/maintenance");
+  await openLog(page);
   await page.getByRole("checkbox", { name: opts.type, exact: true }).check();
   if (opts.home) await page.getByRole("radio", { name: "I did it myself" }).check();
   else if (opts.place) {
@@ -31,6 +34,7 @@ test("[AC-MIL-06.2][AC-MIL-06.3][AC-OPS-04.3] the summary shows when each type w
   await saveReading(page, "48402");
   await addService(page, { type: "Oil change", place: "Joe's Garage", cost: "89.99", odometer: "48150" });
   await page.reload();
+  await page.getByRole("button", { name: /^Last done/ }).click();
   const summary = page.getByRole("region", { name: "Last done" });
   const oil = summary.getByRole("listitem").filter({ hasText: "Oil change" });
   await expect(oil).toContainText("48,150 mi");
@@ -44,13 +48,14 @@ test("[AC-MIL-06.1][AC-MIL-06.4][AC-OPS-04.3] the history can be limited to one 
   const history = page.getByRole("region", { name: "Services" });
   await expect(history).toContainText("2 services");
   await expect(history).toContainText("$107.99 total");
+  await history.getByRole("button", { name: /^Filters/ }).click();
   await history.getByLabel("Show service").selectOption("Wipers");
   await expect(history).toContainText("1 service");
   await expect(history).toContainText("$18.00 total");
   await history.getByLabel("Show service").selectOption("");
   await history.getByLabel("Show place").selectOption("Joe's Garage");
   await expect(history).toContainText("$89.99 total");
-  await expect(history.getByRole("list").getByText("At home")).toHaveCount(0);
+  await expect(cardsOf(page).getByText("At home")).toHaveCount(0);
 });
 
 test("[AC-MIL-06.5][AC-OPS-04.3] a place can be renamed and the service keeps it; it is deleted only when no service uses it", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
@@ -65,7 +70,7 @@ test("[AC-MIL-06.5][AC-OPS-04.3] a place can be renamed and the service keeps it
   await places.getByRole("button", { name: "Save name" }).click();
   await expect(places.getByText("Acme Tire & Wheel")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("region", { name: "Services" }).getByRole("list").getByText(/Acme Tire & Wheel/)).toBeVisible();
+  await expect(cardsOf(page).getByText(/Acme Tire & Wheel/)).toBeVisible();
 
   // A place with a service has no Delete; the API refuses it too (409). Once the service is gone it can be deleted.
   await expect(places.getByRole("button", { name: /^Delete place/ })).toHaveCount(0);
@@ -83,11 +88,13 @@ test("[AC-MIL-06.5][AC-OPS-04.3] a place can be renamed and the service keeps it
   await places.getByRole("button", { name: "Yes, delete" }).click();
   await expect(places.getByText("Acme Tire & Wheel")).toHaveCount(0);
   await page.reload();
+  await openLog(page);
   await expect(page.getByLabel("Place", { exact: true }).locator("option")).toHaveText(["No place named", "Joe's Garage", "Add a new place…"]);
 });
 
 test("[AC-MIL-06.6][AC-OPS-04.3] with no services the summary says what to do next", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
   await page.goto("/car/maintenance");
+  await page.getByRole("button", { name: /^Last done/ }).click();
   await expect(page.getByText(/Nothing is recorded yet. Save a service/)).toBeVisible();
   await expect(page.getByText("Not recorded yet")).toHaveCount(9);
   await expect(page.getByText(/No services yet/)).toBeVisible();
