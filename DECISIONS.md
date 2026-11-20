@@ -30,6 +30,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | 0022 | Spreadsheet reader for the mileage import | Accepted |
 | 0023 | A read-only smoke-test identity for the production API | Accepted |
 | 0024 | Maintenance documents are stored privately in Cloudflare R2 | Accepted |
+| 0025 | A staging environment sits in front of production | Accepted (built in steps, OPS-08) |
 
 ---
 
@@ -77,6 +78,8 @@ The free SWA plan has no fixed outbound IPs and no managed identity, so the data
 **Consequences.** One long-lived password to rotate. **Verify** whether GitHub-hosted runners can reach the database through "allow Azure services". If not, the release workflow opens a firewall rule for the runner's IP and removes it afterward (already sketched in `release.yml`).
 
 ## ADR-0004: Source control, pull requests, and manual release
+
+> **Amended by ADR-0025 (2026-11-20).** A staging environment is added in front of production, and a Release will refuse a commit that has not passed on staging. The release stays manual and approved.
 
 > **Amended by ADR-0021 (2026-11-10).** Same release gates. The deploy target is Cloudflare (`wrangler deploy` with a scoped API token), migrations run against Neon, and there is no Azure OIDC login, Static Web Apps "Other" source, or firewall step.
 
@@ -369,3 +372,28 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 
 **Risks.** A document can show a name, address, VIN, licence plate or card digits, so it is treated as sensitive. R2 has no point-in-time restore like the database, so a deleted document cannot be brought back. Testing real uploads is safest on a staging environment, not on the owner's production data.
 
+## ADR-0025: A staging environment sits in front of production
+
+**Decision.** The app gets a second, complete copy called **staging**: its own Cloudflare Worker (`life-tracker-staging`, from the `staging` environment in `api/wrangler.jsonc`), its own **separate Neon project** (database `lt_staging`), its own R2 bucket (`life-tracker-documents-staging`), its own Cloudflare Access application, and its own GitHub `staging` environment with its own secrets. It holds **synthetic data only**.
+
+The path to production becomes: merge to `main`, CI passes, **staging deploys automatically** (migrations first, then the Worker, then a smoke test), and the manual, approved **Release** deploys to production only a commit that has passed on staging. Merging still does not deploy to production (ADR-0004).
+
+It is built in steps (OPS-08):
+1. The Wrangler `staging` environment, the setup guide ([docs/staging-setup.md](docs/staging-setup.md)) and this ADR. Nothing deploys automatically yet. *(done in the first pull request)*
+2. The owner creates the Neon project, the Access application and tokens, and the GitHub environment.
+3. The staging workflow, the smoke test and a seed script for synthetic data.
+4. The Release gate on the staging result.
+
+**Why.** Changes that touch the schema, the login or storage cannot be fully proven by tests on a laptop and in CI. Staging runs them on the real platform without risking the owner's data. It comes first because the planned move to sign-in with Google and per-person data (SET-04 onward) is the riskiest change so far, and its migrations should be rehearsed on a copy before production sees them. It is also a good portfolio story.
+
+**Rules that keep it safe.**
+- **A separate Neon project, never a branch of production.** A branch starts as a copy of production's data, and deleting rows later does not remove them from the branch's history.
+- **Synthetic data only.** Staging never receives a real spreadsheet, health export or document. The seed script builds data from code and refuses to run unless the database name is `lt_staging`.
+- **Nothing is shared with production.** Different Worker, database, bucket, Access application (so a different `ACCESS_AUD`), passwords and tokens. Settings and secrets live in Cloudflare and GitHub, not in the repository (hard rule 2).
+- **Staging stays behind Cloudflare Access**, owner only, and the API fails closed there too (hard rule 4). This holds even after a new login is tried on staging.
+- **One deploy path each.** The staging workflow only ever runs `wrangler deploy --env staging` and uses only the `staging` environment's secrets. The Release workflow only deploys production. A test fails the build if either changes. A Cloudflare token cannot be limited to one Worker, so this workflow design, not the token, is the safeguard.
+- **Wrangler without `--env staging` means production.** The setup guide says so in capitals where it matters.
+
+**Alternatives rejected.** A Neon branch of production for staging: it copies real data. A staging database inside the production project: one mistake in a connection string reaches real data. Preview deployments per pull request: still off (ADR-0004), and they would multiply the secrets. Skipping staging and relying on CI: it cannot rehearse a migration or a login change on the real platform.
+
+**Consequences.** Another Worker, Neon project and Access application to look after, all on free plans, so the $0 rule holds (verify each vendor's limits before creating the resource). The Release workflow gains a check. A migration is applied twice, staging first, which is the point. The seed data and the smoke test need upkeep when the app changes.

@@ -38,7 +38,7 @@ Car-service documents (a photo or PDF a shop gave) are stored in a private R2 bu
 3. Leave public access off: do not enable the `r2.dev` address or a custom domain. A document is read only through the API after the owner check.
 4. The Release token needs **Account, Workers R2 Storage, Edit** besides **Edit Cloudflare Workers** ([cloudflare-release-setup.md](cloudflare-release-setup.md)). Without it the deploy cannot attach the bucket.
 5. The binding is the `r2_buckets` entry in `api/wrangler.jsonc` (name `DOCUMENTS`). There is no key, token or secret for the bucket in the Worker.
-6. Optional: a second bucket named `life-tracker-documents-staging` for testing uploads without touching real documents. Nothing binds it yet; it is for a staging Worker if one is added.
+6. A second bucket named `life-tracker-documents-staging` for the staging Worker (OPS-08, [staging-setup.md](staging-setup.md)). It keeps uploads made while testing apart from real documents.
 7. R2 cannot restore a deleted file the way Neon can restore the database. The app asks before deleting a document. To keep a copy, download the documents you care about.
 8. Check it with the AC-MIL-07.9 entry in [manual-checks.md](manual-checks.md).
 
