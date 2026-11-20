@@ -1,0 +1,117 @@
+name: Staging
+
+# Deploys `main` to the staging environment (OPS-08, ADR-0025). Staging is a separate Worker, a separate Neon project and a
+# separate bucket, with synthetic data only. This workflow never touches production, and production's Release is the only
+# way there (ADR-0004).
+#
+# Runs on its own after CI succeeds on a push to `main`, and by hand to try a branch or commit on staging. For a manual run,
+# start it from `main` ("Use workflow from: main") and name the branch or commit in `ref`. The workflow file that runs is
+# always the one on `main`, and the `staging` environment only releases its secrets to runs from `main`.
+#
+# Order matters, as in the Release: migrations first, then the deploy, then the smoke test. A failed migration stops everything.
+# The result is recorded as the commit status `staging-smoke` on the deployed commit.
+#
+# Environment secrets (set on the `staging` environment, never in the repo): DATABASE_ADMIN_URL, CLOUDFLARE_API_TOKEN,
+# CLOUDFLARE_ACCOUNT_ID, SMOKE_CLIENT_ID, SMOKE_CLIENT_SECRET. Environment variable: STAGING_URL (the Worker's address).
+# The Worker's own settings (DATABASE_URL, ACCESS_*, OWNER_EMAIL, SMOKE_CLIENT_ID) are stored on the staging Worker in Cloudflare.
+# See docs/staging-setup.md.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to deploy to staging"
+        required: true
+        default: main
+
+# One staging deploy at a time. A later one waits instead of cancelling a deploy that is half done.
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  staging:
+    # Automatic runs: only after a CI run for a push to main passed. Pull request and weekly CI runs never deploy.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: staging # limited to the main branch; no approval step
+    steps:
+      - name: Staging runs from main only
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Staging deploys run from main only. Start the workflow from main and put the branch in ref."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref }}
+          persist-credentials: false
+
+      - name: Note the commit being deployed
+        run: |
+          echo "TARGET_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          {
+            echo "## Staging deploy"
+            echo "**Commit:** \`$(git rev-parse HEAD)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Mark the commit as deploying
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" -f state=pending -f context=staging-smoke \
+            -f description="Deploying to staging" -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > /dev/null
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Apply SQL migrations to the staging database
+        env:
+          DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
+        # `pnpm migrate` appends the list of applied migrations to $GITHUB_STEP_SUMMARY.
+        run: pnpm migrate
+
+      # --env staging is what makes this the staging Worker. Without it wrangler would deploy production, so a test fails
+      # the build if it is ever missing. --keep-vars leaves the secrets stored on the staging Worker alone.
+      - name: Deploy the staging Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @life-tracker/api exec wrangler deploy --env staging --keep-vars
+
+      - name: Smoke test
+        env:
+          SMOKE_CLIENT_ID: ${{ secrets.SMOKE_CLIENT_ID }}
+          SMOKE_CLIENT_SECRET: ${{ secrets.SMOKE_CLIENT_SECRET }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: node scripts/smoke.mjs "$STAGING_URL"
+
+      - name: Record the result on the commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          case "$JOB_STATUS" in
+            success) state=success; text="Deployed to staging, smoke test passed" ;;
+            cancelled) state=error; text="Staging deploy was cancelled" ;;
+            *) state=failure; text="Staging deploy or smoke test failed" ;;
+          esac
+          [ -n "${TARGET_SHA:-}" ] || exit 0
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" -f state="$state" -f context=staging-smoke \
+            -f description="$text" -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > /dev/null
+          echo "**Result:** $text" >> "$GITHUB_STEP_SUMMARY"
