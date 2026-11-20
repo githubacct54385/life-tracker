@@ -65,8 +65,8 @@ describe("platform", () => {
   });
 
   it("[AC-MIG-06.2] nothing in the Worker writes to the console except the logger's own sink", () => {
-    // The migration command and the test database setup run on a developer machine or in GitHub Actions, never in the Worker.
-    const outsideWorker = ["migrate-cli.ts", "globalSetup.int.ts"];
+    // The migration command, the staging seed command and the test database setup run on a developer machine or in GitHub Actions, never in the Worker.
+    const outsideWorker = ["migrate-cli.ts", "seed-staging-cli.ts", "globalSetup.int.ts"];
     const offenders = sourceFiles(path.join(apiRoot, "src"))
       .filter((file) => !file.endsWith(`${path.sep}telemetry${path.sep}logger.ts`) && !file.includes(`${path.sep}testing${path.sep}`))
       .filter((file) => !outsideWorker.some((name) => file.endsWith(name)))

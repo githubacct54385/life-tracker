@@ -15,6 +15,7 @@
     "src/**/*.int.test.ts",
     "src/**/globalSetup.int.ts",
     "src/db/testDatabase.ts",
-    "src/db/migrate-cli.ts"
+    "src/db/migrate-cli.ts",
+    "src/db/seed-staging-cli.ts"
   ]
 }
