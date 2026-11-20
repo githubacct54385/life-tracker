@@ -296,66 +296,89 @@ flowchart TD
 
 > **People (ADR-0026, SET-04):** every table below also has a nullable `user_id` pointing at the `users` table (id, email, role, status, created, last sign-in). Every query in `repositories/` is limited to the signed-in person (`WHERE user_id = ...`), through a per-request scope (`db/requestUser.ts`) that throws when no person is set, so a query can never run unfiltered. The owner's row is created the first time they are seen and takes over every row saved before people existed. `NOT NULL` on `user_id` and the per-person unique rules follow in part 3. `db/personTables.ts` lists the tables that hold a person's data.
 
-Only the tables the MVP needs. No raw files, and no financial or bank data (ADR-0021). Weekly mileage is computed from readings, not stored (ADR-0008). Every table also has created and updated timestamps, left out below.
+Weekly mileage is computed from readings, not stored (ADR-0008). No files and no financial or bank data are stored (ADR-0021). Every table also has created and updated timestamps, left out below. The same diagram is in the [README](README.md).
 
 ```mermaid
 erDiagram
-    ODOMETER_READING {
-        int id PK
-        date read_on
+    users {
+        bigint id PK
+        text email UK "lower-case"
+        text role "admin or user"
+        text status "active or removed"
+        timestamptz last_login_at
+    }
+    odometer_readings {
+        bigint id PK
+        bigint user_id FK
+        date reading_date
         int miles
-        string note
     }
-    REGULAR_GIFT {
-        int id PK
+    weight_entries {
+        bigint id PK
+        bigint user_id FK
+        date entry_date "one per person per day"
+        numeric pounds
+    }
+    workouts {
+        bigint id PK
+        bigint user_id FK
+        date workout_date
+        text workout_type
+        int minutes "or reps"
+        int reps
+        text source "manual or apple_watch"
+    }
+    regular_gifts {
+        bigint id PK
+        bigint user_id FK
         date given_on
-        date for_month "first day of the month it is for"
+        date for_month
         numeric amount
-        string method
+        text method
     }
-    SPECIAL_CONTRIBUTION {
-        int id PK
+    special_contributions {
+        bigint id PK
+        bigint user_id FK
         date given_on
-        string occasion "name or occasion, instead of a for month"
+        text occasion
         numeric amount
-        string method
     }
-    WEIGHT_ENTRY {
-        int id PK
-        date entry_date UK "one per day, set when saved"
-        numeric pounds "stored in pounds, 0.1"
+    service_places {
+        bigint id PK
+        bigint user_id FK
+        text name "unique per person, ignoring case"
     }
-    WORKOUT {
-        int id PK
-        timestamptz started_at_utc
-        date done_on "local date"
-        string type
-        int minutes "empty for pushups"
-        int reps "pushups only"
-        string source "manual or watch"
-    }
-    SERVICE_PLACE {
-        int id PK
-        string name "unique ignoring letter case"
-    }
-    MAINTENANCE_RECORD {
-        int id PK
+    maintenance_records {
+        bigint id PK
+        bigint user_id FK
         date service_date
-        int odometer_miles "optional"
-        string done_by "shop or home"
-        int place_id FK "empty for home"
-        int cost_cents "optional"
-        string note "optional"
-        string_list services "1 to 8 types"
+        int odometer_miles
+        text done_by "shop or home"
+        bigint place_id FK
+        int cost_cents
+        text_list services
     }
-    SERVICE_PLACE ||--o{ MAINTENANCE_RECORD : "used by"
-    APP_SETTING {
-        string key PK
-        string value "time zone, weight unit, theme"
+    maintenance_documents {
+        bigint id PK
+        bigint user_id FK
+        bigint record_id FK
+        text object_key "where the file is in R2"
+        text content_type
+        int bytes
     }
+    users ||--o{ odometer_readings : has
+    users ||--o{ weight_entries : has
+    users ||--o{ workouts : has
+    users ||--o{ regular_gifts : has
+    users ||--o{ special_contributions : has
+    users ||--o{ service_places : has
+    users ||--o{ maintenance_records : has
+    users ||--o{ maintenance_documents : has
+    service_places ||--o{ maintenance_records : "used by"
+    maintenance_records ||--o{ maintenance_documents : "has files"
 ```
 
-`WORKOUT` has a unique index on (start time, type, minutes) so re-imports skip repeats. A timed workout has `minutes` and no `reps`; a counted one (pushups) has `reps` and no `minutes`, and the database requires one or the other. `WEIGHT_ENTRY` is unique per day. All tables stand alone for now, so they have no lines.
+Weight is unique per person per day and a place name is unique per person ignoring letter case (the old single-person versions of these rules go in SET-04 part 3). A timed workout has `minutes` and no `reps`; a counted one (pushups) has `reps` and no `minutes`, and the database requires one or the other. Money is `numeric(12,2)` in the database and integer cents in code (ADR-0007).
 
 ## 7. Tool comparison: which diagramming tool?
 
