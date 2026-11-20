@@ -10,7 +10,7 @@ export default tseslint.config(
   {
     // AC-OPS-01.2: API code logs only through api/src/telemetry/logger.ts. CLI tools and tests may print.
     files: ["api/src/**/*.ts"],
-    ignores: ["api/src/telemetry/**", "api/src/db/migrate-cli.ts", "api/src/db/globalSetup.int.ts", "**/*.test.ts"],
+    ignores: ["api/src/telemetry/**", "api/src/db/migrate-cli.ts", "api/src/db/seed-staging-cli.ts", "api/src/db/globalSetup.int.ts", "**/*.test.ts"],
     rules: { "no-console": "error" },
   },
   {

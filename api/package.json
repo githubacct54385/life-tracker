@@ -9,6 +9,7 @@
     "test:int": "vitest run --config vitest.int.config.ts --passWithNoTests",
     "build": "tsc -p tsconfig.build.json",
     "migrate": "tsx src/db/migrate-cli.ts",
+    "seed:staging": "tsx src/db/seed-staging-cli.ts",
     "dev": "wrangler dev",
     "build:worker": "wrangler deploy --dry-run --outdir ../.stage/worker"
   },

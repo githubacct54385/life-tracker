@@ -381,7 +381,7 @@ The path to production becomes: merge to `main`, CI passes, **staging deploys au
 It is built in steps (OPS-08):
 1. The Wrangler `staging` environment, the setup guide ([docs/staging-setup.md](docs/staging-setup.md)) and this ADR. *(done)*
 2. The owner creates the Neon project, the Access application and tokens, and the GitHub environment. *(done 2026-11-20)*
-3. The staging workflow (`staging.yml`: migrate, deploy, smoke test, then the `staging-smoke` commit status) and the smoke test. *(done)* A seed script for synthetic data follows on its own.
+3. The staging workflow (`staging.yml`: migrate, deploy, smoke test, then the `staging-smoke` commit status) and the smoke test. *(done)* The sample data (`pnpm seed:staging`, `--reset` to start over) refuses any database not named `lt_staging`. *(done)*
 4. The Release gate on the `staging-smoke` status.
 
 **Why.** Changes that touch the schema, the login or storage cannot be fully proven by tests on a laptop and in CI. Staging runs them on the real platform without risking the owner's data. It comes first because the planned move to sign-in with Google and per-person data (SET-04 onward) is the riskiest change so far, and its migrations should be rehearsed on a copy before production sees them. It is also a good portfolio story.

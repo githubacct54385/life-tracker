@@ -160,7 +160,30 @@ SMOKE_CLIENT_ID=... SMOKE_CLIENT_SECRET=... node scripts/smoke.mjs "https://<the
 
 It checks that an unsigned request is refused, that `/api/health` and `/api/health/db` answer (the second one proves the Worker reaches the staging database), and that each list can be read. If a token has a hidden character in it, it says which one (and never prints anything from it).
 
-## 6. Check it
+## 6. Sample data (and starting over)
+
+Staging starts empty. To fill it with made-up data, so every page has something to show, run this from the repository root with the staging admin string in `DATABASE_ADMIN_URL` (the same variable as in section 1):
+
+```bash
+pnpm seed:staging
+```
+
+It adds 40 weekly odometer readings, about 40 weight entries, 36 workouts, 10 monthly gifts and 2 special contributions, 2 service places and 6 maintenance records. The data is the same every time, dated back from today, and made up in code: names are "Sample Garage" and so on, and no real data is ever read from a file.
+
+To throw away whatever is in staging (including anything you tried out) and start again from the sample data:
+
+```bash
+pnpm seed:staging --reset
+```
+
+Safety rules built into the command:
+- **It only runs against a database named `lt_staging`.** Any other name, including production's, is refused before it connects. This is why section 1 asks you to give the project that database name.
+- **Without `--reset` it refuses a database that already has rows**, so running it twice cannot double the data.
+- **It works in one transaction.** If anything fails, the database is left exactly as it was.
+- **It never touches the documents bucket.** A reset removes the document rows, so any files you uploaded while testing are no longer listed or served, but they stay in the `life-tracker-documents-staging` bucket until you delete them in the Cloudflare dashboard (R2). They are test files, so this does no harm.
+- **It prints only counts and fixed messages**, never the address or a row.
+
+## 7. Check it
 
 - Sections 1 to 4 can be checked with the commands in them. The Release gate (a production Release only for a commit whose `staging-smoke` passed) and the seed script for synthetic data arrive in later parts of OPS-08, and this guide is updated with them.
 - Any manual deploy of the staging Worker also needs `--keep-vars`, so the secrets set in Cloudflare are not removed: `wrangler deploy --env staging --keep-vars`.
