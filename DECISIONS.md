@@ -379,10 +379,10 @@ Migration code lives in `api/src/db/` (the only non-repository place allowed to 
 The path to production becomes: merge to `main`, CI passes, **staging deploys automatically** (migrations first, then the Worker, then a smoke test), and the manual, approved **Release** deploys to production only a commit that has passed on staging. Merging still does not deploy to production (ADR-0004).
 
 It is built in steps (OPS-08):
-1. The Wrangler `staging` environment, the setup guide ([docs/staging-setup.md](docs/staging-setup.md)) and this ADR. Nothing deploys automatically yet. *(done in the first pull request)*
-2. The owner creates the Neon project, the Access application and tokens, and the GitHub environment.
-3. The staging workflow, the smoke test and a seed script for synthetic data.
-4. The Release gate on the staging result.
+1. The Wrangler `staging` environment, the setup guide ([docs/staging-setup.md](docs/staging-setup.md)) and this ADR. *(done)*
+2. The owner creates the Neon project, the Access application and tokens, and the GitHub environment. *(done 2026-11-20)*
+3. The staging workflow (`staging.yml`: migrate, deploy, smoke test, then the `staging-smoke` commit status) and the smoke test. *(done)* A seed script for synthetic data follows on its own.
+4. The Release gate on the `staging-smoke` status.
 
 **Why.** Changes that touch the schema, the login or storage cannot be fully proven by tests on a laptop and in CI. Staging runs them on the real platform without risking the owner's data. It comes first because the planned move to sign-in with Google and per-person data (SET-04 onward) is the riskiest change so far, and its migrations should be rehearsed on a copy before production sees them. It is also a good portfolio story.
 

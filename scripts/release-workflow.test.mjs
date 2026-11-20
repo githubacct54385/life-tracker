@@ -19,8 +19,10 @@ describe("release workflow", () => {
     expect(steps[0].run).toContain("refs/heads/main");
   });
 
-  it("[AC-MIG-05.1][AC-FND-06.1] no other workflow can deploy the Worker or read the deploy secrets", () => {
-    for (const file of readdirSync(workflowsDir).filter((name) => name !== "release.yml")) {
+  // The staging workflow (OPS-08) deploys the staging Worker with its own environment's secrets. What it may and may not do is
+  // checked in staging-workflow.test.mjs, which also checks that this workflow never touches staging.
+  it("[AC-MIG-05.1][AC-FND-06.1] no other workflow, apart from the staging one, can deploy the Worker or read the deploy secrets", () => {
+    for (const file of readdirSync(workflowsDir).filter((name) => !["release.yml", "staging.yml"].includes(name))) {
       const body = read(file);
       expect(body, file).not.toMatch(/CLOUDFLARE_API_TOKEN|DATABASE_ADMIN_URL/);
       // A dry run (the size check) uploads nothing, so it is allowed.
