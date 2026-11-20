@@ -1,6 +1,6 @@
 # Life Tracker
 
-A private, single-user web app (installable PWA) for health, mileage, and giving. Finance is not part of this app. The code is public. The data and the login are private. A demo with fake data runs entirely in the browser.
+A web app (installable PWA) for health, mileage, and giving. It is used by its owner and by a few invited people, each with their own private data. Finance is not part of this app. The code is public. Sign-in is by invitation only. A demo with fake data runs entirely in the browser.
 
 **Status:** planning and foundation. Hosted on Cloudflare Workers + Neon Postgres (ADR-0021). Stories are tracked in Linear.
 

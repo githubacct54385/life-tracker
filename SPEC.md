@@ -4,7 +4,7 @@ Status: planning, with foundation code in place. Technical choices are recorded 
 
 ## 1. Purpose
 
-A private, single-user web app (installable on a phone) for tracking health, mileage, and charitable giving. It is also a public portfolio project. The code is public. The data and the login are private.
+A web app (installable on a phone) for tracking health, mileage, and charitable giving. The owner uses it, and can invite a few other people, each with their own private data. It is also a public portfolio project. The code is public. Each person's data is private to them, and sign-in is by invitation only (ADR-0026).
 
 ## 2. Goals
 
@@ -19,7 +19,7 @@ A private, single-user web app (installable on a phone) for tracking health, mil
 
 ## 3. Non-goals
 
-- Multi-user support, sign-ups, or sharing. Only the owner can store data.
+- Open sign-up, or sharing data between people. A person can store data only if the owner invited them or approved their request. Nobody sees another person's data, and the owner does not either (an admin sees only the list of people and when each last signed in).
 - **Finance and transaction tracking.** Bank transactions, accounts, budgets, and spending analysis are out of scope. They live in a separate private repository, because the owner does not want transaction data on an internet-hosted app at all (ADR-0021).
 - Storing raw uploaded files.
 - Native iOS app.
@@ -27,7 +27,7 @@ A private, single-user web app (installable on a phone) for tracking health, mil
 ## 4. Guiding principles
 
 1. **Nothing personal in the repo.** No real data, not even in tests.
-2. **Fail closed.** If identity cannot be confirmed as the owner, the API returns nothing.
+2. **Fail closed.** If identity cannot be confirmed as an active, invited person, the API returns nothing. One person can never reach another person's data.
 3. **Store the minimum.** Keep parsed rows only, not source files. No bank or transaction data at all.
 4. **Phone first.** Every screen is designed for a phone, then scaled up.
 5. **Demo is separate from real.** Demo mode never touches the real backend.
@@ -37,13 +37,18 @@ A private, single-user web app (installable on a phone) for tracking health, mil
 
 | Who | Can do |
 |---|---|
-| Owner (signed in with GitHub) | Everything |
-| Anonymous visitor | View the demo with fake data, in the browser only |
-| Any other GitHub user | Signs in, gets denied, stores nothing |
+| Admin (the owner) | Everything a person can do with their own data, plus the Admin page: invite people, see each person's last sign-in, remove access, delete another non-admin's data |
+| Person (invited) | Sign in with Google, use the app with their own data only, delete all their own data |
+| Anonymous visitor | See the homepage and the demo with fake data (in the browser only), sign in, or request access |
+| Anyone else who signs in with Google | Gets a "no access" page, stores nothing, and cannot tell whether an account exists |
 
-- GitHub is the only login provider. Passkeys and 2FA are enforced on the GitHub account.
-- Two checks protect the API: Cloudflare Access at the edge (GitHub sign-in, owner-only policy), and an owner check in the API that verifies the signed Access token and compares the identity to the owner setting (ADR-0006 as amended by ADR-0021). The GitHub username alone is not trusted for the check, because usernames can change hands. GitHub is the only way in.
-- Owner identity lives in app settings, not in the repo.
+- **Google is the only sign-in for version 1** (OpenID Connect). There are no passwords in the app. The app checks the verified email from Google against its own list of people.
+- **The app owns the list of people** (a `users` table, roles admin and user, status active or removed). Access is by invitation: an admin types a Google email on the Admin page, or approves a request made from the public homepage. The owner never needs the Cloudflare dashboard.
+- **Sessions.** A signed, `HttpOnly` cookie. The person's row is checked on every request, so removing access blocks the very next request.
+- **Roles.** An admin cannot delete their own data or another admin's data from the Admin page. A person can delete their own data (not an admin, in version 1).
+- **Privacy rule.** The Admin page shows email, role, status, joined date and last sign-in. It never shows another person's health, mileage, giving or documents. See [docs/privacy.md](docs/privacy.md).
+- **Until SET-07 ships, and always on staging,** Cloudflare Access sits in front and the API still checks the signed token against the owner setting (ADR-0006, ADR-0021).
+- Owner identity and secrets live in app settings and Worker secrets, not in the repo.
 - There is no test-only bypass in the auth code (ADR-0006).
 
 ## 6. Feature areas
@@ -84,7 +89,7 @@ Notes:
 | Sign out | MVP |
 | Owner time zone and weight unit | MVP |
 | Export all my data | Next |
-| Delete all my data | Next |
+| Delete all my data (a person deletes their own data, SET-09) | MVP for the multi-person work |
 | Light and dark theme | MVP |
 
 ### 6.5 Vehicle and mileage
@@ -200,7 +205,7 @@ Three breakpoints: **mobile** (under 640 px, the default, bottom tabs), **tablet
 - Secret scanning with push protection, Dependabot, and CodeQL turned on.
 
 **App and data**
-- Owner-only access enforced in two places (see section 5).
+- Access enforced in two places once sign-in ships: the session cookie is verified, and every query is limited to the signed-in person's rows (see section 5, ADR-0026). Until then, Cloudflare Access plus the owner check.
 - Every non-GET request must carry a custom header, to block cross-site requests (ADR-0006).
 - The server validates everything it receives, including rows sent back by the browser at import commit (mileage and Apple Health).
 - HTTPS only, security headers, and a Content Security Policy.
