@@ -49,6 +49,20 @@ describe.skipIf(!server)("staging sample data against the real tables", () => {
     expect(rows.at(-1)?.services).toEqual(["Brakes"]);
   });
 
+  it("[AC-OPS-08.2][AC-SET-04.3] gives the sample data to the admin when there is one, and leaves it for the owner's first sign-in when there is not", async () => {
+    const withAdmin = await migrated();
+    await run(withAdmin, "INSERT INTO users (email, role) VALUES ('staging-admin@example.test', 'admin')");
+    await seedStaging(withAdmin, buildStagingSeed(TODAY), { reset: false });
+    const owned = await run<{ n: string }>(withAdmin, "SELECT count(*)::text AS n FROM odometer_readings o JOIN users u ON u.id = o.user_id WHERE u.email = 'staging-admin@example.test'");
+    expect(owned[0]?.n).toBe("40");
+    expect(await run(withAdmin, "SELECT 1 FROM maintenance_records WHERE user_id IS NULL")).toEqual([]);
+    expect(await run(withAdmin, "SELECT 1 FROM service_places WHERE user_id IS NULL")).toEqual([]);
+
+    const noAdmin = await migrated();
+    await seedStaging(noAdmin, buildStagingSeed(TODAY), { reset: false });
+    expect((await run<{ n: string }>(noAdmin, "SELECT count(*)::text AS n FROM odometer_readings WHERE user_id IS NULL"))[0]?.n).toBe("40");
+  });
+
   it("[AC-OPS-08.6] refuses a database that already has data, and changes nothing", async () => {
     const admin = await migrated();
     await seedStaging(admin, buildStagingSeed(TODAY), { reset: false });

@@ -13,6 +13,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens";
 import { ALLOWED_LOG_FIELDS, createLogger } from "./telemetry/logger";
 import { createWorker, isApiPath, type Env } from "./worker";
+import { fakePeople } from "./testing/fakePeople.js";
 
 let issuer: Awaited<ReturnType<typeof createTestIssuer>>;
 let ownerToken: string;
@@ -34,7 +35,7 @@ function setup(checkDatabase: () => Promise<boolean> = async () => true, seed: A
       },
     },
   };
-  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo(seed)), gifts: createGiftService(fakeGiftRepo()), workouts: createWorkoutService(fakeWorkoutRepo()), weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()), keys: issuer.keys });
+  const worker = createWorker({ logger, checkDatabase, odometer: createOdometerService(fakeRepo(seed)), gifts: createGiftService(fakeGiftRepo()), workouts: createWorkoutService(fakeWorkoutRepo()), weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()), people: fakePeople(), keys: issuer.keys });
   // Signed in as the owner unless a test says otherwise: the same header Cloudflare Access adds at the edge.
   const call = (path: string, init: RequestInit = {}, token: string | null = ownerToken) => {
     const headers = new Headers(init.headers);

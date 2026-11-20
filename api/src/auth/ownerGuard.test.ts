@@ -49,7 +49,7 @@ const guard = (t: string | undefined, c: AccessConfig | undefined = config) => o
 
 describe("ownerGuard", () => {
   it("[AC-MIG-04.2] lets the owner through", async () => {
-    expect(await guard(await token())).toEqual({ ok: true });
+    expect(await guard(await token())).toEqual({ ok: true, email: "owner@example.test" });
   });
 
   it("[AC-MIG-04.3] returns 401 when there is no token", async () => {
@@ -104,7 +104,7 @@ describe("ownerGuard", () => {
   it("[AC-MIG-04.8] lets the configured smoke-test service token in as read-only", async () => {
     const withSmoke = { ...config, smokeClientId: "synthetic-client-id.access" };
     const t = await token({ email: null, commonName: "synthetic-client-id.access" });
-    expect(await guard(t, withSmoke)).toEqual({ ok: true, readOnly: true });
+    expect(await guard(t, withSmoke)).toEqual({ ok: true, email: "owner@example.test", readOnly: true });
   });
 
   it("[AC-MIG-04.8] still refuses other service tokens, and every service token when none is configured", async () => {
@@ -124,7 +124,7 @@ describe("ownerGuard", () => {
   });
 
   it("[AC-MIG-04.2] compares the email without regard to letter case, and not as a partial match", async () => {
-    expect(await guard(await token({ email: "OWNER@Example.test" }))).toEqual({ ok: true });
+    expect(await guard(await token({ email: "OWNER@Example.test" }))).toEqual({ ok: true, email: "owner@example.test" });
     expect(await guard(await token({ email: "xowner@example.test" }))).toEqual({ ok: false, status: 403 });
     expect(await guard(await token({ email: "owner@example.test.evil.test" }))).toEqual({ ok: false, status: 403 });
   });

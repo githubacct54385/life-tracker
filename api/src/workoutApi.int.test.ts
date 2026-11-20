@@ -16,6 +16,7 @@ import { fakeGiftRepo } from "./testing/fakeGiftRepository.js";
 import { fakeRepo } from "./testing/fakeOdometerRepository.js";
 import { createLogger } from "./telemetry/logger.js";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens.js";
+import { peopleService } from "./services/peopleService.js";
 
 const server = inject("postgres");
 
@@ -29,7 +30,7 @@ describe.skipIf(!server)("/api/workouts (real Postgres)", () => {
     const logger = createLogger(() => {});
     // Friday 2026-11-13, 04:00 in Los Angeles.
     const workouts = createWorkoutService(workoutRepository, { now: () => new Date("2026-11-13T12:00:00Z") });
-    const app = createApp({ logger, checkDatabase: async () => true, odometer: createOdometerService(fakeRepo()), gifts: createGiftService(fakeGiftRepo()), workouts, weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()), keys: issuer.keys });
+    const app = createApp({ logger, checkDatabase: async () => true, odometer: createOdometerService(fakeRepo()), gifts: createGiftService(fakeGiftRepo()), workouts, weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()), people: peopleService, keys: issuer.keys });
     call = async (method, url, body, token = ownerToken) => {
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (token) headers["cf-access-jwt-assertion"] = token;

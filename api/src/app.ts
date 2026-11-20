@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { authenticate, remoteKeys, type KeySource } from "./auth/accessGuard.js";
 import type { AccessSettings } from "./auth/accessConfig.js";
 import { requestGuard } from "./auth/requestGuard.js";
+import type { PeopleService } from "./services/peopleService.js";
 import { healthRoutes } from "./handlers/healthHandler.js";
 import { giftRoutes } from "./handlers/giftHandler.js";
 import { odometerRoutes } from "./handlers/odometerHandler.js";
@@ -28,6 +29,8 @@ export interface AppDeps {
   maintenance: MaintenanceService;
   /** Documents attached to car services (MIL-07). Without it the document routes answer 404. */
   documents?: DocumentService;
+  /** Who is making the request, and the scope that limits every query to that person (SET-04). */
+  people: PeopleService;
   /** Where to get Access's public keys. Defaults to the published ones; tests pass their own. */
   keys?: KeySource;
 }
@@ -61,7 +64,12 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
     if (!result.ok) return c.json({ error: result.status === 401 ? "unauthorized" : "forbidden" }, result.status);
     // The smoke-test identity (ADR-0023) can look but never change anything.
     if (result.readOnly && c.req.method !== "GET" && c.req.method !== "HEAD") return c.json({ error: "forbidden" }, 403);
-    await next();
+    // SET-04: from here on the request is for one person, and every query sees only that person's rows. A person who is
+    // not active gets nothing. Health checks read no person's data, so they skip this step (and keep answering when the database is down).
+    if (c.req.path.startsWith("/api/health")) return next();
+    const person = await deps.people.ensureOwner(result.email);
+    if (person.status !== "active") return c.json({ error: "forbidden" }, 403);
+    await deps.people.runAs(person.id, next);
   });
 
   // AC-MIG-03.3: the same check as before, on every method. Safe methods pass; anything else needs the custom header.

@@ -18,6 +18,7 @@ import { fakeMaintenanceRepo } from "./testing/fakeMaintenanceRepository.js";
 import { fakeRepo } from "./testing/fakeOdometerRepository.js";
 import { fakeWeightRepo } from "./testing/fakeWeightRepository.js";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
+import { fakePeople } from "./testing/fakePeople.js";
 
 let issuer: Awaited<ReturnType<typeof createTestIssuer>>;
 let ownerToken: string;
@@ -48,7 +49,7 @@ function setup(options: { bucket?: boolean } = {}) {
     weight: createWeightService(fakeWeightRepo()),
     maintenance: createMaintenanceService(maintenanceRepo, { now: () => new Date("2026-11-13T12:00:00Z"), documents }),
     documents,
-    keys: issuer.keys,
+    people: fakePeople(), keys: issuer.keys,
   });
   const env: Env = { ...TEST_SETTINGS, ASSETS: { fetch: async () => new Response("<html></html>") }, ...(options.bucket === false ? {} : { DOCUMENTS: bucket }) };
   const call = (method: string, path: string, body?: BodyInit, headers: Record<string, string> = {}, token: string | null = ownerToken) => {
@@ -177,14 +178,14 @@ describe("uploading a document", () => {
     expect((await upload(other, bytes(PNG))).status).toBe(201);
   });
 
-  it("[AC-MIL-07.4] stores each file under a random key that carries no file name", async () => {
+  it("[AC-MIL-07.4][AC-SET-04.6] stores each file under a random key that carries no file name, in a folder for the person who owns it", async () => {
     const { call, upload, addService, bucket } = setup();
     const id = await addService();
     await upload(id, bytes(PNG), "image/png");
     await call("POST", `/api/maintenance/${id}/documents`, bytes(PNG), { "content-type": "image/png", "content-length": String(PNG.length), "content-disposition": 'attachment; filename="invoice-jane-doe.png"' });
     const keys = [...bucket.objects.keys()];
     expect(keys).toHaveLength(2);
-    for (const key of keys) expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    for (const key of keys) expect(key).toMatch(/^1\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/); // "1" is the test person (fakePeople)
     expect(new Set(keys).size).toBe(2);
   });
 

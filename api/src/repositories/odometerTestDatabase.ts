@@ -3,6 +3,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { closePool, getPool, useConnection } from "../db/connection.js";
+import { testOwnerId } from "./personTestDatabase.js";
 import { applyMigrations, readMigrationFiles } from "../db/migrationRunner.js";
 import { createAppRole, createFreshDatabase, type PostgresInfo } from "../db/testDatabase.js";
 
@@ -24,5 +25,5 @@ export async function clearOdometerReadings(): Promise<void> {
 }
 
 export async function seedOdometerReading(date: string, miles: number): Promise<void> {
-  await getPool().query("INSERT INTO odometer_readings (reading_date, miles) VALUES ($1::date, $2)", [date, miles]);
+  await getPool().query("INSERT INTO odometer_readings (reading_date, miles, user_id) VALUES ($1::date, $2, $3)", [date, miles, await testOwnerId()]);
 }

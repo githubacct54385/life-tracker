@@ -6,6 +6,7 @@
 import { sniffDocumentType, type MaintenanceDocument } from "@life-tracker/shared";
 import { documentRepository, type DocumentRepository, type StoredDocument } from "../repositories/documentRepository.js";
 import { r2DocumentStore, type DocumentStore } from "../repositories/documentStore.js";
+import { currentUserId } from "../repositories/requestPerson.js";
 
 export type UploadOutcome =
   | { status: "saved"; document: MaintenanceDocument }
@@ -84,7 +85,7 @@ function counting(source: ReadableStream<Uint8Array>, limit: number) {
   return { stream, state };
 }
 
-export function createDocumentService(repo: DocumentRepository, store: DocumentStore, newKey: () => string = () => crypto.randomUUID()): DocumentService {
+export function createDocumentService(repo: DocumentRepository, store: DocumentStore, newKey: () => string = () => `${currentUserId()}/${crypto.randomUUID()}`): DocumentService {
   return {
     async list() {
       return (await repo.list()).map(toPublic);

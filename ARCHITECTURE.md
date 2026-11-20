@@ -294,7 +294,7 @@ flowchart TD
 
 ## 6. Data model (ER diagram)
 
-> **Target (ADR-0026, SET-04):** every table below also gets a `user_id` pointing at a `users` table (id, email, role, status, joined, last sign-in), and a person's rows are only ever read and written for that person. Today the tables have no owner column.
+> **People (ADR-0026, SET-04):** every table below also has a nullable `user_id` pointing at the `users` table (id, email, role, status, created, last sign-in). Every query in `repositories/` is limited to the signed-in person (`WHERE user_id = ...`), through a per-request scope (`db/requestUser.ts`) that throws when no person is set, so a query can never run unfiltered. The owner's row is created the first time they are seen and takes over every row saved before people existed. `NOT NULL` on `user_id` and the per-person unique rules follow in part 3. `db/personTables.ts` lists the tables that hold a person's data.
 
 Only the tables the MVP needs. No raw files, and no financial or bank data (ADR-0021). Weekly mileage is computed from readings, not stored (ADR-0008). Every table also has created and updated timestamps, left out below.
 

@@ -14,6 +14,7 @@ import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens";
 import { fakeGiftRepo } from "./testing/fakeGiftRepository";
 import { fakeRepo } from "./testing/fakeOdometerRepository";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository";
+import { fakePeople } from "./testing/fakePeople.js";
 
 const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_000, method: "check" as const, description: null };
 
@@ -30,7 +31,7 @@ describe("/api/gifts", () => {
       gifts: createGiftService(fakeGiftRepo()),
       workouts: createWorkoutService(fakeWorkoutRepo()),
       weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
-      keys: issuer.keys,
+      people: fakePeople(), keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {
       const headers: Record<string, string> = { "content-type": "application/json" };
@@ -91,7 +92,7 @@ describe("/api/gifts/special", () => {
       gifts: createGiftService(fakeGiftRepo([gift])),
       workouts: createWorkoutService(fakeWorkoutRepo()),
       weight: createWeightService(fakeWeightRepo()), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
-      keys: issuer.keys,
+      people: fakePeople(), keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {
       const headers: Record<string, string> = { "content-type": "application/json" };

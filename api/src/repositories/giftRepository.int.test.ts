@@ -1,12 +1,18 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
-import { giftRepository as repo } from "./giftRepository.js";
+import { giftRepository } from "./giftRepository.js";
+import { asPerson, testOwnerId } from "./personTestDatabase.js";
 import { clearGifts, connectFreshAppDatabase, disconnectAppDatabase } from "./giftTestDatabase.js";
 
 const server = inject("postgres");
 const gift = { dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_050, method: "check" as const, description: null };
 
 describe.skipIf(!server)("giftRepository (real Postgres, real migration, app role)", () => {
-  beforeAll(() => connectFreshAppDatabase(server!));
+  let ownerId = 0;
+  const repo = asPerson(giftRepository, () => ownerId);
+  beforeAll(async () => {
+    await connectFreshAppDatabase(server!);
+    ownerId = await testOwnerId();
+  });
   afterAll(disconnectAppDatabase);
   beforeEach(clearGifts);
 

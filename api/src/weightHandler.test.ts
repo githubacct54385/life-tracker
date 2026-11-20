@@ -14,6 +14,7 @@ import { fakeGiftRepo } from "./testing/fakeGiftRepository";
 import { fakeRepo } from "./testing/fakeOdometerRepository";
 import { fakeWeightRepo } from "./testing/fakeWeightRepository";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository";
+import { fakePeople } from "./testing/fakePeople.js";
 
 describe("/api/weight", () => {
   let call: (method: string, url: string, body?: unknown, token?: string | null, guard?: boolean) => Promise<Response>;
@@ -30,7 +31,7 @@ describe("/api/weight", () => {
       gifts: createGiftService(fakeGiftRepo()),
       workouts: createWorkoutService(fakeWorkoutRepo()),
       weight: createWeightService(fakeWeightRepo(), { now: () => new Date("2026-11-18T20:00:00Z") }), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
-      keys: issuer.keys,
+      people: fakePeople(), keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken, guard = true) => {
       const headers: Record<string, string> = { "content-type": "application/json" };
