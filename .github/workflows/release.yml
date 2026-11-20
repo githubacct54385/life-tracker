@@ -22,6 +22,7 @@ concurrency:
 permissions:
   contents: read
   checks: read
+  statuses: read
 
 jobs:
   release:
@@ -37,9 +38,10 @@ jobs:
 
       - uses: actions/checkout@v7
 
-      # Waits for CI on this commit instead of failing while it is still running, so a release can be started
-      # right after a merge. A failed check stops at once. Nothing below this step runs until both have passed.
-      - name: CI must have passed on this exact commit
+      # Waits for CI and for the staging smoke test (OPS-08, ADR-0025) on this commit instead of failing while they are still
+      # running, so a release can be started right after a merge. A failure stops at once. Nothing below this step runs
+      # until all three have passed. This step only reads results; it never deploys to staging.
+      - name: CI and the staging smoke test must have passed on this exact commit
         timeout-minutes: 12
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,8 +55,16 @@ jobs:
                 elif ($r | length) > 0 then "fail"
                 else "wait" end'
           }
+          # The staging workflow records its result as a commit status. The newest one wins, so a re-run replaces an old result.
+          # success is a pass, failure or error is a fail, pending or none yet is wait.
+          staging_state() {
+            echo "$statuses" | jq -r '
+              [.[] | select(.context == "staging-smoke")] | .[0].state // "none"
+              | if . == "success" then "pass" elif . == "failure" or . == "error" then "fail" else "wait" end'
+          }
           for attempt in $(seq 1 40); do
             runs=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100") || runs='{"check_runs":[]}'
+            statuses=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/statuses?per_page=100") || statuses='[]'
             waiting=""
             for name in hygiene test; do
               case "$(state "$name")" in
@@ -63,14 +73,19 @@ jobs:
                 *) waiting="$waiting $name" ;;
               esac
             done
+            case "$(staging_state)" in
+              pass) ;;
+              fail) echo "The staging smoke test failed on ${GITHUB_SHA}. Not releasing."; exit 1 ;;
+              *) waiting="$waiting staging-smoke" ;;
+            esac
             if [ -z "$waiting" ]; then
-              echo "CI passed on ${GITHUB_SHA}."
+              echo "CI and the staging smoke test passed on ${GITHUB_SHA}."
               exit 0
             fi
-            echo "Waiting for CI on ${GITHUB_SHA}:${waiting} (attempt ${attempt} of 40)"
+            echo "Waiting on ${GITHUB_SHA}:${waiting} (attempt ${attempt} of 40)"
             sleep 15
           done
-          echo "CI did not finish within 10 minutes for ${GITHUB_SHA}. Not releasing. Run Release again once CI is done."
+          echo "CI and the staging smoke test did not both pass within 10 minutes for ${GITHUB_SHA}. Not releasing. If staging never ran for this commit, start the Staging workflow on main, then run Release again."
           exit 1
 
       - name: Start the run summary

@@ -51,6 +51,22 @@ describe("release workflow", () => {
     }
   });
 
+  it("[AC-OPS-08.4] a commit is released only after its staging smoke test passed, checked the same way as CI", () => {
+    const ci = steps.find((s) => s.run?.includes("check-runs"));
+    expect(release.permissions.statuses).toBe("read");
+    expect(ci.run).toContain("/statuses");
+    expect(ci.run).toContain("staging-smoke");
+    // A pass needs a success; a failure or error stops at once; pending or nothing yet keeps waiting.
+    expect(ci.run).toMatch(/"success" then "pass"/);
+    expect(ci.run).toMatch(/"failure" or \. == "error" then "fail"/);
+    expect(ci.run).toMatch(/fail\) echo "The staging smoke test failed.*exit 1/);
+    expect(ci.run).toContain("waiting=\"$waiting staging-smoke\"");
+    // The gate only reads: it cannot write a status to fake a pass, and it does not deploy to staging.
+    expect(release.permissions.statuses).not.toBe("write");
+    expect(ci.run).not.toMatch(/-f state=|--env staging|wrangler/);
+    expect(JSON.stringify(release)).not.toMatch(/--env staging|staging\.yml/);
+  });
+
   it("[AC-MIG-05.1][AC-FND-06.3] waits while CI is still running, stops at once on a failure, and gives up after a limit", () => {
     const ci = steps.find((s) => s.run?.includes("check-runs"));
     expect(ci["timeout-minutes"]).toBeGreaterThan(0);
