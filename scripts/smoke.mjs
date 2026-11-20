@@ -13,11 +13,23 @@ if (!base || !/^https:\/\/[^\s/]+\/?$/.test(base)) {
 }
 const id = process.env.SMOKE_CLIENT_ID;
 const secret = process.env.SMOKE_CLIENT_SECRET;
-const problems = [credentialProblem("SMOKE_CLIENT_ID", id), credentialProblem("SMOKE_CLIENT_SECRET", secret)].filter(Boolean);
-if (problems.length > 0) {
-  for (const problem of problems) console.error(problem);
-  process.exit(2);
+// Only a fixed word comes back from the check, and only fixed text is printed, so nothing derived from a token can reach the log.
+const WHAT_IS_WRONG = {
+  missing: "is not set.",
+  hidden: "has a space or a hidden character in it. Save it again without one.",
+};
+let invalid = false;
+for (const [label, value] of [
+  ["SMOKE_CLIENT_ID", id],
+  ["SMOKE_CLIENT_SECRET", secret],
+]) {
+  const problem = credentialProblem(value);
+  if (problem) {
+    invalid = true;
+    console.error(`${label} ${WHAT_IS_WRONG[problem]}`);
+  }
 }
+if (invalid) process.exit(2);
 
 const { ok, lines } = await runSmoke({ base, id, secret });
 for (const line of lines) console.log(line);

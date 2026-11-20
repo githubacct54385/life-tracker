@@ -9,12 +9,16 @@ export const READ_PATHS = ["/api/odometer", "/api/gifts", "/api/gifts/special", 
 const REFUSED = new Set([301, 302, 303, 307, 308, 401, 403]);
 
 // A header value may hold printable ASCII only. A stray space, newline or carriage return from a paste makes `fetch`
-// and `curl` refuse to send it, and the error does not say why. Say it here, and say only the length.
+// and `curl` refuse to send it, and the error does not say why. Say it here.
 const SAFE_HEADER_VALUE = /^[\x21-\x7e]+$/;
 
-export function credentialProblem(name, value) {
-  if (!value) return `${name} is not set.`;
-  if (!SAFE_HEADER_VALUE.test(value)) return `${name} has a space or a hidden character in it (length ${value.length}). Save it again without one.`;
+/**
+ * Checks a token value before it is sent. Returns "missing", "hidden" (a space or control character in it), or null when it is fine.
+ * It returns a fixed word and never anything built from the value, so nothing derived from a secret can reach a log line.
+ */
+export function credentialProblem(value) {
+  if (!value) return "missing";
+  if (!SAFE_HEADER_VALUE.test(value)) return "hidden";
   return null;
 }
 

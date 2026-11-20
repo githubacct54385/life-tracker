@@ -158,7 +158,7 @@ The smoke test can also be run by hand against staging (it only reads):
 SMOKE_CLIENT_ID=... SMOKE_CLIENT_SECRET=... node scripts/smoke.mjs "https://<the staging Worker address>"
 ```
 
-It checks that an unsigned request is refused, that `/api/health` and `/api/health/db` answer (the second one proves the Worker reaches the staging database), and that each list can be read. If a value has a hidden character, it says which one and its length, and never prints the value.
+It checks that an unsigned request is refused, that `/api/health` and `/api/health/db` answer (the second one proves the Worker reaches the staging database), and that each list can be read. If a token has a hidden character in it, it says which one (and never prints anything from it).
 
 ## 6. Check it
 

@@ -90,17 +90,15 @@ describe("smoke test", () => {
 
 describe("credentials", () => {
   it("[AC-OPS-08.5] accepts a normal token and names a missing one", () => {
-    expect(credentialProblem("SMOKE_CLIENT_ID", ID)).toBeNull();
-    expect(credentialProblem("SMOKE_CLIENT_ID", "")).toBe("SMOKE_CLIENT_ID is not set.");
-    expect(credentialProblem("SMOKE_CLIENT_SECRET", undefined)).toBe("SMOKE_CLIENT_SECRET is not set.");
+    expect(credentialProblem(ID)).toBeNull();
+    expect(credentialProblem("")).toBe("missing");
+    expect(credentialProblem(undefined)).toBe("missing");
   });
 
   it.each([["a trailing newline", "abc\n"], ["a carriage return", "abc\r"], ["a space", "ab c"], ["a tab", "ab\tc"]])(
-    "[AC-OPS-08.5] spots %s and reports only the length, never the value",
+    "[AC-OPS-08.5] spots %s and answers with a fixed word that holds nothing from the value",
     (_label, value) => {
-      const problem = credentialProblem("SMOKE_CLIENT_SECRET", value);
-      expect(problem).toBe(`SMOKE_CLIENT_SECRET has a space or a hidden character in it (length ${value.length}). Save it again without one.`);
-      expect(problem).not.toContain("abc");
+      expect(credentialProblem(value)).toBe("hidden");
     },
   );
 });
