@@ -150,6 +150,8 @@ Environment secrets, not repository secrets: they are released only to a run tha
 
 `.github/workflows/staging.yml` runs on its own after CI passes on a push to `main` (pull request and weekly CI runs never start it). It builds, applies the migrations to the staging database, deploys the staging Worker (`wrangler deploy --env staging --keep-vars`), and runs the smoke test. Its result is recorded on the commit as the status **`staging-smoke`**. Open the run in GitHub, Actions, **Staging**, to see the commit, the migrations applied and each smoke check.
 
+**The Release gate.** The production Release waits for CI (`hygiene`, `test`) and for `staging-smoke` on the exact commit it is releasing, and stops at once if `staging-smoke` failed. If staging never ran for that commit (for example it was skipped), run **Staging** by hand on `main`, then run Release again. The Release workflow only reads the status. It cannot write one and never deploys to staging.
+
 To try a branch or commit on staging without merging it: GitHub, Actions, **Staging**, **Run workflow**, choose **main** under "Use workflow from" (the `staging` environment gives its secrets only to runs from `main`), and put the branch name or commit in `ref`. That runs the branch's code with staging's secrets, so only run branches you wrote or have read.
 
 The smoke test can also be run by hand against staging (it only reads):
@@ -185,7 +187,7 @@ Safety rules built into the command:
 
 ## 7. Check it
 
-- Sections 1 to 4 can be checked with the commands in them. The Release gate (a production Release only for a commit whose `staging-smoke` passed) and the seed script for synthetic data arrive in later parts of OPS-08, and this guide is updated with them.
+- Sections 1 to 4 can be checked with the commands in them. The sample data and the Release gate are described in sections 6 and 5.
 - Any manual deploy of the staging Worker also needs `--keep-vars`, so the secrets set in Cloudflare are not removed: `wrangler deploy --env staging --keep-vars`.
 - Staging holds synthetic data only. Never import a real spreadsheet, a real Apple Health export or a real document there.
 - When something looks wrong, the first question is "which environment am I in?". The address says it, and `wrangler` without `--env staging` always means production.
