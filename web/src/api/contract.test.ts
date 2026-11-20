@@ -249,11 +249,13 @@ describe("demo pushups behaviour", () => {
   });
 });
 
-describe.each(implementations)("[AC-MIL-05.9] maintenance contract: %s", (_name, make) => {
+describe.each(implementations)("[AC-MIL-05.9][AC-MIL-08.6] maintenance contract: %s", (_name, make) => {
   it("lists, saves, edits and deletes with the shared record shape, and lists the places", async () => {
     const api = make();
     const list = await api.listMaintenance();
     expect(list.records.length).toBeGreaterThan(0);
+    expect(Object.keys(list)).toEqual(["records"]);
+    expect(Object.keys(list.records[0]!).some((k) => /document/i.test(k))).toBe(false);
     expect((await api.listServicePlaces()).places.length).toBeGreaterThan(0);
     const request = { date: "2026-11-10", services: ["Oil change"], doneBy: "shop" as const, placeName: "Joe's Garage", costCents: 8999 };
     expect(await api.logMaintenance(request)).toMatchObject({ services: ["Oil change"], doneBy: "shop" });
@@ -266,7 +268,7 @@ describe.each(implementations)("[AC-MIL-05.9] maintenance contract: %s", (_name,
 // The first bytes of a PNG, then filler. Synthetic: not a real image.
 const pngBlob = (extra = 3) => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...new Array(extra).fill(1)])]);
 
-describe.each(implementations)("[AC-MIL-07.8] document contract: %s", (_name, make) => {
+describe.each(implementations)("[AC-MIL-07.8][AC-MIL-08.8] document contract: %s", (_name, make) => {
   it("attaches a document to a service, lists it, gives it an address and removes it", async () => {
     const api = make();
     const record = (await api.listMaintenance()).records[0]!;

@@ -26,7 +26,7 @@ function open(api: Api) {
 const recent = () => screen.findByRole("region", { name: "Recent documents" });
 
 describe("Recent documents", () => {
-  it("[AC-MIL-07.12] is not shown while there are no documents", async () => {
+  it("[AC-MIL-07.12][AC-MIL-08.7] is not shown while there are no documents", async () => {
     open(demo());
     await screen.findByRole("region", { name: "Services" });
     expect(screen.queryByRole("region", { name: "Recent documents" })).toBeNull();
