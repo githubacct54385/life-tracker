@@ -10,6 +10,10 @@ export default defineConfig({
   testDir: "e2e",
   // One at a time: the full-stack specs share one database and reset it before each test.
   workers: 1,
+  // "list" prints a line as each test finishes, numbered, after a "Running N tests" header, so a long run in CI shows how far
+  // it is. Playwright's default in CI is "dot", which prints one character per test and nothing you can count. "github" adds
+  // failure annotations on the pull request.
+  reporter: process.env.CI ? [["list"], ["github"]] : "list",
   webServer: [
     {
       command: "node e2e/support/accessKeys.mjs 9099 test-results/e2e-access-key.json",
