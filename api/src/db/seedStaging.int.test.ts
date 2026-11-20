@@ -40,11 +40,13 @@ describe.skipIf(!server)("staging sample data against the real tables", () => {
     await seedStaging(admin, buildStagingSeed(TODAY), { reset: false });
     const rows = await run<{ done_by: string; place: string | null; services: string[] }>(
       admin,
-      "SELECT r.done_by, p.name AS place, r.services FROM maintenance_records r LEFT JOIN service_places p ON p.id = r.place_id ORDER BY r.service_date",
+      "SELECT r.done_by, p.name AS place, r.services FROM maintenance_records r LEFT JOIN service_places p ON p.id = r.place_id ORDER BY r.service_date DESC",
     );
     expect(rows.filter((row) => row.done_by === "home").every((row) => row.place === null)).toBe(true);
     expect(rows.filter((row) => row.done_by === "shop").every((row) => row.place !== null)).toBe(true);
+    // Newest first: the most recent service is an oil change, the oldest a brake job.
     expect(rows[0]?.services).toEqual(["Oil change"]);
+    expect(rows.at(-1)?.services).toEqual(["Brakes"]);
   });
 
   it("[AC-OPS-08.6] refuses a database that already has data, and changes nothing", async () => {
