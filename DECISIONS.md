@@ -11,7 +11,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | 0003 | Database credentials and network | Superseded by 0021 |
 | 0004 | Source control, pull requests, and manual release | Accepted (deploy target changes with 0021) |
 | 0005 | Testing strategy | Accepted |
-| 0006 | Auth testing and request protection | Accepted (identity mechanics superseded by 0021) |
+| 0006 | Auth testing and request protection | Accepted (identity mechanics superseded by 0021, sign-in model amended by 0026) |
 | 0007 | Dates, time zones, money | Accepted |
 | 0008 | Weekly mileage algorithm | Accepted |
 | 0009 | Apple Health is parsed in the browser | Accepted, spike first |
@@ -31,6 +31,7 @@ One entry per decision that is costly to reverse. Each says what we chose, why, 
 | 0023 | A read-only smoke-test identity for the production API | Accepted |
 | 0024 | Maintenance documents are stored privately in Cloudflare R2 | Accepted |
 | 0025 | A staging environment sits in front of production | Accepted (built in steps, OPS-08) |
+| 0026 | The app owns its people: Google sign-in, invitations, and per-person data | Accepted (built in steps, SET-04 to SET-10) |
 
 ---
 
@@ -397,3 +398,37 @@ It is built in steps (OPS-08):
 **Alternatives rejected.** A Neon branch of production for staging: it copies real data. A staging database inside the production project: one mistake in a connection string reaches real data. Preview deployments per pull request: still off (ADR-0004), and they would multiply the secrets. Skipping staging and relying on CI: it cannot rehearse a migration or a login change on the real platform.
 
 **Consequences.** Another Worker, Neon project and Access application to look after, all on free plans, so the $0 rule holds (verify each vendor's limits before creating the resource). The Release workflow gains a check. A migration is applied twice, staging first, which is the point. The seed data and the smoke test need upkeep when the app changes.
+
+
+---
+## ADR-0026: The app owns its people: Google sign-in, invitations, and per-person data
+
+**Decision.** Life Tracker stops being a one-person app. The app keeps its own list of people and decides who may in.
+- **Sign-in:** Google only (OpenID Connect, authorization-code flow with PKCE) for version 1. No passwords are stored. The Worker verifies the ID token and requires a verified email.
+- **People:** a `users` table (id, email, role `admin` or `user`, status, joined, last sign-in). Access is by invitation only. An admin invites by Google email on the Admin page, or approves a request made from the public homepage.
+- **Sessions:** a signed, `HttpOnly`, `Secure`, `SameSite=Lax` cookie. The person's row is read on every request, so removing access blocks the next request. Writes keep the custom-header check (ADR-0006).
+- **Per-person data:** every table that holds a person's data gets a `user_id`, added nullable, backfilled to the owner, the code switched, then `NOT NULL` and per-person unique rules in a later Release (the usual additive path). Every repository query is limited to the signed-in person. Another person's row answers "not found", never "forbidden". Documents in R2 are keyed per person.
+- **Admin page:** lists people with email, role, status and last sign-in. It never shows another person's data. An admin can invite, remove access (reversible), and delete a non-admin's data (permanent, typed confirmation). An admin cannot delete their own data or another admin's. Every admin action goes in an audit log keyed by user id.
+- **Self-service:** a person (not an admin, in version 1) can delete all their own data. It uses the same deletion routine as the admin's delete, including documents in R2.
+- **Public surface:** exactly the homepage, the login page, the demo, the Google sign-in callback, and one write route for "request access" (protected by Cloudflare Turnstile, a rate limit and a cap). Every other route refuses an unsigned request, and a test proves it for each route.
+- **Cloudflare Access:** stays in front of **staging** as an extra layer while this is built. For **production** it is removed from the app routes in the last Release of the plan ([docs/multi-person-plan.md](docs/multi-person-plan.md)), after staging has proven the new sign-in.
+- **Email:** Resend, to the owner only (a "new access request" note with no message text) while there is no verified domain. Resend cannot send to other people without one (verify on Resend's docs at setup). The owner tells invited, approved or deleted people by hand, using copy-ready messages on the Admin page. A domain would later allow emails to them, as a small separate slice.
+- **Demo:** kept. The homepage offers "Try the demo", "Sign in" and "Request access". The demo never calls the real API (hard rule 7) and shows a visible banner.
+
+**Why.** The owner wants to invite family and friends and show the app on a résumé. Cloudflare Access keeps its allow-list in a dashboard, cannot front a public homepage, and makes the owner leave the app to add anyone. An app-owned list with Google sign-in is the usual pattern for a small invite-only app, needs no password storage or reset flow, and keeps the owner inside the app.
+
+**Rules that keep it safe.**
+- **Fail closed (hard rule 4, reworded).** If the person cannot be confirmed as an active, invited user, the API returns nothing. Nothing in a response, log or error says whether an email has an account.
+- **No test-only bypass (hard rule 9, reworded).** The guard reads no environment flag. Tests sign synthetic Google ID tokens with a throwaway key and pass that key in.
+- **Row-level security as a backstop (decision).** Application queries are limited by `user_id`, and a test per route proves person A cannot touch person B. Postgres row-level security keyed to a per-request setting is added as defence in depth only if SET-04 shows it can be done without breaking the pooled connection. If not, the per-route tests are the safeguard, and this ADR gets a note.
+- **Secrets** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY`, the Resend key, the Turnstile secret) are Worker secrets, never in the repository, logs or telemetry (hard rules 2 and 6). Emails are stored in the database only.
+- **Rehearsal.** Every step runs on staging first (ADR-0025), including the per-person migration with owner-shaped rows.
+- **Admin who leaves.** An admin's own data cannot be deleted from the Admin page or by the self-service button in version 1. How an admin leaves is a later decision.
+
+**Not chosen.**
+- Cloudflare Access for every person: needs dashboard edits for each invite, and no public homepage.
+- Passwords in the app: adds hashing, reset, breach and lockout work for no benefit over Google.
+- A separate database or Worker per person: more resources and cost (cost rule), and no easier to prove isolated than per-person queries and tests.
+- Letting any Google account in and deciding later: the app would become the only gate with nothing in front, and strangers could create rows.
+
+**Consequences.** Hard rules 4 and 9 and the product description are reworded in AGENTS.md, SPEC.md and README.md. A privacy note ([docs/privacy.md](docs/privacy.md)) says what is stored and how it is deleted. Deleted data stays in Neon's backups until the restore window ends, and the note says so. The build is split into SET-06 (this ADR), SET-04 (per-person data), SET-07 (Google sign-in), SET-10 (public homepage), SET-08 (Admin page), SET-05 (request access) and SET-09 (self-service delete).

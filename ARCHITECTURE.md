@@ -178,6 +178,62 @@ sequenceDiagram
     end
 ```
 
+## 3.1 Sequence: signing in with Google (target, SET-07)
+
+This replaces the Cloudflare Access hop for production once SET-07 ships (staging keeps Access in front as an extra layer). The session check is the same "fail closed" rule as in section 3.
+
+```mermaid
+sequenceDiagram
+    actor Person
+    participant W as Worker
+    participant G as Google
+    participant DB as Postgres
+
+    Person->>W: open the site, press "Sign in with Google"
+    W-->>Person: redirect to Google with state, nonce and PKCE challenge
+    Person->>G: sign in with Google
+    G-->>Person: redirect back with a code
+    Person->>W: /auth/callback with code and state
+    W->>G: exchange the code, verify the ID token (signature, issuer, audience, expiry, email_verified)
+    W->>DB: find the user row for the verified email, or an unused unexpired invite
+    alt no row and no invite
+        W-->>Person: "no access" page (same answer for every unknown email), no data
+    else active person
+        W->>DB: save last sign-in, make the session
+        W-->>Person: signed HttpOnly cookie, redirect to the app
+    end
+    Person->>W: any later /api request with the cookie
+    W->>DB: read the user row (status, role) on every request
+    alt removed, expired or unknown
+        W-->>Person: 401, nothing else
+    else active
+        W->>DB: queries limited to this person (user_id)
+        W-->>Person: response
+    end
+```
+
+## 3.2 Sequence: requesting access (target, SET-05)
+
+```mermaid
+sequenceDiagram
+    actor Visitor
+    participant W as Worker
+    participant T as Turnstile
+    participant DB as Postgres
+    participant R as Resend
+    actor Admin
+
+    Visitor->>W: POST /api/access-requests (email, optional message, Turnstile token)
+    W->>T: verify the token
+    W->>DB: rate limit, pending cap, merge the same email, store the request
+    W-->>Visitor: the same "thanks" answer whatever the email is
+    W->>R: "new access request" to the owner only (no message text)
+    Admin->>W: open the Admin page (signed in as admin)
+    W-->>Admin: pending requests, people, last sign-in
+    Admin->>W: approve (makes an invitation) or decline (deletes it)
+    Admin-->>Visitor: tells them by hand (copy-ready message)
+```
+
 ## 4. Sequence: importing from Apple Health (in the browser)
 
 The big file never leaves the phone or computer. A background worker reads workouts from the ZIP, and only those rows are sent.
@@ -237,6 +293,8 @@ flowchart TD
 ```
 
 ## 6. Data model (ER diagram)
+
+> **Target (ADR-0026, SET-04):** every table below also gets a `user_id` pointing at a `users` table (id, email, role, status, joined, last sign-in), and a person's rows are only ever read and written for that person. Today the tables have no owner column.
 
 Only the tables the MVP needs. No raw files, and no financial or bank data (ADR-0021). Weekly mileage is computed from readings, not stored (ADR-0008). Every table also has created and updated timestamps, left out below.
 

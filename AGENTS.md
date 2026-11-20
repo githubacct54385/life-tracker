@@ -4,7 +4,7 @@ Instructions for AI coding agents (and humans) working on Life Tracker. Read thi
 
 ## What this is
 
-A private, single-user web app (installable PWA) for health, mileage, and giving. **Finance and transaction tracking are not part of this app** (ADR-0021); never add them. The code is public. The data and login are private. Read these before building anything:
+A web app (installable PWA) for health, mileage, and giving, used by the owner and by a few people the owner invites, each with their own private data (ADR-0026). **Finance and transaction tracking are not part of this app** (ADR-0021); never add them. The code is public. Each person's data is private to them. Sign-in is by invitation only. Read these before building anything:
 
 - [SPEC.md](SPEC.md): features, priorities, security requirements
 - [ARCHITECTURE.md](ARCHITECTURE.md): layers, dependency rules, sequence diagrams
@@ -13,6 +13,8 @@ A private, single-user web app (installable PWA) for health, mileage, and giving
 - [OBSERVABILITY.md](OBSERVABILITY.md): logging rules
 - [docs/cloudflare-release-setup.md](docs/cloudflare-release-setup.md): the Cloudflare token and secrets the Release workflow needs
 - [docs/setup.md](docs/setup.md): set up Neon, Cloudflare and GitHub from scratch (Cloudflare + Neon, ADR-0021)
+- [docs/privacy.md](docs/privacy.md): what is stored about a person and how it is deleted
+- [docs/multi-person-plan.md](docs/multi-person-plan.md): the order of Releases for sign-in and per-person data
 - [docs/ac-ids.txt](docs/ac-ids.txt): the list of valid acceptance-criterion IDs. The stories and criteria text are in Linear.
 - [wireframes-suite.html](wireframes-suite.html): every MVP screen at mobile, tablet, and desktop widths
 
@@ -23,12 +25,12 @@ If these documents conflict with a request, say so and ask. Do not silently pick
 1. **No personal data in the repo.** No bank or financial data of any kind, no account numbers, names, birthdates, photos, odometer history, or health values. Not in code, tests, fixtures, comments, or commit messages. Use synthetic data only. Any child in the demo is fictional.
 2. **No secrets in the repo.** No connection strings, subscription or tenant IDs, tokens, or the owner's user IDs (GitHub or Cloudflare Access) in any file. Use GitHub secrets and Cloudflare Worker secrets.
 3. **Never commit** `*.csv`, `*.xlsx`, Apple Health exports, or local settings. Test and demo fixtures are generated in code, not stored as data files.
-4. **Fail closed.** If the owner cannot be confirmed, the API returns nothing.
+4. **Fail closed.** If the person cannot be confirmed as an active, invited user, the API returns nothing, and one person can never reach another person's data (the answer is "not found"). The only things open to an unsigned visitor are the homepage, the login page, the demo, and the one request-access write route, and a test proves every other route refuses. Until the sign-in work ships (SET-07), Cloudflare Access plus the owner check is the gate.
 5. **Do not store uploaded files.** Parse (in the browser where possible), keep the parsed rows, discard the file. The one exception is documents the owner attaches to a car service, kept in private storage under the limits in [ADR-0024](DECISIONS.md#adr-0024-maintenance-documents-are-stored-privately-in-cloudflare-r2).
 6. **No private data in logs or telemetry.** All logging goes through `telemetry/logger.ts` and its field allow-list.
 7. **Demo mode never calls the real API.**
 8. Commit with the GitHub noreply email only. `scripts/check-hygiene.sh` checks this in CI.
-9. **No test-only bypass in auth code.** `ownerGuard` never reads an environment flag. Tests sign synthetic Cloudflare Access tokens with a throwaway key and pass that key in (`api/src/testing/accessTokens.ts`, `web/e2e/support/accessKeys.mjs`).
+9. **No test-only bypass in auth code.** The auth guard (`ownerGuard` today, the session guard after SET-07) never reads an environment flag. Tests sign synthetic tokens (Cloudflare Access now, Google ID tokens later) with a throwaway key and pass that key in (`api/src/testing/accessTokens.ts`, `web/e2e/support/accessKeys.mjs`).
 10. **Never apply migrations from the app.** Only the release workflow (or a developer against a local database) runs them.
 
 ## Git, pull requests, and release
