@@ -4,16 +4,20 @@ import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "v
 import { applyMigrations, readMigrationFiles } from "../db/migrationRunner.js";
 import { closePool, getPool, useConnection } from "../db/connection.js";
 import { createAppRole, createFreshDatabase } from "../db/testDatabase.js";
-import { odometerRepository as repo } from "./odometerRepository.js";
+import { odometerRepository } from "./odometerRepository.js";
+import { asPerson, testOwnerId } from "./personTestDatabase.js";
 
 const server = inject("postgres");
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../db/migrations");
 
 describe.skipIf(!server)("odometerRepository (real Postgres, real migration, app role)", () => {
+  let ownerId = 0;
+  const repo = asPerson(odometerRepository, () => ownerId);
   beforeAll(async () => {
     const { admin, name } = await createFreshDatabase(server!);
     await applyMigrations(admin, await readMigrationFiles(migrationsDir));
     await useConnection(await createAppRole(server!, name));
+    ownerId = await testOwnerId();
   });
   afterAll(async () => {
     await closePool();

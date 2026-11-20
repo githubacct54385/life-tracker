@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "v
 import { createApp } from "./app.js";
 import { documentKeys, serviceExists } from "./repositories/documentTestDatabase.js";
 import { documentRepository } from "./repositories/documentRepository.js";
+import { asPerson, testOwnerId } from "./repositories/personTestDatabase.js";
 import { maintenanceRepository } from "./repositories/maintenanceRepository.js";
 import { clearMaintenance } from "./repositories/maintenanceTestDatabase.js";
 import { connectFreshAppDatabase, disconnectAppDatabase } from "./repositories/odometerTestDatabase.js";
@@ -21,6 +22,7 @@ import { fakeGiftRepo } from "./testing/fakeGiftRepository.js";
 import { fakeRepo } from "./testing/fakeOdometerRepository.js";
 import { fakeWeightRepo } from "./testing/fakeWeightRepository.js";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
+import { peopleService } from "./services/peopleService.js";
 
 const server = inject("postgres");
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
@@ -29,8 +31,12 @@ describe.skipIf(!server)("/api/maintenance documents (real Postgres)", () => {
   let call: (method: string, url: string, body?: BodyInit, headers?: Record<string, string>, token?: string | null) => Promise<Response>;
   const store = fakeDocumentStore();
 
+  // For calls made straight to the repository (not through a request), as the owner.
+  let ownerId = 0;
+  const asOwner = asPerson(documentRepository, () => ownerId);
   beforeAll(async () => {
     await connectFreshAppDatabase(server!);
+    ownerId = await testOwnerId();
     const issuer = await createTestIssuer();
     const ownerToken = await issuer.sign(TEST_SETTINGS.OWNER_EMAIL);
     const documents = createDocumentService(documentRepository, store);
@@ -43,7 +49,7 @@ describe.skipIf(!server)("/api/maintenance documents (real Postgres)", () => {
       weight: createWeightService(fakeWeightRepo()),
       maintenance: createMaintenanceService(maintenanceRepository, { now: () => new Date("2026-11-13T12:00:00Z"), documents }),
       documents,
-      keys: issuer.keys,
+      people: peopleService, keys: issuer.keys,
     });
     call = async (method, url, body, headers = {}, token = ownerToken) => {
       const h = new Headers(headers);
@@ -71,20 +77,21 @@ describe.skipIf(!server)("/api/maintenance documents (real Postgres)", () => {
     expect(store.files.size).toBe(10);
     const keys = await documentKeys(id);
     expect(keys).toHaveLength(10);
-    expect(keys.every((key) => /^[0-9a-f-]{36}$/.test(key))).toBe(true);
+    // A random key in a folder named for the person who owns the file (AC-SET-04.6).
+    expect(keys.every((key) => new RegExp(`^${ownerId}/[0-9a-f-]{36}$`).test(key))).toBe(true);
   });
 
   it("[AC-MIL-07.10] allows a file of up to 100 MB in the table, and refuses a service going past 250 MB in total", async () => {
     const id = await addService();
     // Rows only, as the file itself is not needed to test the SQL: 100 + 100 + 50 MB use the whole 250 MB.
-    for (const mb of [100, 100, 50]) expect((await documentRepository.insert(id, crypto.randomUUID(), "application/pdf", mb * 1024 * 1024)).status).toBe("saved");
+    for (const mb of [100, 100, 50]) expect((await asOwner.insert(id, crypto.randomUUID(), "application/pdf", mb * 1024 * 1024)).status).toBe("saved");
     const res = await upload(id);
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "too_much" });
-    expect(await documentRepository.room(id, 100)).toBe("too_much");
+    expect(await asOwner.room(id, 100)).toBe("too_much");
     expect(store.files.size).toBe(0);
     // The table itself refuses a single file over 100 MB, whatever the code says (migration 0010).
-    await expect(documentRepository.insert(await addService(), crypto.randomUUID(), "application/pdf", 100 * 1024 * 1024 + 1)).rejects.toThrow();
+    await expect(asOwner.insert(await addService(), crypto.randomUUID(), "application/pdf", 100 * 1024 * 1024 + 1)).rejects.toThrow();
   });
 
   it("[AC-MIL-07.3] refuses a file whose bytes are not an allowed type, and stores neither a row nor a file", async () => {

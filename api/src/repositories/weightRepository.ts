@@ -1,4 +1,5 @@
 import { getPool } from "../db/connection.js";
+import { currentUserId } from "../db/requestUser.js";
 
 export interface StoredWeight {
   id: number;
@@ -33,27 +34,27 @@ export interface WeightRepository {
 
 export const weightRepository: WeightRepository = {
   async list(limit) {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM weight_entries ORDER BY entry_date DESC LIMIT $1`, [limit]);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM weight_entries WHERE user_id = $2 ORDER BY entry_date DESC LIMIT $1`, [limit, currentUserId()]);
     return result.rows.map(toWeight);
   },
 
   async findByDate(date) {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM weight_entries WHERE entry_date = $1::date`, [date]);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM weight_entries WHERE entry_date = $1::date AND user_id = $2`, [date, currentUserId()]);
     return result.rows[0] ? toWeight(result.rows[0]) : undefined;
   },
 
   async insert({ date, pounds }) {
-    const result = await getPool().query<Row>(`INSERT INTO weight_entries (entry_date, pounds) VALUES ($1::date, $2) RETURNING ${COLUMNS}`, [date, pounds]);
+    const result = await getPool().query<Row>(`INSERT INTO weight_entries (entry_date, pounds, user_id) VALUES ($1::date, $2, $3) RETURNING ${COLUMNS}`, [date, pounds, currentUserId()]);
     return toWeight(result.rows[0]!);
   },
 
   async update(id, pounds) {
-    const result = await getPool().query<Row>(`UPDATE weight_entries SET pounds = $2, updated_at = now() WHERE id = $1 RETURNING ${COLUMNS}`, [id, pounds]);
+    const result = await getPool().query<Row>(`UPDATE weight_entries SET pounds = $2, updated_at = now() WHERE id = $1 AND user_id = $3 RETURNING ${COLUMNS}`, [id, pounds, currentUserId()]);
     return result.rows[0] ? toWeight(result.rows[0]) : undefined;
   },
 
   async remove(id) {
-    const result = await getPool().query("DELETE FROM weight_entries WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM weight_entries WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 };

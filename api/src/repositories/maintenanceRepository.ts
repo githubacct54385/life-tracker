@@ -1,5 +1,6 @@
 import type { DoneBy, ServicePlace } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
+import { currentUserId } from "../db/requestUser.js";
 
 export interface StoredMaintenance {
   id: number;
@@ -73,26 +74,26 @@ export interface MaintenanceRepository {
 }
 
 async function findById(id: number): Promise<StoredMaintenance | undefined> {
-  const result = await getPool().query<Row>(`${SELECT} WHERE r.id = $1`, [id]);
+  const result = await getPool().query<Row>(`${SELECT} WHERE r.id = $1 AND r.user_id = $2`, [id, currentUserId()]);
   return result.rows[0] ? toRecord(result.rows[0]) : undefined;
 }
 
 export const maintenanceRepository: MaintenanceRepository = {
   async list() {
-    const result = await getPool().query<Row>(`${SELECT} ORDER BY r.service_date DESC, r.id DESC`);
+    const result = await getPool().query<Row>(`${SELECT} WHERE r.user_id = $1 ORDER BY r.service_date DESC, r.id DESC`, [currentUserId()]);
     return result.rows.map(toRecord);
   },
 
   async listPlaces() {
-    const result = await getPool().query<{ id: string; name: string }>("SELECT id, name FROM service_places ORDER BY lower(name)");
+    const result = await getPool().query<{ id: string; name: string }>("SELECT id, name FROM service_places WHERE user_id = $1 ORDER BY lower(name)", [currentUserId()]);
     return result.rows.map((row) => ({ id: Number(row.id), name: row.name }));
   },
 
   async findOrCreatePlace(name) {
     // The no-op update makes RETURNING answer for an existing row too, in one round trip.
     const result = await getPool().query<{ id: string; name: string }>(
-      "INSERT INTO service_places (name) VALUES ($1) ON CONFLICT ((lower(name))) DO UPDATE SET name = service_places.name RETURNING id, name",
-      [name],
+      "INSERT INTO service_places (name, user_id) VALUES ($1, $2) ON CONFLICT (user_id, (lower(name))) DO UPDATE SET name = service_places.name RETURNING id, name",
+      [name, currentUserId()],
     );
     const row = result.rows[0]!;
     return { id: Number(row.id), name: row.name };
@@ -100,7 +101,7 @@ export const maintenanceRepository: MaintenanceRepository = {
 
   async renamePlace(id, name) {
     try {
-      const result = await getPool().query<{ id: string; name: string }>("UPDATE service_places SET name = $2 WHERE id = $1 RETURNING id, name", [id, name]);
+      const result = await getPool().query<{ id: string; name: string }>("UPDATE service_places SET name = $2 WHERE id = $1 AND user_id = $3 RETURNING id, name", [id, name, currentUserId()]);
       const row = result.rows[0];
       return row ? { status: "renamed", place: { id: Number(row.id), name: row.name } } : { status: "not_found" };
     } catch (error) {
@@ -114,23 +115,23 @@ export const maintenanceRepository: MaintenanceRepository = {
     // The foreign key is the last line of defence: it refuses the delete too.
     try {
       const result = await getPool().query(
-        "DELETE FROM service_places p WHERE p.id = $1 AND NOT EXISTS (SELECT 1 FROM maintenance_records r WHERE r.place_id = p.id)",
-        [id],
+        "DELETE FROM service_places p WHERE p.id = $1 AND p.user_id = $2 AND NOT EXISTS (SELECT 1 FROM maintenance_records r WHERE r.place_id = p.id)",
+        [id, currentUserId()],
       );
       if ((result.rowCount ?? 0) > 0) return "deleted";
     } catch (error) {
       if ((error as { code?: string }).code === "23503") return "in_use";
       throw error;
     }
-    const exists = await getPool().query("SELECT 1 FROM service_places WHERE id = $1", [id]);
+    const exists = await getPool().query("SELECT 1 FROM service_places WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (exists.rowCount ?? 0) > 0 ? "in_use" : "not_found";
   },
 
   async insert({ date, services, doneBy, placeId, costCents, odometerMiles, note }) {
     const result = await getPool().query<{ id: string }>(
-      `INSERT INTO maintenance_records (service_date, services, done_by, place_id, cost_cents, odometer_miles, note)
-       VALUES ($1::date, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [date, services, doneBy, placeId, costCents, odometerMiles, note],
+      `INSERT INTO maintenance_records (service_date, services, done_by, place_id, cost_cents, odometer_miles, note, user_id)
+       VALUES ($1::date, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [date, services, doneBy, placeId, costCents, odometerMiles, note, currentUserId()],
     );
     return (await findById(Number(result.rows[0]!.id)))!;
   },
@@ -138,14 +139,14 @@ export const maintenanceRepository: MaintenanceRepository = {
   async update(id, { date, services, doneBy, placeId, costCents, odometerMiles, note }) {
     const result = await getPool().query(
       `UPDATE maintenance_records SET service_date = $2::date, services = $3, done_by = $4, place_id = $5, cost_cents = $6,
-       odometer_miles = $7, note = $8, updated_at = now() WHERE id = $1`,
-      [id, date, services, doneBy, placeId, costCents, odometerMiles, note],
+       odometer_miles = $7, note = $8, updated_at = now() WHERE id = $1 AND user_id = $9`,
+      [id, date, services, doneBy, placeId, costCents, odometerMiles, note, currentUserId()],
     );
     return (result.rowCount ?? 0) > 0 ? findById(id) : undefined;
   },
 
   async remove(id) {
-    const result = await getPool().query("DELETE FROM maintenance_records WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM maintenance_records WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 };

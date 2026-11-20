@@ -1,5 +1,6 @@
 import type { WorkoutSource } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
+import { currentUserId } from "../db/requestUser.js";
 
 export interface StoredWorkout {
   id: number;
@@ -41,28 +42,28 @@ export interface WorkoutRepository {
 
 export const workoutRepository: WorkoutRepository = {
   async list(limit) {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM workouts ORDER BY workout_date DESC, id DESC LIMIT $1`, [limit]);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM workouts WHERE user_id = $2 ORDER BY workout_date DESC, id DESC LIMIT $1`, [limit, currentUserId()]);
     return result.rows.map(toWorkout);
   },
 
   async insert({ date, type, minutes, reps, note, source }) {
     const result = await getPool().query<Row>(
-      `INSERT INTO workouts (workout_date, workout_type, minutes, reps, note, source) VALUES ($1::date, $2, $3, $4, $5, $6) RETURNING ${COLUMNS}`,
-      [date, type, minutes, reps, note, source],
+      `INSERT INTO workouts (workout_date, workout_type, minutes, reps, note, source, user_id) VALUES ($1::date, $2, $3, $4, $5, $6, $7) RETURNING ${COLUMNS}`,
+      [date, type, minutes, reps, note, source, currentUserId()],
     );
     return toWorkout(result.rows[0]!);
   },
 
   async update(id, { type, minutes, reps, note }) {
     const result = await getPool().query<Row>(
-      `UPDATE workouts SET workout_type = $2, minutes = $3, reps = $4, note = $5, updated_at = now() WHERE id = $1 RETURNING ${COLUMNS}`,
-      [id, type, minutes, reps, note],
+      `UPDATE workouts SET workout_type = $2, minutes = $3, reps = $4, note = $5, updated_at = now() WHERE id = $1 AND user_id = $6 RETURNING ${COLUMNS}`,
+      [id, type, minutes, reps, note, currentUserId()],
     );
     return result.rows[0] ? toWorkout(result.rows[0]) : undefined;
   },
 
   async remove(id) {
-    const result = await getPool().query("DELETE FROM workouts WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM workouts WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 };

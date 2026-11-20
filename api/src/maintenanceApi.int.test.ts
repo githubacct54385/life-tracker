@@ -3,6 +3,7 @@ import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE } from "@life-tracker/shared"
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 import { createApp } from "./app.js";
 import { maintenanceRepository } from "./repositories/maintenanceRepository.js";
+import { asPerson, testOwnerId } from "./repositories/personTestDatabase.js";
 import { clearMaintenance } from "./repositories/maintenanceTestDatabase.js";
 import { connectFreshAppDatabase, disconnectAppDatabase } from "./repositories/odometerTestDatabase.js";
 import { createGiftService } from "./services/giftService.js";
@@ -16,14 +17,19 @@ import { fakeGiftRepo } from "./testing/fakeGiftRepository.js";
 import { fakeRepo } from "./testing/fakeOdometerRepository.js";
 import { fakeWeightRepo } from "./testing/fakeWeightRepository.js";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
+import { peopleService } from "./services/peopleService.js";
 
 const server = inject("postgres");
 
 describe.skipIf(!server)("/api/maintenance (real Postgres)", () => {
   let call: (method: string, url: string, body?: unknown, token?: string | null) => Promise<Response>;
 
+  // For calls made straight to the repository (not through a request), as the owner.
+  let ownerId = 0;
+  const asOwner = asPerson(maintenanceRepository, () => ownerId);
   beforeAll(async () => {
     await connectFreshAppDatabase(server!);
+    ownerId = await testOwnerId();
     const issuer = await createTestIssuer();
     const ownerToken = await issuer.sign(TEST_SETTINGS.OWNER_EMAIL);
     // Friday 2026-11-13, 04:00 in Los Angeles.
@@ -35,7 +41,7 @@ describe.skipIf(!server)("/api/maintenance (real Postgres)", () => {
       workouts: createWorkoutService(fakeWorkoutRepo()),
       weight: createWeightService(fakeWeightRepo()),
       maintenance: createMaintenanceService(maintenanceRepository, { now: () => new Date("2026-11-13T12:00:00Z") }),
-      keys: issuer.keys,
+      people: peopleService, keys: issuer.keys,
     });
     call = async (method, url, body, token = ownerToken) => {
       const headers: Record<string, string> = { "content-type": "application/json" };
@@ -108,15 +114,15 @@ describe.skipIf(!server)("/api/maintenance (real Postgres)", () => {
   });
 
   it("[AC-MIL-05.2] the database itself refuses a home service that has a place", async () => {
-    const place = await maintenanceRepository.findOrCreatePlace("Check Garage");
+    const place = await asOwner.findOrCreatePlace("Check Garage");
     await expect(
-      maintenanceRepository.insert({ date: "2026-11-01", services: ["Tires"], doneBy: "home", placeId: place.id, costCents: null, odometerMiles: null, note: null }),
+      asOwner.insert({ date: "2026-11-01", services: ["Tires"], doneBy: "home", placeId: place.id, costCents: null, odometerMiles: null, note: null }),
     ).rejects.toThrow(/maintenance_home_has_no_place/);
   });
 
   it("[AC-MIL-05.1] the database refuses a service with no types", async () => {
     await expect(
-      maintenanceRepository.insert({ date: "2026-11-01", services: [], doneBy: "home", placeId: null, costCents: null, odometerMiles: null, note: null }),
+      asOwner.insert({ date: "2026-11-01", services: [], doneBy: "home", placeId: null, costCents: null, odometerMiles: null, note: null }),
     ).rejects.toThrow();
   });
 

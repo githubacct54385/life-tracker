@@ -1,5 +1,6 @@
 import type { GiftRecord, PaymentMethod, SpecialContributionRecord } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
+import { currentUserId } from "../db/requestUser.js";
 
 export type StoredGift = GiftRecord;
 export interface GiftInput {
@@ -58,7 +59,7 @@ const toGift = (row: Row): StoredGift => ({
 // Money is decimal(12,2) in the database and integer cents in code (ADR-0007); it is converted only here.
 const COLUMNS = `id, to_char(given_on, 'YYYY-MM-DD') AS date_given, to_char(for_month, 'YYYY-MM') AS for_month,
   round(amount * 100)::bigint AS cents, method, description`;
-const VALUES = "$1::date, ($2 || '-01')::date, $3::numeric / 100, $4, $5";
+const VALUES = "$1::date, ($2 || '-01')::date, $3::numeric / 100, $4, $5, $6";
 
 /** SQL for regular gifts. No business rules: those live in services/giftService.ts. */
 export interface GiftRepository {
@@ -81,14 +82,14 @@ export interface GiftRepository {
 
 export const giftRepository: GiftRepository = {
   async listAll() {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM regular_gifts ORDER BY for_month DESC, given_on DESC, id DESC`);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM regular_gifts WHERE user_id = $1 ORDER BY for_month DESC, given_on DESC, id DESC`, [currentUserId()]);
     return result.rows.map(toGift);
   },
 
   async insert({ dateGiven, forMonth, cents, method, description }) {
     const result = await getPool().query<Row>(
-      `INSERT INTO regular_gifts (given_on, for_month, amount, method, description) VALUES (${VALUES}) RETURNING ${COLUMNS}`,
-      [dateGiven, forMonth, cents, method, description],
+      `INSERT INTO regular_gifts (given_on, for_month, amount, method, description, user_id) VALUES (${VALUES}) RETURNING ${COLUMNS}`,
+      [dateGiven, forMonth, cents, method, description, currentUserId()],
     );
     return toGift(result.rows[0]!);
   },
@@ -96,26 +97,26 @@ export const giftRepository: GiftRepository = {
   async update(id, { dateGiven, forMonth, cents, method, description }) {
     const result = await getPool().query<Row>(
       `UPDATE regular_gifts SET given_on = $2::date, for_month = ($3 || '-01')::date, amount = $4::numeric / 100, method = $5, description = $6, updated_at = now()
-       WHERE id = $1 RETURNING ${COLUMNS}`,
-      [id, dateGiven, forMonth, cents, method, description],
+       WHERE id = $1 AND user_id = $7 RETURNING ${COLUMNS}`,
+      [id, dateGiven, forMonth, cents, method, description, currentUserId()],
     );
     return result.rows[0] ? toGift(result.rows[0]) : undefined;
   },
 
   async remove(id) {
-    const result = await getPool().query("DELETE FROM regular_gifts WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM regular_gifts WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 
   async listSpecial() {
-    const result = await getPool().query<SpecialRow>(`SELECT ${SPECIAL_COLUMNS} FROM special_contributions ORDER BY given_on DESC, id DESC`);
+    const result = await getPool().query<SpecialRow>(`SELECT ${SPECIAL_COLUMNS} FROM special_contributions WHERE user_id = $1 ORDER BY given_on DESC, id DESC`, [currentUserId()]);
     return result.rows.map(toSpecial);
   },
 
   async insertSpecial({ dateGiven, occasion, cents, method }) {
     const result = await getPool().query<SpecialRow>(
-      `INSERT INTO special_contributions (given_on, occasion, amount, method) VALUES ($1::date, $2, $3::numeric / 100, $4) RETURNING ${SPECIAL_COLUMNS}`,
-      [dateGiven, occasion, cents, method],
+      `INSERT INTO special_contributions (given_on, occasion, amount, method, user_id) VALUES ($1::date, $2, $3::numeric / 100, $4, $5) RETURNING ${SPECIAL_COLUMNS}`,
+      [dateGiven, occasion, cents, method, currentUserId()],
     );
     return toSpecial(result.rows[0]!);
   },
@@ -123,14 +124,14 @@ export const giftRepository: GiftRepository = {
   async updateSpecial(id, { dateGiven, occasion, cents, method }) {
     const result = await getPool().query<SpecialRow>(
       `UPDATE special_contributions SET given_on = $2::date, occasion = $3, amount = $4::numeric / 100, method = $5, updated_at = now()
-       WHERE id = $1 RETURNING ${SPECIAL_COLUMNS}`,
-      [id, dateGiven, occasion, cents, method],
+       WHERE id = $1 AND user_id = $6 RETURNING ${SPECIAL_COLUMNS}`,
+      [id, dateGiven, occasion, cents, method, currentUserId()],
     );
     return result.rows[0] ? toSpecial(result.rows[0]) : undefined;
   },
 
   async removeSpecial(id) {
-    const result = await getPool().query("DELETE FROM special_contributions WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM special_contributions WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 };

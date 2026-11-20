@@ -15,6 +15,7 @@ import { fakeWeightRepo } from "./testing/fakeWeightRepository.js";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
 import { createLogger } from "./telemetry/logger.js";
 import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens.js";
+import { fakePeople } from "./testing/fakePeople.js";
 
 // 03:30 UTC on Nov 14: still the evening of Nov 13 in Los Angeles and Chicago, already Nov 14 in Tokyo and UTC.
 const NOW = () => new Date("2026-11-14T03:30:00Z");
@@ -31,7 +32,7 @@ beforeAll(async () => {
     gifts: createGiftService(fakeGiftRepo()),
     workouts: createWorkoutService(fakeWorkoutRepo(), { now: NOW }),
     weight: createWeightService(fakeWeightRepo(), { now: NOW }), maintenance: createMaintenanceService(fakeMaintenanceRepo()),
-    keys: issuer.keys,
+    people: fakePeople(), keys: issuer.keys,
   });
   post = async (path, body, zone) => {
     const headers: Record<string, string> = { "content-type": "application/json", "cf-access-jwt-assertion": token, [REQUEST_GUARD_HEADER]: REQUEST_GUARD_VALUE };

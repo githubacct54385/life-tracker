@@ -1,5 +1,6 @@
 import { MAX_DOCUMENT_BYTES_PER_RECORD, MAX_DOCUMENTS_PER_RECORD, type DocumentType } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
+import { currentUserId } from "../db/requestUser.js";
 
 export interface StoredDocument {
   id: number;
@@ -55,8 +56,8 @@ async function roomFor(recordId: number, bytes: number): Promise<RoomResult> {
   const result = await getPool().query<{ n: number; total: string }>(
     `SELECT (SELECT count(*) FROM maintenance_documents WHERE record_id = r.id)::int AS n,
             (SELECT COALESCE(sum(bytes), 0) FROM maintenance_documents WHERE record_id = r.id)::text AS total
-     FROM maintenance_records r WHERE r.id = $1`,
-    [recordId],
+     FROM maintenance_records r WHERE r.id = $1 AND r.user_id = $2`,
+    [recordId, currentUserId()],
   );
   const row = result.rows[0];
   if (!row) return "no_record";
@@ -66,17 +67,17 @@ async function roomFor(recordId: number, bytes: number): Promise<RoomResult> {
 
 export const documentRepository: DocumentRepository = {
   async list() {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM maintenance_documents ORDER BY id`);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM maintenance_documents WHERE user_id = $1 ORDER BY id`, [currentUserId()]);
     return result.rows.map(toDocument);
   },
 
   async find(id) {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM maintenance_documents WHERE id = $1`, [id]);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM maintenance_documents WHERE id = $1 AND user_id = $2`, [id, currentUserId()]);
     return result.rows[0] ? toDocument(result.rows[0]) : undefined;
   },
 
   async keysFor(recordId) {
-    const result = await getPool().query<{ object_key: string }>("SELECT object_key FROM maintenance_documents WHERE record_id = $1", [recordId]);
+    const result = await getPool().query<{ object_key: string }>("SELECT object_key FROM maintenance_documents WHERE record_id = $1 AND user_id = $2", [recordId, currentUserId()]);
     return result.rows.map((row) => row.object_key);
   },
 
@@ -84,12 +85,12 @@ export const documentRepository: DocumentRepository = {
 
   async insert(recordId, objectKey, contentType, bytes) {
     const inserted = await getPool().query<Row>(
-      `INSERT INTO maintenance_documents (record_id, object_key, content_type, bytes)
-       SELECT r.id, $2::text, $3::text, $4::integer FROM maintenance_records r
-       WHERE r.id = $1 AND (SELECT count(*) FROM maintenance_documents d WHERE d.record_id = r.id) < $5::integer
+      `INSERT INTO maintenance_documents (record_id, object_key, content_type, bytes, user_id)
+       SELECT r.id, $2::text, $3::text, $4::integer, r.user_id FROM maintenance_records r
+       WHERE r.id = $1 AND r.user_id = $7::bigint AND (SELECT count(*) FROM maintenance_documents d WHERE d.record_id = r.id) < $5::integer
          AND (SELECT COALESCE(sum(d.bytes), 0) FROM maintenance_documents d WHERE d.record_id = r.id) + $4::integer <= $6::bigint
        RETURNING ${COLUMNS}`,
-      [recordId, objectKey, contentType, bytes, MAX_DOCUMENTS_PER_RECORD, MAX_DOCUMENT_BYTES_PER_RECORD],
+      [recordId, objectKey, contentType, bytes, MAX_DOCUMENTS_PER_RECORD, MAX_DOCUMENT_BYTES_PER_RECORD, currentUserId()],
     );
     if (inserted.rows[0]) return { status: "saved", document: toDocument(inserted.rows[0]) };
     // Refused: say why. A service that fits now (another upload finished first) is reported as full.
@@ -98,7 +99,7 @@ export const documentRepository: DocumentRepository = {
   },
 
   async remove(id) {
-    const result = await getPool().query("DELETE FROM maintenance_documents WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM maintenance_documents WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 };

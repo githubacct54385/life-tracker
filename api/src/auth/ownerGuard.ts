@@ -6,7 +6,8 @@ import { jwtVerify, type JWTVerifyGetKey } from "jose";
 import { issuerFor, type AccessConfig } from "./accessConfig.js";
 
 /** `readOnly` is set only for the smoke-test service token (ADR-0023). The app then allows GET and HEAD and nothing else. */
-export type GuardResult = { ok: true; readOnly?: true } | { ok: false; status: 401 | 403 };
+/** `email` is the person the request is for, lower-case. The smoke-test token has no email of its own, so it reads as the owner. */
+export type GuardResult = { ok: true; email: string; readOnly?: true } | { ok: false; status: 401 | 403 };
 
 const deny401: GuardResult = { ok: false, status: 401 };
 const deny403: GuardResult = { ok: false, status: 403 };
@@ -50,8 +51,8 @@ export async function ownerGuard(
   // Service tokens carry no email. Only the one configured smoke-test token is let in, and only to read.
   if (typeof email !== "string" || email === "") {
     const smoke = config.smokeClientId;
-    if (smoke && typeof commonName === "string" && commonName !== "" && sameText(commonName, smoke)) return { ok: true, readOnly: true };
+    if (smoke && typeof commonName === "string" && commonName !== "" && sameText(commonName, smoke)) return { ok: true, email: config.ownerEmail.trim().toLowerCase(), readOnly: true };
     return deny403;
   }
-  return sameText(email.toLowerCase(), config.ownerEmail.toLowerCase()) ? { ok: true } : deny403;
+  return sameText(email.toLowerCase(), config.ownerEmail.toLowerCase()) ? { ok: true, email: email.trim().toLowerCase() } : deny403;
 }

@@ -5,6 +5,7 @@ import { REQUEST_GUARD_HEADER, REQUEST_GUARD_VALUE } from "@life-tracker/shared"
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 import { createApp } from "./app.js";
 import { weightRepository } from "./repositories/weightRepository.js";
+import { asPerson, testOwnerId } from "./repositories/personTestDatabase.js";
 import { clearWeight } from "./repositories/weightTestDatabase.js";
 import { connectFreshAppDatabase, disconnectAppDatabase } from "./repositories/odometerTestDatabase.js";
 import { createGiftService } from "./services/giftService.js";
@@ -16,14 +17,19 @@ import { createTestIssuer, TEST_SETTINGS } from "./testing/accessTokens.js";
 import { fakeGiftRepo } from "./testing/fakeGiftRepository.js";
 import { fakeRepo } from "./testing/fakeOdometerRepository.js";
 import { fakeWorkoutRepo } from "./testing/fakeWorkoutRepository.js";
+import { peopleService } from "./services/peopleService.js";
 
 const server = inject("postgres");
 
 describe.skipIf(!server)("/api/weight (real Postgres)", () => {
   let call: (method: string, url: string, body?: unknown) => Promise<Response>;
 
+  // For calls made straight to the repository (not through a request), as the owner.
+  let ownerId = 0;
+  const asOwner = asPerson(weightRepository, () => ownerId);
   beforeAll(async () => {
     await connectFreshAppDatabase(server!);
+    ownerId = await testOwnerId();
     const issuer = await createTestIssuer();
     const ownerToken = await issuer.sign(TEST_SETTINGS.OWNER_EMAIL);
     const app = createApp({
@@ -34,7 +40,7 @@ describe.skipIf(!server)("/api/weight (real Postgres)", () => {
       workouts: createWorkoutService(fakeWorkoutRepo()),
       weight: createWeightService(weightRepository, { now: () => new Date("2026-11-18T20:00:00Z") }),
       maintenance: createMaintenanceService(fakeMaintenanceRepo()),
-      keys: issuer.keys,
+      people: peopleService, keys: issuer.keys,
     });
     call = (method, url, body) =>
       Promise.resolve(
@@ -67,13 +73,13 @@ describe.skipIf(!server)("/api/weight (real Postgres)", () => {
   });
 
   it("[AC-HLT-01.3] the database itself refuses two entries for one date", async () => {
-    await weightRepository.insert({ date: "2026-11-01", pounds: 170 });
-    await expect(weightRepository.insert({ date: "2026-11-01", pounds: 171 })).rejects.toThrow();
+    await asOwner.insert({ date: "2026-11-01", pounds: 170 });
+    await expect(asOwner.insert({ date: "2026-11-01", pounds: 171 })).rejects.toThrow();
   });
 
   it("[AC-HLT-01.4] stores pounds to one decimal and refuses out-of-range values at the database", async () => {
-    expect((await weightRepository.insert({ date: "2026-11-02", pounds: 172.4 })).pounds).toBe(172.4);
-    await expect(weightRepository.insert({ date: "2026-11-03", pounds: 5 })).rejects.toThrow();
-    await expect(weightRepository.insert({ date: "2026-11-04", pounds: 2000 })).rejects.toThrow();
+    expect((await asOwner.insert({ date: "2026-11-02", pounds: 172.4 })).pounds).toBe(172.4);
+    await expect(asOwner.insert({ date: "2026-11-03", pounds: 5 })).rejects.toThrow();
+    await expect(asOwner.insert({ date: "2026-11-04", pounds: 2000 })).rejects.toThrow();
   });
 });

@@ -1,4 +1,5 @@
 import { getPool } from "../db/connection.js";
+import { currentUserId } from "../db/requestUser.js";
 
 export interface StoredReading {
   id: number;
@@ -33,38 +34,38 @@ export interface OdometerRepository {
 
 export const odometerRepository: OdometerRepository = {
   async listAll() {
-    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM odometer_readings ORDER BY reading_date DESC, id DESC`);
+    const result = await getPool().query<Row>(`SELECT ${COLUMNS} FROM odometer_readings WHERE user_id = $1 ORDER BY reading_date DESC, id DESC`, [currentUserId()]);
     return result.rows.map(toReading);
   },
 
   async insert({ date, miles }) {
     const result = await getPool().query<Row>(
-      `INSERT INTO odometer_readings (reading_date, miles) VALUES ($1::date, $2) RETURNING ${COLUMNS}`,
-      [date, miles],
+      `INSERT INTO odometer_readings (reading_date, miles, user_id) VALUES ($1::date, $2, $3) RETURNING ${COLUMNS}`,
+      [date, miles, currentUserId()],
     );
     return toReading(result.rows[0]!);
   },
 
   async updateMiles(id, miles) {
     const result = await getPool().query<Row>(
-      `UPDATE odometer_readings SET miles = $2, updated_at = now() WHERE id = $1 RETURNING ${COLUMNS}`,
-      [id, miles],
+      `UPDATE odometer_readings SET miles = $2, updated_at = now() WHERE id = $1 AND user_id = $3 RETURNING ${COLUMNS}`,
+      [id, miles, currentUserId()],
     );
     return result.rows[0] ? toReading(result.rows[0]) : undefined;
   },
 
   async remove(id) {
-    const result = await getPool().query("DELETE FROM odometer_readings WHERE id = $1", [id]);
+    const result = await getPool().query("DELETE FROM odometer_readings WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
   },
 
   async insertMissing(rows) {
     if (rows.length === 0) return 0;
     const result = await getPool().query(
-      `INSERT INTO odometer_readings (reading_date, miles)
-       SELECT t.d, t.m FROM unnest($1::date[], $2::integer[]) AS t(d, m)
-       WHERE NOT EXISTS (SELECT 1 FROM odometer_readings o WHERE o.reading_date = t.d AND o.miles = t.m)`,
-      [rows.map((row) => row.date), rows.map((row) => row.miles)],
+      `INSERT INTO odometer_readings (reading_date, miles, user_id)
+       SELECT t.d, t.m, $3::bigint FROM unnest($1::date[], $2::integer[]) AS t(d, m)
+       WHERE NOT EXISTS (SELECT 1 FROM odometer_readings o WHERE o.user_id = $3::bigint AND o.reading_date = t.d AND o.miles = t.m)`,
+      [rows.map((row) => row.date), rows.map((row) => row.miles), currentUserId()],
     );
     return result.rowCount ?? 0;
   },
