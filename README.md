@@ -216,7 +216,9 @@ pnpm dev          # builds the web app, then `wrangler dev` serves web + API at 
 pnpm dev:web      # optional: Vite with hot reload at http://localhost:5173, forwarding /api to the Worker
 ```
 
-Check it works: `curl localhost:8787/api/health` returns `{"status":"ok"}`, and `curl localhost:8787/api/health/db` returns the same only when the database answers. No Cloudflare login is needed for local runs.
+Check it works: open http://localhost:8787 (the web app loads) and http://localhost:8787/demo (the demo, which needs no sign-in).
+
+The API fails closed. Without a valid Cloudflare Access token, every `/api` route answers 401, `/api/health` included ([ADR-0006](DECISIONS.md#adr-0006-auth-testing-and-request-protection)). So `curl localhost:8787/api/health` returns `{"error":"unauthorized"}` unless you have set up Access. To use the API locally, run `pnpm test:e2e`, which signs synthetic tokens with a throwaway key. To sign in to `pnpm dev` yourself, add the three Access settings to `api/.dev.vars` ([docs/cloudflare-access-setup.md](docs/cloudflare-access-setup.md)). No Cloudflare login is needed for either.
 
 Wireframes: [the full suite at mobile, tablet, and desktop widths](wireframes-suite.html).
 
