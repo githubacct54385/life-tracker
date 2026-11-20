@@ -2,7 +2,160 @@
 
 A web app (installable PWA) for health, mileage, and giving. It is used by its owner and by a few invited people, each with their own private data. Finance is not part of this app. The code is public. Sign-in is by invitation only. A demo with fake data runs entirely in the browser.
 
-**Status:** planning and foundation. Hosted on Cloudflare Workers + Neon Postgres (ADR-0021). Stories are tracked in Linear.
+**Status:** in daily use by its owner. Running on Cloudflare Workers and Neon Postgres (ADR-0021) with a staging environment (ADR-0025) and a manual, approved release. Sign-in for invited people, with each person's data kept separate, is being built now (ADR-0026). Stories are tracked in Linear.
+
+## How it fits together
+
+Rendered by GitHub. The same diagrams, with more detail and the request sequences, are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### System architecture
+
+A browser talks to one Cloudflare Worker that serves the React app and the API. Production and staging are separate copies of the whole stack, so a change is tried on staging with synthetic data before it can reach production.
+
+```mermaid
+flowchart TB
+    user["Browser or installed PWA"]
+
+    subgraph prod["Production"]
+        pa["Cloudflare Access: sign-in"]
+        pw["Worker: React app + Hono API"]
+        pdb[("Neon Postgres")]
+        pr2[("R2: private documents")]
+        pa --> pw
+        pw -- "least-privilege app role" --> pdb
+        pw -- "private binding, no public address" --> pr2
+    end
+
+    subgraph stg["Staging"]
+        sa["Cloudflare Access"]
+        sw["Worker: same code, synthetic data only"]
+        sdb[("Neon: separate project")]
+        sr2[("R2: separate bucket")]
+        sa --> sw
+        sw --> sdb
+        sw --> sr2
+    end
+
+    user --> pa
+    user --> sa
+```
+
+### From a change to production
+
+Merging never deploys. Staging deploys on its own after CI passes, and the production Release is manual, needs the owner's approval, and refuses a commit that has not passed CI and the staging smoke test.
+
+```mermaid
+flowchart LR
+    pr["Pull request"] --> ci["CI: lint, types, unit, integration, end-to-end"]
+    ci --> main["Squash merge to main (protected)"]
+    main --> stg["Staging workflow: migrate, deploy, smoke test"]
+    stg --> status["Commit status: staging-smoke"]
+    status --> rel["Release: manual, owner approves, needs CI and staging-smoke"]
+    rel --> mig["Migrations (admin role)"]
+    mig --> dep["Deploy Worker"]
+    dep --> prod["Production"]
+```
+
+### Code layers
+
+Dependencies point downward only, and `dependency-cruiser` fails the build if one points up. SQL lives in repositories and business rules in services. Demo mode swaps the API client for an in-browser one with the same interface, so the demo never calls the real API.
+
+```mermaid
+flowchart TD
+    pages["web pages (React)"] --> client["api/client.ts"]
+    pages -.-> demo["demo/demoApi.ts (in-browser, fake data)"]
+    client -- "HTTPS /api" --> handlers["handlers: parse, check the person, shape the response"]
+    handlers --> services["services: business rules"]
+    services --> repositories["repositories: all the SQL, one person's rows at a time"]
+    repositories --> db["db: connection, per-request person scope"]
+    db --> neon[("Postgres")]
+    shared["shared: zod schemas used by both sides"] -.-> client
+    shared -.-> handlers
+```
+
+### Data model
+
+Every table that holds a person's data has a `user_id`, and every query is limited to the signed-in person (ADR-0026). Weekly mileage is computed from readings, not stored. No files are stored in the database; documents live in the private R2 bucket and the table keeps only a key.
+
+```mermaid
+erDiagram
+    users {
+        bigint id PK
+        text email UK "lower-case"
+        text role "admin or user"
+        text status "active or removed"
+        timestamptz last_login_at
+    }
+    odometer_readings {
+        bigint id PK
+        bigint user_id FK
+        date reading_date
+        int miles
+    }
+    weight_entries {
+        bigint id PK
+        bigint user_id FK
+        date entry_date "one per person per day"
+        numeric pounds
+    }
+    workouts {
+        bigint id PK
+        bigint user_id FK
+        date workout_date
+        text workout_type
+        int minutes "or reps"
+        int reps
+        text source "manual or apple_watch"
+    }
+    regular_gifts {
+        bigint id PK
+        bigint user_id FK
+        date given_on
+        date for_month
+        numeric amount
+        text method
+    }
+    special_contributions {
+        bigint id PK
+        bigint user_id FK
+        date given_on
+        text occasion
+        numeric amount
+    }
+    service_places {
+        bigint id PK
+        bigint user_id FK
+        text name "unique per person, ignoring case"
+    }
+    maintenance_records {
+        bigint id PK
+        bigint user_id FK
+        date service_date
+        int odometer_miles
+        text done_by "shop or home"
+        bigint place_id FK
+        int cost_cents
+        text_list services
+    }
+    maintenance_documents {
+        bigint id PK
+        bigint user_id FK
+        bigint record_id FK
+        text object_key "where the file is in R2"
+        text content_type
+        int bytes
+    }
+    users ||--o{ odometer_readings : has
+    users ||--o{ weight_entries : has
+    users ||--o{ workouts : has
+    users ||--o{ regular_gifts : has
+    users ||--o{ special_contributions : has
+    users ||--o{ service_places : has
+    users ||--o{ maintenance_records : has
+    users ||--o{ maintenance_documents : has
+    service_places ||--o{ maintenance_records : "used by"
+    maintenance_records ||--o{ maintenance_documents : "has files"
+```
 
 ## Read first
 
@@ -15,6 +168,8 @@ A web app (installable PWA) for health, mileage, and giving. It is used by its o
 | [OBSERVABILITY.md](OBSERVABILITY.md) | Logging rules |
 | [docs/setup.md](docs/setup.md) | Set up Neon, Cloudflare and GitHub from scratch |
 | [docs/staging-setup.md](docs/staging-setup.md) | Set up the staging environment (OPS-08) |
+| [docs/local-docker.md](docs/local-docker.md) | Install Docker, and how it is used for local databases and tests |
+| [docs/privacy.md](docs/privacy.md) | What is stored about a person and how it is deleted |
 | [docs/ac-ids.txt](docs/ac-ids.txt) | Valid acceptance-criterion IDs (the stories and criteria text are in Linear) |
 | [AGENTS.md](AGENTS.md) | Working rules for contributors and AI coding agents |
 
@@ -50,7 +205,7 @@ No setup. `pnpm test:unit` runs the shared, api, web and scripts tests. Run one 
 ### Integration tests
 These start a throwaway Postgres in a container and apply the real migrations to it, so they need a Docker that is running.
 
-1. Install and start Docker Desktop (or OrbStack, or Colima).
+1. Install and start Docker Desktop (or OrbStack, or Colima). Step by step: [docs/local-docker.md](docs/local-docker.md).
 2. `pnpm test:int`
 
 The first run downloads the Postgres image. The database is created per run and removed afterwards, so nothing is left behind and nothing of yours is touched. **If Docker is not found, these tests are skipped with a warning, and they show as passed.** Look for "database tests are SKIPPED" in the output. CI never skips them. With Colima, run `colima start` first, and set `DOCKER_HOST` to its socket if the tests cannot find it.
@@ -59,7 +214,7 @@ The first run downloads the Postgres image. The database is created per run and 
 These build the site, start the real Worker (`wrangler dev`), and drive Chromium with Playwright. No Cloudflare login is needed.
 
 1. Once: `pnpm --filter web exec playwright install chromium`
-2. For the full-stack specs (`web/e2e/stack/`) you also need a local Postgres, which the tests fill with the real migrations. With Homebrew:
+2. For the full-stack specs (`web/e2e/stack/`) you also need a local Postgres, which the tests fill with the real migrations. The easiest way is a Docker container (one command, see [docs/local-docker.md](docs/local-docker.md)). Or with Homebrew:
 
 ```bash
 brew install postgresql@16
