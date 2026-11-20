@@ -58,4 +58,10 @@ describe("README pitch and links (OPS-06)", () => {
     expect(local).toMatch(/401/);
     expect(local).toMatch(/localhost:8787\/demo/);
   });
+
+  it("[AC-OPS-06.6] the Docker guide never pipes app-role.sql through stdin, because its include of app-role-grants.sql then cannot be found", () => {
+    const guide = readFileSync(path.join(root, "docs/local-docker.md"), "utf8");
+    expect(guide).not.toMatch(/<\s*db\/setup\/app-role\.sql/);
+    expect(guide).toMatch(/-f \/tmp\/setup\/app-role\.sql/);
+  });
 });

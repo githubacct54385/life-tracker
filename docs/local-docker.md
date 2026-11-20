@@ -89,7 +89,8 @@ The tests refuse any database that is not on your computer or whose name does no
 ```bash
 # once: make the app's restricted login, the same way production does
 APP_PW="$(openssl rand -hex 16)"
-docker exec -i lt-postgres psql -U postgres -d lt_dev -v app_password="$APP_PW" -f - < db/setup/app-role.sql
+docker cp db/setup lt-postgres:/tmp/setup
+docker exec lt-postgres psql -U postgres -d lt_dev -v app_password="$APP_PW" -f /tmp/setup/app-role.sql
 
 # apply the real migrations (admin login)
 DATABASE_ADMIN_URL="postgresql://postgres:dev-only@127.0.0.1:5432/lt_dev" pnpm migrate
@@ -98,6 +99,8 @@ DATABASE_ADMIN_URL="postgresql://postgres:dev-only@127.0.0.1:5432/lt_dev" pnpm m
 printf 'DATABASE_URL=postgresql://lt_app:%s@127.0.0.1:5432/lt_dev\n' "$APP_PW" > api/.dev.vars
 pnpm dev
 ```
+
+Why copy the folder in: `app-role.sql` includes `app-role-grants.sql` (`\ir`), and psql looks for it next to the script. Piping the script in with `< file` leaves psql with no folder to look in, so it fails with "app-role-grants.sql: No such file or directory" after creating the role but before granting anything. Copying the folder into the container and giving psql the real path avoids that. Running it again is safe.
 
 `api/.dev.vars` needs the Cloudflare Access settings too if you want to sign in locally. That part is in `docs/cloudflare-access-setup.md`. The end-to-end tests do not need it, because they sign synthetic tokens with a throwaway key.
 
