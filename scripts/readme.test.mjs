@@ -51,4 +51,11 @@ describe("README pitch and links (OPS-06)", () => {
       if (file === "DECISIONS.md" && hash) expect(anchorsOf(file).has(hash.slice(1)), hash).toBe(true);
     }
   });
+
+  it("[AC-OPS-06.6] the local run section does not promise an open health check, because the API refuses unsigned requests", () => {
+    const local = section("Run it locally");
+    expect(local).not.toMatch(/returns `\{"status":"ok"\}`/);
+    expect(local).toMatch(/401/);
+    expect(local).toMatch(/localhost:8787\/demo/);
+  });
 });
