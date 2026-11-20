@@ -4,6 +4,40 @@ A web app (installable PWA) for health, mileage, and giving. It is used by its o
 
 **Status:** in daily use by its owner. Running on Cloudflare Workers and Neon Postgres (ADR-0021) with a staging environment (ADR-0025) and a manual, approved release. Sign-in for invited people, with each person's data kept separate, is being built now (ADR-0026). Stories are tracked in Linear.
 
+## What it does
+
+- **Car:** log the odometer in seconds, see weekly mileage with graphs and a rolling average, import a mileage spreadsheet, and keep a maintenance log with history and private document storage for receipts.
+- **Health:** log weight and see the trend, and log workouts such as push-ups.
+- **Giving:** log charitable giving by month, including special contributions, with a history.
+- **Home:** one phone-sized dashboard with the latest weight, last week's miles, workouts this week and giving so far this year, plus quick actions.
+- **Everywhere:** installable as a PWA, works at phone, tablet and desktop widths, and has light, dark and system themes.
+- **Demo:** a mileage import walkthrough on made-up data, running entirely in the browser at `/demo`. A full demo of every screen is planned (SET-10).
+
+## What I would point to
+
+- **Invitation-only sign-in and a fail-closed API.** If a request cannot be tied to an active, invited person, it gets nothing, and one person can never reach another person's data. A test lists every route and fails if one is missing ([ADR-0026](DECISIONS.md#adr-0026-the-app-owns-its-people-google-sign-in-invitations-and-per-person-data)).
+- **A layered architecture that the build enforces.** Pages call the API client, then handlers, services, repositories and the database. `dependency-cruiser` fails the build if a dependency points up, and SQL lives only in repositories ([ARCHITECTURE.md](ARCHITECTURE.md)).
+- **Tests carried by acceptance-criterion IDs.** Every test name starts with the criterion it proves, such as `[AC-MIL-04.4]`, and a script reports criteria with no test and tests that point at unknown criteria ([TESTING.md](TESTING.md)).
+- **A manual release with approval.** Merging never deploys. The Release workflow waits for CI and the staging smoke test on that exact commit, waits for the owner's approval, applies migrations, then deploys ([ADR-0004](DECISIONS.md#adr-0004-source-control-pull-requests-and-manual-release), [ADR-0025](DECISIONS.md#adr-0025-a-staging-environment-sits-in-front-of-production)).
+- **Private document storage.** Receipts are kept in a private Cloudflare R2 bucket, per person, with size and type limits, and are never served from a public address ([ADR-0024](DECISIONS.md#adr-0024-maintenance-documents-are-stored-privately-in-cloudflare-r2)).
+- **Migrations that are safe to release.** They add first, the code switches next, and old things are removed in a later release. CI fails on a destructive statement without an explicit marker ([docs/multi-person-plan.md](docs/multi-person-plan.md)).
+- **A demo that can never touch real data.** The demo and the real client implement one interface and share a contract test suite ([ADR-0014](DECISIONS.md#adr-0014-demo-parity)).
+
+## Tech stack
+
+| Part | Choice | Why |
+|---|---|---|
+| Web app | React, TypeScript, Vite, React Router, TanStack Query, Tailwind | Common, well documented and quick to build with ([ADR-0012](DECISIONS.md#adr-0012-frontend-and-tooling-stack)) |
+| Charts | Recharts | Fast to build with; text alternatives and colours are checked by tests ([ADR-0012](DECISIONS.md#adr-0012-frontend-and-tooling-stack)) |
+| API | Hono on a Cloudflare Worker | One small deploy serves the site and `/api/*` on a free plan ([ADR-0021](DECISIONS.md#adr-0021-move-to-cloudflare-workers--neon-postgres-and-move-finance-out-of-this-app)) |
+| Database | Neon Postgres, hand-written SQL with `pg`, numbered `.sql` migrations | Real Postgres on a free plan, with SQL that is easy to read and review ([ADR-0002](DECISIONS.md#adr-0002-data-access-and-migrations)) |
+| Validation | zod, shared by the browser and the API | One definition of every request and response ([ADR-0012](DECISIONS.md#adr-0012-frontend-and-tooling-stack)) |
+| File storage | Cloudflare R2 (private) | Free tier, and nothing is public ([ADR-0024](DECISIONS.md#adr-0024-maintenance-documents-are-stored-privately-in-cloudflare-r2)) |
+| Sign-in | Google sign-in with an app-owned list of people (being built), Cloudflare Access until then | No passwords to store, and the owner manages people in the app ([ADR-0026](DECISIONS.md#adr-0026-the-app-owns-its-people-google-sign-in-invitations-and-per-person-data)) |
+| Tests | Vitest, Testing Library, fast-check, Testcontainers, Playwright | A pyramid: many unit tests, fewer integration tests against real Postgres, few end-to-end tests ([ADR-0005](DECISIONS.md#adr-0005-testing-strategy)) |
+| Delivery | GitHub Actions, protected `main`, a staging environment, a manual approved Release | Nothing reaches production without green checks and the owner's approval ([ADR-0004](DECISIONS.md#adr-0004-source-control-pull-requests-and-manual-release), [ADR-0025](DECISIONS.md#adr-0025-a-staging-environment-sits-in-front-of-production)) |
+| Architecture rules | `dependency-cruiser` and ESLint | The layers are enforced by the build, not by habit ([ADR-0012](DECISIONS.md#adr-0012-frontend-and-tooling-stack)) |
+
 ## How it fits together
 
 Rendered by GitHub. The same diagrams, with more detail and the request sequences, are in [ARCHITECTURE.md](ARCHITECTURE.md).
