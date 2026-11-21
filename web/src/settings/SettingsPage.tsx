@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useGroceryStore } from "../groceries/GroceryStoreContext";
+import { clearGroceryDevice } from "../groceries/offlineStore";
 import { Page } from "../pages/Page";
 import {
   SIGN_OUT_URL,
@@ -21,7 +23,9 @@ const card = "rounded-xl border border-line bg-card p-4";
 const heading = "mb-3 text-sm font-bold text-ink";
 const select = "min-h-11 w-full rounded-lg border border-line bg-bg p-2.5 text-ink";
 
-export function SettingsPage() {
+/** `navigate` is a prop only so a test can see where sign out goes. */
+export function SettingsPage({ navigate = (url: string) => window.location.assign(url) }: { navigate?: (url: string) => void } = {}) {
+  const groceries = useGroceryStore();
   const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
 
   function update(patch: Partial<Preferences>) {
@@ -83,7 +87,14 @@ export function SettingsPage() {
         <section className={card} aria-labelledby="set-account">
           <h2 id="set-account" className={heading}>Account</h2>
           <p className="mb-3 text-sm text-muted">Signed in as the owner.</p>
-          <a href={SIGN_OUT_URL} className="block rounded-lg border border-line px-4 py-2.5 text-center font-bold text-ink">
+          <a
+            href={SIGN_OUT_URL}
+            // The saved grocery list is deleted from this phone before signing out (ADR-0027, AC-GRO-02.5).
+            onClick={(event) => {
+              event.preventDefault();
+              void clearGroceryDevice(groceries).finally(() => navigate(SIGN_OUT_URL));
+            }}
+            className="block rounded-lg border border-line px-4 py-2.5 text-center font-bold text-ink">
             Sign out
           </a>
         </section>

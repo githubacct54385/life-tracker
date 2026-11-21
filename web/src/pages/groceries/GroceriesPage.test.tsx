@@ -4,7 +4,10 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiProvider } from "../../api/ApiContext";
 import type { Api } from "../../api/types";
+import { ApiError } from "../../api/client";
 import { createDemoApi } from "../../demo/demoApi";
+import { GroceryStoreProvider } from "../../groceries/GroceryStoreContext";
+import { memoryStore } from "../../groceries/offlineStore";
 import { GroceriesPage } from "./GroceriesPage";
 
 afterEach(cleanup);
@@ -20,7 +23,9 @@ function open(api: Api = createDemoApi()) {
   render(
     <MemoryRouter>
       <ApiProvider api={api}>
-        <GroceriesPage />
+        <GroceryStoreProvider store={memoryStore()}>
+          <GroceriesPage />
+        </GroceryStoreProvider>
       </ApiProvider>
     </MemoryRouter>,
   );
@@ -82,12 +87,12 @@ describe("Groceries screen", () => {
     expect(within(await region("Produce")).getByRole("button", { name: /^Spinach/ }).getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("[AC-GRO-01.2] when saving a tick fails it says so and shows the saved list again", async () => {
-    const api = { ...createDemoApi(), editGrocery: () => Promise.reject(new Error("down")) } as Api;
+  it("[AC-GRO-01.2] a tick made while the server cannot be reached stays on screen, and the screen says it is waiting", async () => {
+    const api = { ...createDemoApi(), editGrocery: () => Promise.reject(new TypeError("Failed to fetch")) } as Api;
     open(api);
     await userEvent.click(within(await region("Produce")).getByRole("button", { name: /^Spinach/ }));
-    expect((await screen.findByRole("alert")).textContent).toContain("did not work");
-    expect(await screen.findByText("Found 1 of 8")).toBeTruthy();
+    expect(await screen.findByText("Found 2 of 8")).toBeTruthy();
+    expect((await screen.findByText(/Offline\./)).parentElement?.textContent).toContain("1 change is waiting");
   });
 
   it("[AC-GRO-01.3][AC-GRO-01.4] tap Edit and choose a section to move an item, and the move sticks", async () => {
@@ -159,14 +164,17 @@ describe("Groceries screen", () => {
     expect(row.querySelector(".break-words")).not.toBeNull();
   });
 
-  it("[AC-GRO-01.1] says why when the list is full, and shows a message when the list cannot be loaded", async () => {
-    const full = { ...(await empty()), addGrocery: async () => ({ status: "list_full" }) } as Api;
-    open(full);
-    await screen.findByText(/Your list is empty/);
+  it("[AC-GRO-01.1] says why when the list is full", async () => {
+    const api = await empty();
+    for (let n = 1; n <= 300; n++) await api.addGrocery({ id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, name: `item ${n}` });
+    open(api);
+    await screen.findByText("Found 0 of 300");
     await add("One more");
-    expect((await screen.findByRole("status")).textContent).toContain("The list is full");
-    cleanup();
-    open({ ...createDemoApi(), listGroceries: () => Promise.reject(new Error("down")) } as Api);
+    expect((await screen.findByRole("status", { name: "" })).textContent).toContain("The list is full");
+  });
+
+  it("[AC-GRO-01.1] says so when the server answers the list with an error", async () => {
+    open({ ...createDemoApi(), listGroceries: () => Promise.reject(new ApiError(500)) } as Api);
     expect((await screen.findByRole("alert")).textContent).toContain("Could not load the list");
   });
 });

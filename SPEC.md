@@ -175,7 +175,7 @@ A shopping list for the store (GRO-01). One list per person, no separate runs, n
 | Items are grouped by store section (Produce, Bakery, Meat and fish, Dairy and eggs, Frozen, Pantry, Drinks, Household, Other) from a built-in word list, in the order a person walks the store. Moving an item to another section is tap-and-choose | MVP |
 | Edit or remove an item. "Finish trip" (and "Clear list") deletes the whole list after a confirmation | MVP |
 | A Groceries entry in More, and a Home card with how many items are left, hidden when the list is empty | MVP |
-| Use the list in a shop with no signal, and sync when back online (GRO-02) | Next |
+| Use the list in a shop with no signal, and sync when back online (GRO-02, ADR-0027) | MVP |
 | Duplicate check, units for quantities, share the list as text, your own walking order, recipes to list, drag and drop between sections | Later |
 | Share one live list with another person. Needs an ADR first, because people never share data (section 5) | Later |
 
@@ -191,9 +191,9 @@ A shopping list for the store (GRO-01). One list per person, no separate runs, n
 ### 6.10 PWA and mobile
 
 - Installable to the home screen, with a standalone full-screen display.
-- Caches the app shell only, never health, mileage, or giving API responses.
+- Caches the app shell only, never health, mileage, or giving API responses. The one exception is the grocery list, kept in the browser's IndexedDB so it works with no signal (ADR-0027).
 - Bottom tab navigation on mobile.
-- Offline: shows a clear "you're offline" state, no stored private data.
+- Offline: shows a clear "you're offline" state, no stored private data, except that the grocery list opens from its saved copy and can be changed, with the changes sent when the signal returns (ADR-0027).
 - While the database wakes from idle, the app shows a loading state and retries once (ADR-0021).
 - To verify early: GitHub login inside the installed iOS PWA.
 

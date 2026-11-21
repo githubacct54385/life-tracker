@@ -8,6 +8,7 @@ What Life Tracker stores about a person, who can see it, and how it is deleted. 
 |---|---|---|
 | Your account | Your Google email address, your role (admin or user), when you were invited, when you joined, your last sign-in time | To let you in, and so an admin can see who uses the app |
 | Your data | The weights, workouts, odometer readings, maintenance records and documents, giving entries, grocery list items and settings you enter | The app's purpose |
+| On this device | The grocery list, as this phone last saw it, and any grocery changes not yet sent, so the list works with no signal. Nothing else is kept on the device. Deleted when you sign out, finish the trip or clear the list, or delete your data | ADR-0027 |
 | Documents | Files you attach to a car service, kept in private storage | ADR-0024 |
 | A request for access | The email and optional message (up to 200 characters) you send, until the owner answers or 30 days pass | So the owner can decide |
 | An admin audit log | Which admin did what and when, by user id. It holds no health data and no email | To see who changed access |
