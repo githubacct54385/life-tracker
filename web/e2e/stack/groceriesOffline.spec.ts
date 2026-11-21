@@ -5,6 +5,9 @@ test(
   "[AC-GRO-02.1][AC-GRO-02.2][AC-GRO-02.3][AC-GRO-02.7][AC-OPS-04.3] with the network off the list opens from the saved copy, changes show at once, and they reach the server when the network returns",
   { tag: ["@AC-GRO-02.7", "@AC-OPS-04.3"] },
   async ({ page, context }) => {
+    let n = 0;
+    const progress = (what: string) => console.log(`[offline test ${++n}] ${what}`);
+    progress("start");
     await page.goto("/groceries");
     await page.getByLabel("Add an item").fill("Spinach");
     await page.getByRole("button", { name: "Add", exact: true }).click();
@@ -12,9 +15,12 @@ test(
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByText("Found 0 of 2")).toBeVisible();
 
+    progress("items added");
     // The app shell is saved by the service worker; wait until it controls the page so a reload works with no network.
     await expect.poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.active), { timeout: 15_000, message: "the service worker is active" }).toBe(true);
+    progress("service worker active, reloading online");
     await page.reload();
+    progress("reloaded online");
     await expect(page.getByText("Found 0 of 2")).toBeVisible();
     await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 15_000, message: "the service worker controls the page" }).toBe(true);
     // The worker saves each built file just after it serves it. Wait until every file this page loaded is saved, or the offline
@@ -31,8 +37,10 @@ test(
       )
       .toBe(true);
 
+    progress("assets saved, going offline");
     await context.setOffline(true);
     await page.reload();
+    progress("reloaded offline");
     await expect(page.getByText(/Offline\./)).toBeVisible();
     await expect(page.getByRole("region", { name: "Produce" })).toContainText("Spinach");
     await expect(page.getByText("Found 0 of 2")).toBeVisible();
@@ -51,13 +59,16 @@ test(
     await expect(page.getByRole("region", { name: "Bakery" })).toHaveCount(0);
     await expect(page.getByText(/changes? (is|are) waiting/)).toBeVisible();
 
+    progress("offline edits done");
     // The changes survive closing the app: reload with the network still off.
     await page.reload();
     await expect(page.getByText(/Offline\./)).toBeVisible();
     await expect(page.getByRole("region", { name: "Found" })).toContainText("Spinach");
     await expect(page.getByRole("region", { name: "Drinks" })).toContainText("Milk");
 
+    progress("reloaded offline again");
     await context.setOffline(false);
+    progress("back online");
     await expect(page.getByText(/Offline\./)).toHaveCount(0);
     await expect(page.getByText(/changes? (is|are) waiting/)).toHaveCount(0);
 
