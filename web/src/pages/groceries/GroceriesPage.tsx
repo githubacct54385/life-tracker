@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   foundItems,
   GROCERY_SECTIONS,
@@ -11,7 +11,9 @@ import {
   type GroceryItem,
   type GrocerySection,
 } from "@life-tracker/shared";
-import { useApi } from "../../api/ApiContext";
+import { useOfflineGroceries } from "../../groceries/GroceryStoreContext";
+import type { GroceryView, OfflineGroceries } from "../../groceries/offlineGroceries";
+import { useOnline } from "../../pwa/useOnline";
 import { Button } from "../../ui/Button.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { useBusy } from "../../ui/useBusy.js";
@@ -22,45 +24,27 @@ const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-
 const textButton = "inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-gtext underline";
 
 /** One item: tap the name to mark it found (or put it back), "Edit" to change it, move it to another section or remove it. */
-function ItemRow({ item, onToggle, onChanged, onRemoved }: { item: GroceryItem; onToggle: (item: GroceryItem) => void; onChanged: (item: GroceryItem) => void; onRemoved: (id: string) => void }) {
-  const api = useApi();
-  const [busy, track] = useBusy();
+function ItemRow({ item, list, onToggle }: { item: GroceryItem; list: OfflineGroceries; onToggle: (item: GroceryItem) => void }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
   const [quantity, setQuantity] = useState(item.quantity);
   const [note, setNote] = useState(item.note);
   const [section, setSection] = useState<GrocerySection>(item.section);
-  const [error, setError] = useState(false);
 
   const open = () => {
     setName(item.name);
     setQuantity(item.quantity);
     setNote(item.note);
     setSection(item.section);
-    setError(false);
     setEditing(true);
   };
 
-  async function save(event: FormEvent) {
+  // The change shows at once and is sent in the background (or kept for later when there is no signal).
+  function save(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    setError(false);
-    try {
-      onChanged(await api.editGrocery(item.id, { name, quantity, note, section, found: item.found }));
-      setEditing(false);
-    } catch {
-      setError(true);
-    }
-  }
-
-  async function remove() {
-    setError(false);
-    try {
-      await api.deleteGrocery(item.id);
-      onRemoved(item.id);
-    } catch {
-      setError(true);
-    }
+    void list.edit(item.id, { name: name.trim(), quantity: quantity.trim(), note: note.trim(), section, found: item.found });
+    setEditing(false);
   }
 
   const id = `edit-${item.id}`;
@@ -85,7 +69,7 @@ function ItemRow({ item, onToggle, onChanged, onRemoved }: { item: GroceryItem; 
       </div>
 
       {editing && (
-        <form aria-label={`Change ${item.name}`} className="mt-2 mb-3 space-y-3 rounded-xl border border-line bg-sunk p-3" noValidate onSubmit={(event) => void track(() => save(event))}>
+        <form aria-label={`Change ${item.name}`} className="mt-2 mb-3 space-y-3 rounded-xl border border-line bg-sunk p-3" noValidate onSubmit={save}>
           <div>
             <label className="block font-bold text-ink" htmlFor={`${id}-name`}>
               Name
@@ -117,22 +101,17 @@ function ItemRow({ item, onToggle, onChanged, onRemoved }: { item: GroceryItem; 
             </select>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={!name.trim()} busy={busy}>
+            <Button type="submit" disabled={!name.trim()}>
               Save change
             </Button>
-            <Button variant="ghost" type="button" disabled={busy} onClick={() => setEditing(false)}>
+            <Button variant="ghost" type="button" onClick={() => setEditing(false)}>
               Cancel
             </Button>
-            <Button variant="ghost" type="button" disabled={busy} onClick={() => void track(remove)}>
+            <Button variant="ghost" type="button" onClick={() => void list.remove(item.id)}>
               Remove item
             </Button>
           </div>
         </form>
-      )}
-      {error && (
-        <p role="alert" className="pb-2 text-sm">
-          That did not work. Try again.
-        </p>
       )}
     </li>
   );
@@ -155,82 +134,56 @@ function Group({ title, items, ...handlers }: { title: string; items: GroceryIte
 }
 
 /**
- * The grocery list (GRO-01): one list, grouped by store section, tick items as they are found, "Finish trip" deletes the lot.
- * A change shows at once and is sent in the background; if the send fails the screen says so and shows the saved list again.
+ * The grocery list (GRO-01, GRO-02): one list, grouped by store section, tick items as they are found, "Finish trip" deletes the lot.
+ * Every change shows at once. It is sent in the background, or kept on this device until there is signal (ADR-0027).
  */
 export function GroceriesPage({ titleLevel = 1 }: { titleLevel?: 1 | 2 } = {}) {
-  const api = useApi();
+  const list = useOfflineGroceries();
+  const online = useOnline();
   const [busy, track] = useBusy();
   const field = useRef<HTMLInputElement>(null);
-  const [items, setItems] = useState<GroceryItem[] | null>(null);
+  const [view, setView] = useState<GroceryView | null>(null);
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [error, setError] = useState(false);
   const [confirming, setConfirming] = useState<"finish" | "clear" | null>(null);
 
-  const refresh = useCallback(async () => {
-    try {
-      setItems((await api.listGroceries()).items);
-      setLoadFailed(false);
-    } catch {
-      setLoadFailed(true);
-    }
-  }, [api]);
-
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let current = true;
+    const unsubscribe = list.subscribe((next) => current && setView(next));
+    void list.open().then((next) => current && setView(next));
+    return () => {
+      current = false;
+      unsubscribe();
+    };
+  }, [list]);
+
+  const items = view?.items ?? null;
+  const offline = !online || view?.offline === true;
 
   async function add(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    setError(false);
     setMessage(null);
-    try {
-      const result = await api.addGrocery({ id: newItemId(), name, ...(quantity.trim() ? { quantity } : {}), ...(note.trim() ? { note } : {}) });
-      if (result.status === "list_full") return setMessage(`The list is full (${MAX_GROCERY_ITEMS} items). Finish the trip or remove some items.`);
-      setItems((current) => (current ?? []).concat(result.item));
-      setName("");
-      setQuantity("");
-      setNote("");
-      setMessage(`Added ${result.item.name}.`);
-      field.current?.focus(); // the keyboard stays open for the next item
-    } catch {
-      setError(true);
-    }
-  }
-
-  function toggle(item: GroceryItem) {
-    const next = { ...item, found: !item.found };
-    setItems((current) => (current ?? []).map((i) => (i.id === item.id ? next : i)));
-    setError(false);
-    api.editGrocery(item.id, { name: item.name, quantity: item.quantity, note: item.note, section: item.section, found: next.found }).catch(() => {
-      setError(true);
-      void refresh();
-    });
+    if ((items?.length ?? 0) >= MAX_GROCERY_ITEMS) return setMessage(`The list is full (${MAX_GROCERY_ITEMS} items). Finish the trip or remove some items.`);
+    const added = name.trim();
+    setView(await list.add({ id: newItemId(), name: added, ...(quantity.trim() ? { quantity: quantity.trim() } : {}), ...(note.trim() ? { note: note.trim() } : {}) }));
+    setName("");
+    setQuantity("");
+    setNote("");
+    setMessage(`Added ${added}.`);
+    field.current?.focus(); // the keyboard stays open for the next item
   }
 
   async function clear() {
-    setError(false);
-    try {
-      await api.clearGroceries();
-      setItems([]);
-      setConfirming(null);
-      setMessage("The list is empty.");
-    } catch {
-      setError(true);
-    }
+    setView(await list.clear());
+    setConfirming(null);
+    setMessage("The list is empty.");
   }
 
-  const handlers = {
-    onToggle: toggle,
-    onChanged: (changed: GroceryItem) => setItems((current) => (current ?? []).map((i) => (i.id === changed.id ? changed : i))),
-    onRemoved: (id: string) => setItems((current) => (current ?? []).filter((i) => i.id !== id)),
-  };
+  const handlers = { list, onToggle: (item: GroceryItem) => void list.edit(item.id, { name: item.name, quantity: item.quantity, note: item.note, section: item.section, found: !item.found }) };
   const counts = groceryCounts(items ?? []);
   const found = foundItems(items ?? []);
 
@@ -270,20 +223,31 @@ export function GroceriesPage({ titleLevel = 1 }: { titleLevel?: 1 | 2 } = {}) {
       <div role="status" className="mt-2 min-h-6 text-ink">
         {message}
       </div>
-      {error && (
-        <p role="alert" className="text-ink">
-          That did not work. Try again.
+      {offline && (
+        <p role="status" className="mt-1 rounded-xl border border-line bg-sunk p-3 text-ink">
+          <b>Offline.</b> This is the list as this phone last saw it. Your changes are saved here and are sent when you are back online.
+          {view && view.pending > 0 ? ` ${view.pending} ${view.pending === 1 ? "change is" : "changes are"} waiting.` : ""}
         </p>
       )}
-      {loadFailed && (
+      {view?.refusals.map((refusal) => (
+        <div key={refusal.id} role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-sunk p-3 text-ink">
+          <p>
+            <b>{refusal.what}</b> was not saved. {refusal.reason}
+          </p>
+          <Button variant="ghost" type="button" aria-label={`Dismiss: ${refusal.what}`} onClick={() => list.dismiss(refusal.id)}>
+            Dismiss
+          </Button>
+        </div>
+      ))}
+      {view?.failed && (
         <p role="alert" className="text-ink">
-          Could not load the list. Try again later.
+          Could not load the list from the server. Showing what this phone has. Try again later.
         </p>
       )}
 
-      {items === null && !loadFailed && <Skeleton lines={4} className="mt-3" />}
+      {items === null && <Skeleton lines={4} className="mt-3" />}
 
-      {items !== null && items.length === 0 && <p className="mt-4">Your list is empty. Add what you need above.</p>}
+      {items !== null && items.length === 0 && <p className="mt-4">{offline ? "This phone has no saved list yet. Add items, or open the list once with signal." : "Your list is empty. Add what you need above."}</p>}
 
       {items !== null && items.length > 0 && (
         <div className="text-ink">

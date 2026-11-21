@@ -432,3 +432,33 @@ It is built in steps (OPS-08):
 - Letting any Google account in and deciding later: the app would become the only gate with nothing in front, and strangers could create rows.
 
 **Consequences.** Hard rules 4 and 9 and the product description are reworded in AGENTS.md, SPEC.md and README.md. A privacy note ([docs/privacy.md](docs/privacy.md)) says what is stored and how it is deleted. Deleted data stays in Neon's backups until the restore window ends, and the note says so. The build is split into SET-06 (this ADR), SET-04 (per-person data), SET-07 (Google sign-in), SET-10 (public homepage), SET-08 (Admin page), SET-05 (request access) and SET-09 (self-service delete).
+
+
+---
+## ADR-0027: The grocery list is kept on the device so it works with no signal
+
+**Decision.** The grocery list (GRO-01) is the one exception to "the app stores nothing about a person on the device" (SPEC 6.10, AC-FND-05.2). The phone keeps two things in the browser's IndexedDB, in one small database used by one module (`web/src/groceries/offlineStore.ts`):
+- **A copy of the list** as this phone last saw it, with the changes made since.
+- **A queue of changes** not yet sent: add, edit, remove, and clear.
+
+Nothing else is kept. No health, mileage, giving, document or account data is saved on the device, the service worker still never touches `/api/*`, and a test checks both.
+
+**How it behaves.**
+- Offline, the list opens from the saved copy under an "Offline" notice. Adding, ticking, editing and removing show on screen at once and join the queue.
+- The queue is sent in order when the browser says it is online again, when the app comes back to the front (`visibilitychange`), and whenever the list is opened. It does not rely on Background Sync, which iOS Safari does not support.
+- Adds are safe to send twice, because the browser chooses each item's id (ADR-0026 per-person ids, GRO-01). Changes to one item that are still waiting are folded into the last one, and an item added and removed while offline is never sent.
+- **Latest change wins.** An edit replaces the whole item on the server, and the change that reaches the server last is the one that stays. There are no timestamps and no merging. If two phones change the same item, whichever reaches the server last wins. A phone that is offline for a long time can therefore overwrite a newer change made elsewhere. For a shopping list that is the right size of rule.
+- **Refusals are shown, never lost silently.** If the server refuses a waiting change (the item was removed on another device, or the list is full), the change is dropped from the queue and the screen says which one, until the person dismisses the message. A failed send because of no signal, a sign-in problem or a server error leaves the change waiting.
+- Once the queue is empty the saved copy is replaced by the server's list, so the screen and the server match. **The server is always the source of truth.**
+
+**When the copy is deleted.** At sign out, at "Finish trip" and "Clear list", and by "Delete my data" (SET-09 must call `clearGroceryDevice`). Signing out of a shared or lost phone therefore removes the list. A phone that is lost while signed in still holds the list, which has item names only; the person can sign out of Google or remove access, and the next sign-in as someone else replaces the copy with theirs.
+
+**Why.** The owner shops in stores with poor signal. Reading the list and ticking items must work there. Keeping only the grocery list, on the device, behind one module, keeps the privacy promise as close to its original as the feature allows.
+
+**Not chosen.**
+- Caching `/api/groceries` in the service worker: it would be hard to queue changes, to clear on sign out, and to keep other API answers out.
+- Background Sync: not available on iOS Safari.
+- Merging changes by timestamp or per field: more code and more ways to be wrong, for a list of item names.
+- Keeping any other data offline: out of scope; health, mileage, giving and documents stay online only.
+
+**Consequences.** SPEC 6.10 and the README privacy line say "no private data stored on the device, except the grocery list". `docs/privacy.md` says what the device holds and when it is cleared. A new test-only dependency, `fake-indexeddb`, lets the module be tested without a browser.
