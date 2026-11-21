@@ -3,6 +3,7 @@
 // Deleting a person's data (SET-08, SET-09) walks this list, and an integration test fails if a table is added to the
 // database without being listed here, so a new table cannot quietly hold data that deletion would miss.
 export const PERSON_TABLES = [
+  "grocery_items",
   "maintenance_documents",
   "maintenance_records",
   "service_places",

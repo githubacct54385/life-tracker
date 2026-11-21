@@ -10,11 +10,13 @@ import { giftRoutes } from "./handlers/giftHandler.js";
 import { odometerRoutes } from "./handlers/odometerHandler.js";
 import type { GiftService } from "./services/giftService.js";
 import { maintenanceRoutes } from "./handlers/maintenanceHandler.js";
+import { groceryRoutes } from "./handlers/groceryHandler.js";
 import { weightRoutes } from "./handlers/weightHandler.js";
 import { workoutRoutes } from "./handlers/workoutHandler.js";
 import type { OdometerService } from "./services/odometerService.js";
 import type { DocumentService } from "./services/documentService.js";
 import type { MaintenanceService } from "./services/maintenanceService.js";
+import type { GroceryService } from "./services/groceryService.js";
 import type { WeightService } from "./services/weightService.js";
 import type { WorkoutService } from "./services/workoutService.js";
 import { errorCodeOf, errorTypeOf, type Logger } from "./telemetry/logger.js";
@@ -29,6 +31,8 @@ export interface AppDeps {
   maintenance: MaintenanceService;
   /** Documents attached to car services (MIL-07). Without it the document routes answer 404. */
   documents?: DocumentService;
+  /** The grocery list (GRO-01). Without it the grocery routes answer 404. */
+  groceries?: GroceryService;
   /** Who is making the request, and the scope that limits every query to that person (SET-04). */
   people: PeopleService;
   /** Where to get Access's public keys. Defaults to the published ones; tests pass their own. */
@@ -86,6 +90,7 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
   app.route("/workouts", workoutRoutes(deps));
   app.route("/weight", weightRoutes(deps));
   app.route("/maintenance", maintenanceRoutes(deps));
+  if (deps.groceries) app.route("/groceries", groceryRoutes({ logger: deps.logger, groceries: deps.groceries }));
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {

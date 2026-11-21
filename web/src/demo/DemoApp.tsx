@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { APP_NAME } from "@life-tracker/shared";
 import { ApiProvider } from "../api/ApiContext";
+import { GroceriesPage } from "../pages/groceries/GroceriesPage";
 import { ImportMileagePage } from "../pages/car/ImportMileagePage";
 import { createDemoApi } from "./demoApi";
 import { sampleMileageFile } from "./sampleMileage";
@@ -39,6 +40,15 @@ export function DemoApp() {
           <p>Use the sample file to see how importing a mileage spreadsheet works: upload, preview, then done. The sample is made up and is built right here in your browser.</p>
           <ApiProvider api={api}>
             <ImportMileagePage sample={sampleMileageFile} titleLevel={2} />
+          </ApiProvider>
+        </section>
+        <section aria-labelledby="demo-groceries" style={{ marginTop: 24 }}>
+          <h2 id="demo-groceries" style={{ fontWeight: 700 }}>
+            Try the grocery list
+          </h2>
+          <p>Add items, tick them off as you find them, move one to another section, and finish the trip. The list is made up and lives only on this page.</p>
+          <ApiProvider api={api}>
+            <GroceriesPage titleLevel={2} />
           </ApiProvider>
         </section>
       </main>

@@ -115,7 +115,7 @@ describe("Dashboard", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("[AC-DSH-01.3] offers quick actions to add weight, add a workout, log the odometer and add giving", async () => {
+  it("[AC-DSH-01.3] offers quick actions to add weight, add a workout, log the odometer, add giving and open the grocery list", async () => {
     open();
     const actions = await screen.findByRole("region", { name: "Quick actions" });
     const links = within(actions).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")]);
@@ -124,6 +124,7 @@ describe("Dashboard", () => {
       ["Add workout", "/health/workouts"],
       ["Log odometer", "/car/log"],
       ["Add giving", "/giving/log"],
+      ["Grocery list", "/groceries"],
     ]);
   });
 
@@ -146,5 +147,32 @@ describe("Dashboard", () => {
     const workouts = await tile("Workouts this week");
     expect(await within(workouts).findByText("2 workouts")).toBeTruthy();
     expect(within(workouts).getByText("65 pushups")).toBeTruthy();
+  });
+
+  it("[AC-GRO-01.9] shows a Groceries card with how many items are left, and it opens the list", async () => {
+    const api = createDemoApi();
+    const { items } = await api.listGroceries();
+    open(api);
+    const card = await tile("Groceries");
+    const left = items.filter((i) => !i.found).length;
+    expect(within(card).getByText(`${left} left`)).toBeTruthy();
+    expect(within(card).getByText(`Found ${items.length - left} of ${items.length}`)).toBeTruthy();
+    expect(within(card).getByRole("link", { name: "Groceries" }).getAttribute("href")).toBe("/groceries");
+  });
+
+  it("[AC-GRO-01.9] hides the Groceries card when the list is empty", async () => {
+    const api = createDemoApi();
+    await api.clearGroceries();
+    open(api);
+    await tile("Weight");
+    expect(await within(await tile("Weight")).findByText("173.6 lb")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Groceries" })).toBeNull();
+  });
+
+  it("[AC-GRO-01.9] hides the Groceries card when the list cannot be loaded, and the other tiles still show", async () => {
+    const api = { ...createDemoApi(), listGroceries: () => Promise.reject(new Error("down")) } as Api;
+    open(api);
+    expect(await within(await tile("Weight")).findByText("173.6 lb")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Groceries" })).toBeNull();
   });
 });

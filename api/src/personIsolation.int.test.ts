@@ -13,6 +13,8 @@ import { weightRepository } from "./repositories/weightRepository.js";
 import { workoutRepository } from "./repositories/workoutRepository.js";
 import { giftRepository } from "./repositories/giftRepository.js";
 import { createDocumentService } from "./services/documentService.js";
+import { groceryRepository } from "./repositories/groceryRepository.js";
+import { createGroceryService } from "./services/groceryService.js";
 import { createGiftService } from "./services/giftService.js";
 import { createMaintenanceService } from "./services/maintenanceService.js";
 import { createOdometerService } from "./services/odometerService.js";
@@ -34,6 +36,7 @@ const ROUTES = [
   "GET /api/gifts/special", "POST /api/gifts/special", "PUT /api/gifts/special/:id", "DELETE /api/gifts/special/:id",
   "GET /api/workouts", "POST /api/workouts", "PUT /api/workouts/:id", "DELETE /api/workouts/:id",
   "GET /api/weight", "POST /api/weight", "PUT /api/weight/:id", "DELETE /api/weight/:id",
+  "GET /api/groceries", "POST /api/groceries", "PUT /api/groceries/:id", "DELETE /api/groceries/:id", "DELETE /api/groceries",
   "GET /api/maintenance", "POST /api/maintenance", "PUT /api/maintenance/:id", "DELETE /api/maintenance/:id",
   "GET /api/maintenance/places", "PUT /api/maintenance/places/:id", "DELETE /api/maintenance/places/:id",
   "GET /api/maintenance/documents", "GET /api/maintenance/documents/:id", "DELETE /api/maintenance/documents/:id", "POST /api/maintenance/:id/documents",
@@ -67,6 +70,7 @@ describe.skipIf(!server)("one person cannot reach another person's data (real Po
         weight: createWeightService(weightRepository, { now: () => new Date("2026-11-13T12:00:00Z") }),
         maintenance: createMaintenanceService(maintenanceRepository, { now: () => new Date("2026-11-13T12:00:00Z"), documents }),
         documents,
+        groceries: createGroceryService(groceryRepository),
         people,
         keys: issuer.keys,
       });
@@ -143,6 +147,21 @@ describe.skipIf(!server)("one person cannot reach another person's data (real Po
     await sameAsMissing(b, "PUT", (n) => `/api/weight/${n}`, mine.json.entry.id, { pounds: 150 });
     await sameAsMissing(b, "DELETE", (n) => `/api/weight/${n}`, mine.json.entry.id);
     expect(JSON.stringify((await a("GET", "/api/weight")).json)).toContain("180");
+  });
+
+  it("[AC-SET-04.2][AC-SET-04.8][AC-GRO-01.6] the grocery list is private, the same item id is a separate item for each person, and clearing one list leaves the other", async () => {
+    const id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    expect((await a("POST", "/api/groceries", { id, name: "Sample cheese" })).status).toBe(201);
+    expect((await b("GET", "/api/groceries")).json).toEqual({ items: [] });
+    const edit = { name: "Changed", quantity: "", note: "", section: "Other", found: true };
+    expect(await b("PUT", `/api/groceries/${id}`, edit)).toEqual(await b("PUT", "/api/groceries/99999999-9999-4999-8999-999999999999", edit));
+    expect((await b("PUT", `/api/groceries/${id}`, edit)).status).toBe(404);
+    expect((await b("DELETE", `/api/groceries/${id}`)).status).toBe(404);
+    expect((await b("POST", "/api/groceries", { id, name: "Sample bread" })).status).toBe(201); // b's own item, not a repeat of a's
+    expect((await a("GET", "/api/groceries")).json.items).toEqual([expect.objectContaining({ id, name: "Sample cheese", found: false })]);
+    expect((await b("DELETE", "/api/groceries")).status).toBe(204);
+    expect((await b("GET", "/api/groceries")).json).toEqual({ items: [] });
+    expect((await a("GET", "/api/groceries")).json.items).toHaveLength(1);
   });
 
   it("[AC-SET-04.2][AC-SET-04.6][AC-SET-04.8] services, places and documents are private, and a document cannot be fetched, deleted or added to by another person", async () => {

@@ -366,6 +366,15 @@ erDiagram
         text content_type
         int bytes
     }
+    grocery_items {
+        uuid id PK "chosen by the browser; unique per person"
+        bigint user_id FK
+        text name
+        text quantity
+        text note
+        text section "one of nine store sections"
+        boolean found
+    }
     users ||--o{ odometer_readings : has
     users ||--o{ weight_entries : has
     users ||--o{ workouts : has
@@ -374,6 +383,7 @@ erDiagram
     users ||--o{ service_places : has
     users ||--o{ maintenance_records : has
     users ||--o{ maintenance_documents : has
+    users ||--o{ grocery_items : has
     service_places ||--o{ maintenance_records : "used by"
     maintenance_records ||--o{ maintenance_documents : "has files"
 ```

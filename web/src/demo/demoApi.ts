@@ -1,5 +1,10 @@
 import {
   checkReading,
+  groceryItemSchema,
+  groceryListResponseSchema,
+  guessSection,
+  MAX_GROCERY_ITEMS,
+  type GroceryItem,
   documentListResponseSchema,
   maintenanceDocumentSchema,
   MAX_DOCUMENT_BYTES,
@@ -104,6 +109,19 @@ function seedSpecial(): SpecialContributionRecord[] {
   ];
 }
 
+/** A made-up shopping list for the demo (AC-GRO-01.8). */
+function seedGroceries(): GroceryItem[] {
+  const item = (n: number, name: string, quantity: string, found = false): GroceryItem => ({
+    id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+    name,
+    quantity,
+    note: "",
+    section: guessSection(name),
+    found,
+  });
+  return [item(1, "Bananas", "6"), item(2, "Spinach", "1 bag"), item(3, "Milk", "2"), item(4, "Eggs", "1 dozen", true), item(5, "Chicken thighs", ""), item(6, "Pasta", "2"), item(7, "Sparkling water", ""), item(8, "Paper towels", "")];
+}
+
 /** Synthetic weights, one a day for two weeks ending 2026-11-17, so the demo chart has a trend to show. Pounds. */
 function seedWeights(): WeightEntryRecord[] {
   const pounds = [176.2, 175.8, 176.0, 175.1, 175.4, 174.9, 175.2, 174.6, 174.8, 174.1, 174.5, 173.9, 174.2, 173.6];
@@ -135,6 +153,7 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   let weights = seedWeights();
   let nextWeightId = 15;
   const newestWeights = () => [...weights].sort((a, b) => (a.date < b.date ? 1 : -1));
+  let groceries = seedGroceries();
   let workouts = seedWorkouts();
   let nextWorkoutId = 4;
   let places: ServicePlace[] = [{ id: 1, name: "Joe's Garage" }];
@@ -275,6 +294,35 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteWeight(id) {
       weights = weights.filter((w) => w.id !== id);
+    },
+
+    async listGroceries() {
+      return groceryListResponseSchema.parse({ items: groceries });
+    },
+
+    async addGrocery({ id, name, quantity, note, section }) {
+      const existing = groceries.find((g) => g.id === id);
+      if (existing) return { status: "already_added", item: existing };
+      if (groceries.length >= MAX_GROCERY_ITEMS) return { status: "list_full" };
+      const item = groceryItemSchema.parse({ id, name: name.trim(), quantity: quantity?.trim() ?? "", note: note?.trim() ?? "", section: section ?? guessSection(name), found: false });
+      groceries = [...groceries, item];
+      return { status: "added", item };
+    },
+
+    async editGrocery(id, edit) {
+      const current = groceries.find((g) => g.id === id);
+      if (!current) throw new Error("Grocery item not found");
+      const item = groceryItemSchema.parse({ id, ...edit, name: edit.name.trim() });
+      groceries = groceries.map((g) => (g.id === id ? item : g));
+      return item;
+    },
+
+    async deleteGrocery(id) {
+      groceries = groceries.filter((g) => g.id !== id);
+    },
+
+    async clearGroceries() {
+      groceries = [];
     },
 
     async listWorkouts() {

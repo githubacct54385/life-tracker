@@ -7,7 +7,9 @@ import {
   weeklyMiles,
   weightSummary,
   workoutsThisWeek,
+  groceryCounts,
   type GiftRecord,
+  type GroceryItem,
   type OdometerReadingRecord,
   type SpecialContributionRecord,
   type WeightEntryRecord,
@@ -78,6 +80,10 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
     const [g, s] = await Promise.all([api.listGifts(), api.listSpecialContributions()]);
     return { gifts: g.gifts, special: s.contributions };
   });
+
+  // Hidden while loading, on a failure and when the list is empty: it is shown only when it has something to say (AC-GRO-01.9).
+  const groceries = useLoad<GroceryItem[]>(async () => (await api.listGroceries()).items);
+  const groceryCount = groceries.state === "ok" && groceries.value.length > 0 ? groceryCounts(groceries.value) : undefined;
 
   // The banner needs the readings to have loaded: while loading or failed it says nothing rather than something wrong.
   const due = readings.state === "ok" && isReadingDue(readings.value, today);
@@ -158,6 +164,21 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
             }}
           </Tile>
 
+          {groceryCount && (
+            <section aria-labelledby="tile-groceries" className={card}>
+              <h2 id="tile-groceries" className="text-sm font-bold text-muted">
+                <Link to="/groceries" className="-my-3 flex items-center justify-between gap-2 rounded-md py-3 after:absolute after:inset-0 after:rounded-2xl">
+                  Groceries
+                  <Icon name="chevron" className="size-4" />
+                </Link>
+              </h2>
+              <p className="mt-1 text-2xl font-bold">{groceryCount.left === 0 ? "All found" : `${groceryCount.left} left`}</p>
+              <p className="text-sm text-muted">
+                Found {groceryCount.found} of {groceryCount.total}
+              </p>
+            </section>
+          )}
+
           <Tile id="tile-giving" title="Giving this year" load={giving} to="/giving">
             {({ gifts, special }) => {
               const totals = givingYearToDate(gifts, special, { year });
@@ -193,6 +214,10 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
             <Link to="/giving/log" className={action}>
               <Icon name="gift" className="size-5 text-gtext" />
               Add giving
+            </Link>
+            <Link to="/groceries" className={action}>
+              <Icon name="cart" className="size-5 text-gtext" />
+              Grocery list
             </Link>
           </div>
         </section>

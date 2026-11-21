@@ -8,6 +8,9 @@ import { createFreshDatabase, run } from "./testDatabase.js";
 // Skipped only when Docker is missing on a laptop (see globalSetup.int.ts). CI always runs them.
 const server = inject("postgres");
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../db/migrations");
+// The tables SET-04 covers. Later stories add tables (grocery_items, GRO-01) that these migration tests stop before.
+const SET_04_TABLES = PERSON_TABLES.filter((table) => table !== "grocery_items");
+
 const USERS_MIGRATION = "0011_create_users_and_add_user_id.sql";
 
 // "before-users" stops before the users migration, "users" stops right after it (the state of the part 1 and part 2 releases), and
@@ -62,14 +65,23 @@ describe.skipIf(!server)("people and per-person columns (SET-04)", () => {
       admin,
       "SELECT table_name, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'user_id'",
     );
-    expect(columns.map((c) => c.table_name).sort()).toEqual([...PERSON_TABLES].sort());
+    expect(columns.map((c) => c.table_name).sort()).toEqual([...SET_04_TABLES].sort());
     expect(columns.every((c) => c.is_nullable === "YES")).toBe(true);
 
     // A table added later must be listed in personTables.ts (or be `users`), so deleting a person cannot miss it.
     const tables = await run<{ table_name: string }>(admin, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'");
-    expect(tables.map((t) => t.table_name).sort()).toEqual([...PERSON_TABLES, "users"].sort());
+    expect(tables.map((t) => t.table_name).sort()).toEqual([...SET_04_TABLES, "users"].sort());
 
     await expect(run(admin, "INSERT INTO odometer_readings (reading_date, miles, user_id) VALUES ('2026-01-01', 1, 999999)")).rejects.toThrow(/foreign key/);
+  });
+
+  it("[AC-SET-04.9][AC-GRO-01.6] with every migration applied, every table that holds a person's data is listed in personTables.ts, so deleting a person removes the grocery list too", async () => {
+    const { admin } = await migrate("all");
+    const tables = await run<{ table_name: string }>(admin, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'");
+    expect(tables.map((t) => t.table_name).sort()).toEqual([...PERSON_TABLES, "users"].sort());
+    const columns = await run<{ table_name: string; is_nullable: string }>(admin, "SELECT table_name, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'user_id'");
+    expect(columns.map((c) => c.table_name).sort()).toEqual([...PERSON_TABLES].sort());
+    expect(columns.every((c) => c.is_nullable === "NO")).toBe(true);
   });
 
   it("[AC-SET-04.10] two people can each have a weight on the same day and a place with the same name, but one person cannot repeat either", async () => {

@@ -1,7 +1,10 @@
-import type { DocumentListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { AddGroceryRequest, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /** What happens to an uploaded document (MIL-07). The server decides; nothing is stored unless the status is "saved". */
 export type UploadDocumentResult = { status: "saved"; document: MaintenanceDocument } | { status: "too_large" | "unsupported_type" | "limit_reached" | "too_much" | "not_found" };
+
+/** What happens to an added grocery item. "list_full" means the list holds its limit of items and nothing was added (GRO-01). */
+export type AddGroceryResult = { status: "added" | "already_added"; item: GroceryItem } | { status: "list_full" };
 
 /**
  * The one interface the UI uses to reach data (ADR-0014). `client.ts` implements it over HTTP and
@@ -54,6 +57,16 @@ export interface Api {
   editWorkout(id: number, workout: SaveWorkoutRequest): Promise<WorkoutRecord>;
   /** Removes a workout for good. */
   deleteWorkout(id: number): Promise<void>;
+  /** The person's grocery list, in the order it was written (GRO-01). */
+  listGroceries(): Promise<GroceryListResponse>;
+  /** Adds an item. The caller chooses its id (a UUID), so sending the same request twice makes one item. Without a section the server guesses one from the name. */
+  addGrocery(item: AddGroceryRequest): Promise<AddGroceryResult>;
+  /** Replaces every field of an item except its id: this is how an item is marked found, renamed or moved to another section. */
+  editGrocery(id: string, item: EditGroceryRequest): Promise<GroceryItem>;
+  /** Removes one item. */
+  deleteGrocery(id: string): Promise<void>;
+  /** Finish trip and clear list: deletes every item for good. Nothing is kept (AC-GRO-01.5). */
+  clearGroceries(): Promise<void>;
   /** Car services, newest first (MIL-05). */
   listMaintenance(): Promise<MaintenanceListResponse>;
   /** The shops used before, for the drop-down. */

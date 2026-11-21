@@ -14,6 +14,7 @@ import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { LogWeightPage } from "./pages/health/LogWeightPage";
 import { LogWorkoutPage } from "./pages/health/LogWorkoutPage";
 import { MaintenancePage } from "./pages/car/MaintenancePage";
+import { GroceriesPage } from "./pages/groceries/GroceriesPage";
 import { SettingsPage } from "./settings/SettingsPage";
 
 // More exists only where Settings is hidden inside it (phone and tablet). On desktop Settings is in the sidebar.
@@ -37,6 +38,7 @@ export function App() {
         <Route path="car/maintenance" element={<MaintenancePage />} />
         <Route path="car/stats" element={<MileageStatsPage />} />
         <Route path="car/import" element={<ImportMileagePage />} />
+        <Route path="groceries" element={<GroceriesPage />} />
         <Route path="more" element={<More />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

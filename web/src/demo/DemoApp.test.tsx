@@ -7,6 +7,10 @@ describe("demo mode", () => {
     expect(renderToString(<DemoApp />)).toContain("Demo, fake data");
   });
 
+  it("[AC-GRO-01.8] offers the grocery list on made-up data", () => {
+    expect(renderToString(<DemoApp />)).toContain("Try the grocery list");
+  });
+
   it("[AC-DEM-01.1] only /demo and paths under it are demo paths", () => {
     expect(isDemoPath("/demo")).toBe(true);
     expect(isDemoPath("/demo/health")).toBe(true);

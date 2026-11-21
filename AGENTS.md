@@ -94,7 +94,7 @@ Every user story in Linear has acceptance criteria (AC) with a unique ID. The ID
 
 **ID format:** `AC-<AREA>-<NN>.<n>`, for example `AC-MIL-03.2`.
 
-- Area codes: MIG, FND, DEM, MIL, GIV, HLT, DSH, SET, OPS. (FIN is retired.)
+- Area codes: MIG, FND, DEM, MIL, GIV, HLT, DSH, SET, GRO, OPS. (FIN is retired.)
 - `<AREA>-<NN>` is the story key. It is also the prefix of the Linear issue title, for example `MIL-03: Mileage stats and graphs`.
 - IDs are permanent. Never reuse or renumber one. Mark a removed criterion `(retired): reason` in its Linear issue, and add the word `retired` after its ID in `docs/ac-ids.txt`.
 - When you add a criterion, take the next free number for that story, add it to the Linear issue, and add its ID to `docs/ac-ids.txt` in the same pull request.

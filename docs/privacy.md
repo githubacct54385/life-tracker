@@ -7,7 +7,7 @@ What Life Tracker stores about a person, who can see it, and how it is deleted. 
 | About | What | Why |
 |---|---|---|
 | Your account | Your Google email address, your role (admin or user), when you were invited, when you joined, your last sign-in time | To let you in, and so an admin can see who uses the app |
-| Your data | The weights, workouts, odometer readings, maintenance records and documents, giving entries and settings you enter | The app's purpose |
+| Your data | The weights, workouts, odometer readings, maintenance records and documents, giving entries, grocery list items and settings you enter | The app's purpose |
 | Documents | Files you attach to a car service, kept in private storage | ADR-0024 |
 | A request for access | The email and optional message (up to 200 characters) you send, until the owner answers or 30 days pass | So the owner can decide |
 | An admin audit log | Which admin did what and when, by user id. It holds no health data and no email | To see who changed access |

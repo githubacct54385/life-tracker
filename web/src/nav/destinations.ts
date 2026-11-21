@@ -10,6 +10,9 @@ export const CAR: Destination = { label: "Car", path: "/car", icon: "car" };
 export const MORE: Destination = { label: "More", path: "/more", icon: "more" };
 export const SETTINGS: Destination = { label: "Settings", path: "/settings", icon: "settings" };
 
+/** Groceries is reached from More and from Home, not from a tab (GRO-01). */
+export const GROCERIES_PATH = "/groceries";
+
 /** Phone tab bar and tablet icon rail: Settings lives inside More. */
 export const COMPACT_NAV: Destination[] = [HOME, GIVING, HEALTH, CAR, MORE];
 /** Desktop sidebar: everything is one click away. */
@@ -23,6 +26,7 @@ export const SIDEBAR_MIN = 1024;
 
 /** Which destination is highlighted. On compact layouts Settings belongs to More. */
 export function isActive(dest: Destination, pathname: string, kind: NavKind): boolean {
-  const current = kind !== "sidebar" && pathname === SETTINGS.path ? MORE.path : pathname;
+  const inMore = pathname === SETTINGS.path || pathname === GROCERIES_PATH;
+  const current = kind !== "sidebar" && inMore ? MORE.path : pathname;
   return dest.path === "/" ? current === "/" : current === dest.path || current.startsWith(dest.path + "/");
 }
