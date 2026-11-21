@@ -25,15 +25,16 @@ export async function seedStaging(connection: string | pg.ClientConfig, seed: St
   await client.connect();
   try {
     await client.query("BEGIN");
+    // Every row belongs to a person (SET-04), so the sample data goes to the staging admin. That row is made the first time the owner
+    // opens the staging site, so open it once before seeding.
+    const owner = (await client.query<{ id: string }>("SELECT id FROM users WHERE role = 'admin' AND status = 'active' ORDER BY id LIMIT 1")).rows[0]?.id;
+    if (owner === undefined) throw new SeedRefusal("There is no admin person yet, and every row needs one. Open the staging site once, signed in as the owner, then run the seed again.");
+
     if (options.reset) {
       await client.query(`TRUNCATE ${TABLES.join(", ")} RESTART IDENTITY`);
     } else if ((await rowCount(client)) > 0) {
       throw new SeedRefusal("The database already has data. Run it again with --reset to replace that data with the sample data.");
     }
-
-    // The sample data belongs to the staging admin when there is one. With none yet, user_id stays empty and the app gives these
-    // rows to the owner the first time they sign in (SET-04), so seeding before the first sign-in works too.
-    const owner = (await client.query<{ id: string }>("SELECT id FROM users WHERE role = 'admin' AND status = 'active' ORDER BY id LIMIT 1")).rows[0]?.id ?? null;
 
     await client.query("INSERT INTO odometer_readings (reading_date, miles, user_id) SELECT t.*, $3::bigint FROM unnest($1::date[], $2::int[]) AS t", [seed.odometer.map((r) => r.date), seed.odometer.map((r) => r.miles), owner]);
     await client.query("INSERT INTO weight_entries (entry_date, pounds, user_id) SELECT t.*, $3::bigint FROM unnest($1::date[], $2::numeric[]) AS t", [seed.weights.map((r) => r.date), seed.weights.map((r) => r.pounds), owner]);

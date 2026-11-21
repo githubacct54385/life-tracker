@@ -294,7 +294,7 @@ flowchart TD
 
 ## 6. Data model (ER diagram)
 
-> **People (ADR-0026, SET-04):** every table below also has a nullable `user_id` pointing at the `users` table (id, email, role, status, created, last sign-in). Every query in `repositories/` is limited to the signed-in person (`WHERE user_id = ...`), through a per-request scope (`db/requestUser.ts`) that throws when no person is set, so a query can never run unfiltered. The owner's row is created the first time they are seen and takes over every row saved before people existed. `NOT NULL` on `user_id` and the per-person unique rules follow in part 3. `db/personTables.ts` lists the tables that hold a person's data.
+> **People (ADR-0026, SET-04):** every table below also has a required `user_id` (`NOT NULL`, migration 0012) pointing at the `users` table (id, email, role, status, created, last sign-in). Every query in `repositories/` is limited to the signed-in person (`WHERE user_id = ...`), through a per-request scope (`db/requestUser.ts`) that throws when no person is set, so a query can never run unfiltered. The owner's row is created the first time they are seen. Migration 0012 gave every row saved before people existed to that admin, made `user_id` required, and replaced the old one-weight-a-day and one-place-name rules with per-person ones. `db/personTables.ts` lists the tables that hold a person's data.
 
 Weekly mileage is computed from readings, not stored (ADR-0008). No files and no financial or bank data are stored (ADR-0021). Every table also has created and updated timestamps, left out below. The same diagram is in the [README](README.md).
 

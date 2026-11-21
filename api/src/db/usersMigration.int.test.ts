@@ -10,11 +10,14 @@ const server = inject("postgres");
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../db/migrations");
 const USERS_MIGRATION = "0011_create_users_and_add_user_id.sql";
 
-async function migrate(through: "before-users" | "all") {
+// "before-users" stops before the users migration, "users" stops right after it (the state of the part 1 and part 2 releases), and
+// "all" applies everything, including the later migration that makes user_id required (requirePersonMigration.int.test.ts).
+async function migrate(through: "before-users" | "users" | "all") {
   const { admin } = await createFreshDatabase(server!);
   const files = await readMigrationFiles(migrationsDir);
-  await applyMigrations(admin, through === "all" ? files : files.filter((file) => file.name < USERS_MIGRATION));
-  return { admin, files };
+  const upToUsers = files.filter((file) => file.name <= USERS_MIGRATION);
+  await applyMigrations(admin, through === "all" ? files : through === "users" ? upToUsers : files.filter((file) => file.name < USERS_MIGRATION));
+  return { admin, files: upToUsers };
 }
 
 describe.skipIf(!server)("people and per-person columns (SET-04)", () => {
@@ -41,7 +44,7 @@ describe.skipIf(!server)("people and per-person columns (SET-04)", () => {
   });
 
   it("[AC-SET-04.9] a person has a lower-case unique email, a role and a status", async () => {
-    const { admin } = await migrate("all");
+    const { admin } = await migrate("users");
     await run(admin, "INSERT INTO users (email, role) VALUES ('owner@example.test', 'admin')");
     const row = (await run<{ role: string; status: string; last_login_at: string | null }>(admin, "SELECT role, status, last_login_at FROM users"))[0];
     expect(row).toEqual({ role: "admin", status: "active", last_login_at: null });
@@ -53,8 +56,8 @@ describe.skipIf(!server)("people and per-person columns (SET-04)", () => {
     await expect(run(admin, "INSERT INTO users (email, status) VALUES ('b@example.test', 'gone')")).rejects.toThrow(/check/);
   });
 
-  it("[AC-SET-04.3][AC-SET-04.9] every table that holds a person's data has a nullable user_id that points at a person, and nothing else is unlisted", async () => {
-    const { admin } = await migrate("all");
+  it("[AC-SET-04.3][AC-SET-04.9] after the users migration every table that holds a person's data has a nullable user_id that points at a person, and nothing else is unlisted", async () => {
+    const { admin } = await migrate("users");
     const columns = await run<{ table_name: string; is_nullable: string }>(
       admin,
       "SELECT table_name, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'user_id'",
@@ -75,8 +78,7 @@ describe.skipIf(!server)("people and per-person columns (SET-04)", () => {
     const ids = (await run<{ id: string }>(admin, "SELECT id::text FROM users ORDER BY email")).map((u) => u.id);
     const [a, b] = ids as [string, string];
 
-    // The old single-person rules stay until a later release removes them. Take them away here to prove the new per-person ones on their own.
-    await run(admin, "ALTER TABLE weight_entries DROP CONSTRAINT weight_entries_entry_date_key; DROP INDEX service_places_name_idx");
+    // The later migration has removed the old single-person rules, so only the per-person ones apply.
     await run(admin, `INSERT INTO weight_entries (entry_date, pounds, user_id) VALUES ('2026-01-01', 180, ${a}), ('2026-01-01', 150, ${b})`);
     await expect(run(admin, `INSERT INTO weight_entries (entry_date, pounds, user_id) VALUES ('2026-01-01', 181, ${a})`)).rejects.toThrow(/weight_entries_user_date_idx/);
 
