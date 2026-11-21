@@ -13,12 +13,23 @@ test(
     await expect(page.getByText("Found 0 of 2")).toBeVisible();
 
     // The app shell is saved by the service worker; wait until it controls the page so a reload works with no network.
-    await page.evaluate(async () => {
-      await navigator.serviceWorker.ready;
-    });
+    await expect.poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.active), { timeout: 15_000, message: "the service worker is active" }).toBe(true);
     await page.reload();
     await expect(page.getByText("Found 0 of 2")).toBeVisible();
-    await expect(page.evaluate(() => !!navigator.serviceWorker.controller)).resolves.toBe(true);
+    await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 15_000, message: "the service worker controls the page" }).toBe(true);
+    // The worker saves each built file just after it serves it. Wait until every file this page loaded is saved, or the offline
+    // reload below could find the app half saved (on a slow machine it does).
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const loaded = performance.getEntriesByType("resource").map((e) => new URL(e.name).pathname).filter((path) => path.startsWith("/assets/"));
+            const saved = (await (await caches.open("shell-v1")).keys()).map((r) => new URL(r.url).pathname);
+            return loaded.length > 0 && loaded.every((path) => saved.includes(path));
+          }),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
 
     await context.setOffline(true);
     await page.reload();
