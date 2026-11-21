@@ -13,10 +13,34 @@ test(
     page.on("pageerror", (e) => console.log(`[page error] ${e.message.slice(0, 200)}`));
     await page.goto("/groceries");
     progress("opened");
+    const probe = await page.evaluate(
+      () =>
+        Promise.race([
+          new Promise<string>((resolve) => {
+            const request = indexedDB.open("probe-db", 1);
+            request.onupgradeneeded = () => request.result.createObjectStore("s");
+            request.onerror = () => resolve(`open error ${request.error?.name}`);
+            request.onblocked = () => resolve("open blocked");
+            request.onsuccess = () => {
+              const tx = request.result.transaction("s", "readwrite");
+              tx.objectStore("s").put({ a: 1 }, "k");
+              tx.oncomplete = () => resolve("round trip ok");
+              tx.onerror = () => resolve(`tx error ${tx.error?.name}`);
+              tx.onabort = () => resolve(`tx abort ${tx.error?.name}`);
+            };
+          }),
+          new Promise<string>((resolve) => setTimeout(() => resolve("timed out after 5 s"), 5000)),
+        ]),
+    );
+    progress(`indexeddb probe: ${probe}`);
+    const dbs = await page.evaluate(async () => JSON.stringify(await indexedDB.databases()));
+    progress(`databases: ${dbs}`);
     await page.getByLabel("Add an item").fill("Spinach");
     progress("typed");
     await page.getByRole("button", { name: "Add", exact: true }).click();
     progress("added one");
+    await page.waitForTimeout(1500);
+    progress(`add button busy: ${await page.getByRole("button", { name: "Add", exact: true }).getAttribute("aria-busy")}, disabled: ${await page.getByRole("button", { name: "Add", exact: true }).isDisabled()}, status: ${await page.getByRole("status").allTextContents()}`);
     await page.getByLabel("Add an item").fill("Milk");
     await page.getByRole("button", { name: "Add", exact: true }).click();
     progress("added two");
