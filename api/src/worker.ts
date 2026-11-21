@@ -10,6 +10,7 @@ import { maintenanceService } from "./services/maintenanceService.js";
 import { weightService } from "./services/weightService.js";
 import { odometerService } from "./services/odometerService.js";
 import { workoutService } from "./services/workoutService.js";
+import { groceryService } from "./services/groceryService.js";
 import { documentService } from "./services/documentService.js";
 import { peopleService } from "./services/peopleService.js";
 import { runWithDatabase, runWithDocuments, type DocumentBucket } from "./services/requestScope.js";
@@ -43,4 +44,4 @@ export function createWorker(deps: AppDeps) {
   };
 }
 
-export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService, workouts: workoutService, weight: weightService, maintenance: maintenanceService, documents: documentService, people: peopleService });
+export default createWorker({ logger, checkDatabase: databaseReachable, odometer: odometerService, gifts: giftService, workouts: workoutService, weight: weightService, maintenance: maintenanceService, documents: documentService, groceries: groceryService, people: peopleService });

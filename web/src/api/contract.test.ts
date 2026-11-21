@@ -31,6 +31,14 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     }
     if (input === "/api/weight/5" && init?.method === "PUT") return Response.json(WEIGHT);
     if (input === "/api/weight/5" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === "/api/groceries" && init?.method === "GET") return Response.json({ items: [GROCERY] });
+    if (input === "/api/groceries" && init?.method === "POST") {
+      const sentId = JSON.parse(init.body as string).id as string;
+      return sentId.startsWith("ffffffff") ? Response.json({ error: "list_full" }, { status: 409 }) : Response.json(GROCERY, { status: sentId === GROCERY.id ? 200 : 201 });
+    }
+    if (input === "/api/groceries" && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (input === `/api/groceries/${GROCERY.id}` && init?.method === "PUT") return Response.json({ ...GROCERY, ...JSON.parse(init.body as string) });
+    if (input === `/api/groceries/${GROCERY.id}` && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/gifts/special" && init?.method === "GET") return Response.json({ contributions: [SPECIAL] });
     if (input === "/api/gifts/special" && init?.method === "POST") return Response.json(SPECIAL, { status: 201 });
     if (input === "/api/gifts/special/3" && init?.method === "PUT") return Response.json(SPECIAL);
@@ -71,8 +79,9 @@ const implementations: Array<[string, () => Api]> = [
 ];
 
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
+const GROCERY = { id: "11111111-1111-4111-8111-111111111111", name: "Milk", quantity: "2", note: "", section: "Dairy and eggs", found: false };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -607,5 +616,62 @@ describe("demo weight behaviour", () => {
     await api.logWeight(171, true);
     const entries = (await api.listWeights()).entries.filter((e) => e.date === "2026-11-18");
     expect(entries).toEqual([expect.objectContaining({ pounds: 171 })]);
+  });
+});
+
+describe.each(implementations)("[AC-GRO-01.1][AC-GRO-01.8] grocery contract: %s", (_name, make) => {
+  it("lists, adds, edits, removes and clears the list with the shared shapes", async () => {
+    const api = make();
+    const { items } = await api.listGroceries();
+    expect(items.length).toBeGreaterThan(0);
+    const added = await api.addGrocery({ id: "22222222-2222-4222-8222-222222222222", name: "Bread" });
+    expect(added.status).toBe("added");
+    const edited = await api.editGrocery(items[0]!.id, { name: items[0]!.name, quantity: "", note: "", section: "Other", found: true });
+    expect(edited).toMatchObject({ id: items[0]!.id, found: true });
+    await expect(api.deleteGrocery(items[0]!.id)).resolves.toBeUndefined();
+    await expect(api.clearGroceries()).resolves.toBeUndefined();
+  });
+});
+
+describe("client.ts grocery requests", () => {
+  it("[AC-GRO-01.1] sends the id the caller chose, reads 200 as already added and 409 as a full list, and sends the custom header on every write", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    const api = createClient(fakeNetwork(sent));
+    expect(await api.addGrocery({ id: "33333333-3333-4333-8333-333333333333", name: "Milk" })).toMatchObject({ status: "added" });
+    expect(await api.addGrocery({ id: GROCERY.id, name: "Milk" })).toMatchObject({ status: "already_added" });
+    expect(await api.addGrocery({ id: "ffffffff-ffff-4fff-8fff-ffffffffffff", name: "Milk" })).toEqual({ status: "list_full" });
+    await api.editGrocery(GROCERY.id, { name: "Milk", quantity: "2", note: "", section: "Dairy and eggs", found: true });
+    await api.deleteGrocery(GROCERY.id);
+    await api.clearGroceries();
+    const writes = sent.filter((s) => s.method !== "GET");
+    expect(JSON.parse(writes[0]!.body!)).toEqual({ id: "33333333-3333-4333-8333-333333333333", name: "Milk" });
+    expect(writes.map((w) => `${w.method} ${w.url}`)).toEqual([
+      "POST /api/groceries", "POST /api/groceries", "POST /api/groceries", `PUT /api/groceries/${GROCERY.id}`, `DELETE /api/groceries/${GROCERY.id}`, "DELETE /api/groceries",
+    ]);
+    expect(writes.every((w) => w.guard !== null)).toBe(true);
+  });
+});
+
+describe("demo grocery behaviour", () => {
+  it("[AC-GRO-01.8] starts with a made-up list, guesses sections, and adding the same id twice makes one item", async () => {
+    const api = createDemoApi();
+    expect((await api.listGroceries()).items.length).toBeGreaterThan(3);
+    const id = "44444444-4444-4444-8444-444444444444";
+    expect(await api.addGrocery({ id, name: "Butter" })).toMatchObject({ status: "added", item: { section: "Dairy and eggs" } });
+    expect(await api.addGrocery({ id, name: "Butter" })).toMatchObject({ status: "already_added" });
+    expect((await api.listGroceries()).items.filter((i) => i.id === id)).toHaveLength(1);
+  });
+
+  it("[AC-GRO-01.5][AC-GRO-01.8] finish trip empties the list", async () => {
+    const api = createDemoApi();
+    await api.clearGroceries();
+    expect((await api.listGroceries()).items).toEqual([]);
+  });
+
+  it("[AC-GRO-01.8] never calls the network", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    await createDemoApi().listGroceries();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });

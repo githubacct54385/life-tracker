@@ -4,7 +4,7 @@ import { OWNER, signInAs } from "./signIn";
 
 // SET-02: automated accessibility checks on every main screen. The API edge is faked with synthetic data, so the lists, rows and
 // charts are on screen. Behaviour is proven in unit tests; these check what only a real browser can (contrast as rendered, focus, size).
-const SCREENS = ["/", "/giving", "/giving/log", "/giving/special", "/health", "/health/weight", "/health/workouts", "/car", "/car/log", "/car/maintenance", "/car/stats", "/car/import", "/settings"];
+const SCREENS = ["/", "/giving", "/giving/log", "/giving/special", "/health", "/health/weight", "/health/workouts", "/car", "/car/log", "/car/maintenance", "/car/stats", "/car/import", "/groceries", "/settings"];
 
 async function mockApi(page: Page) {
   const now = new Date();
@@ -27,6 +27,8 @@ async function mockApi(page: Page) {
   );
   await page.route("**/api/weight", (r) => r.fulfill({ json: { entries: [172.4, 172.9, 173.1, 172.2, 171.8].map((pounds, i) => ({ id: 5 - i, date: day(i), pounds })) } }));
   await page.route(/\/api\/odometer(\?.*)?$/, (r) => r.fulfill({ json: { readings: [0, 1, 2, 3, 4].map((i) => ({ id: 5 - i, date: day(i * 7), miles: 48_400 - i * 210 })) } }));
+  const grocery = (n: number, name: string, section: string, found = false) => ({ id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, name, quantity: n === 1 ? "6" : "", note: n === 2 ? "the green ones" : "", section, found });
+  await page.route("**/api/groceries", (r) => r.fulfill({ json: { items: [grocery(1, "Bananas", "Produce"), grocery(2, "Apples", "Produce"), grocery(3, "Milk", "Dairy and eggs"), grocery(4, "Rice", "Pantry", true)] } }));
   const place = { id: 1, name: "Joe's Garage" };
   await page.route("**/api/maintenance/places", (r) => r.fulfill({ json: { places: [place] } }));
   await page.route("**/api/maintenance", (r) =>

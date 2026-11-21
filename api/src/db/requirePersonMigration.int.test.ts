@@ -8,6 +8,9 @@ import { createFreshDatabase, run } from "./testDatabase.js";
 // Skipped only when Docker is missing on a laptop (see globalSetup.int.ts). CI always runs them.
 const server = inject("postgres");
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../db/migrations");
+// The tables SET-04 covers. Later stories add tables (grocery_items, GRO-01) that these migration tests stop before.
+const SET_04_TABLES = PERSON_TABLES.filter((table) => table !== "grocery_items");
+
 const USERS_MIGRATION = "0011_create_users_and_add_user_id.sql";
 const REQUIRE_MIGRATION = "0012_require_user_id_and_drop_old_unique_rules.sql";
 
@@ -16,7 +19,7 @@ async function atPartTwo() {
   const { admin } = await createFreshDatabase(server!);
   const files = await readMigrationFiles(migrationsDir);
   await applyMigrations(admin, files.filter((file) => file.name <= USERS_MIGRATION));
-  return { admin, files };
+  return { admin, files: files.filter((file) => file.name <= REQUIRE_MIGRATION) };
 }
 
 const notNull = async (admin: Awaited<ReturnType<typeof atPartTwo>>["admin"]) =>
@@ -45,13 +48,13 @@ describe.skipIf(!server)("every row belongs to a person (SET-04 part 3)", () => 
     expect(await run(admin, `SELECT count(*)::int AS n FROM maintenance_records WHERE user_id = ${owner}`)).toEqual([{ n: 1 }]);
     expect(await notNull(admin)).toBe(true);
     const columns = await run<{ table_name: string }>(admin, "SELECT table_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'user_id' AND is_nullable = 'NO'");
-    expect(columns.map((c) => c.table_name).sort()).toEqual([...PERSON_TABLES].sort());
+    expect(columns.map((c) => c.table_name).sort()).toEqual([...SET_04_TABLES].sort());
   });
 
   it("[AC-SET-04.3] stops with a clear message, and changes nothing, when rows have no person and there is no admin to give them to", async () => {
     const { admin } = await atPartTwo();
     await run(admin, "INSERT INTO odometer_readings (reading_date, miles) VALUES ('2026-01-01', 1000)");
-    const all = await readMigrationFiles(migrationsDir);
+    const all = (await readMigrationFiles(migrationsDir)).filter((file) => file.name <= REQUIRE_MIGRATION);
 
     // The migrate command prints the cause's message, so that is where the owner reads the reason in the Release log.
     const failure = await applyMigrations(admin, all).then(() => undefined, (error: unknown) => error as Error);

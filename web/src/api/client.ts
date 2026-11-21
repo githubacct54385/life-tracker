@@ -1,6 +1,8 @@
 import {
   documentListResponseSchema,
   giftListResponseSchema,
+  groceryItemSchema,
+  groceryListResponseSchema,
   giftSchema,
   healthResponseSchema,
   importMileageResultSchema,
@@ -160,6 +162,24 @@ export function createClient(
     },
     async deleteWorkout(id) {
       await send(`/api/workouts/${id}`, { method: "DELETE" });
+    },
+    async listGroceries() {
+      return groceryListResponseSchema.parse(await request("/api/groceries"));
+    },
+    // 409 "list_full" is an answer, not a failure. A repeated add answers 200 with the item that is already there.
+    async addGrocery(item) {
+      const response = await send("/api/groceries", { method: "POST", body: JSON.stringify(item), headers: JSON_HEADERS }, [409]);
+      if (response.status === 409) return { status: "list_full" };
+      return { status: response.status === 201 ? "added" : "already_added", item: groceryItemSchema.parse(await response.json()) };
+    },
+    async editGrocery(id, item) {
+      return groceryItemSchema.parse(await request(`/api/groceries/${id}`, jsonBody("PUT", item)));
+    },
+    async deleteGrocery(id) {
+      await send(`/api/groceries/${id}`, { method: "DELETE" });
+    },
+    async clearGroceries() {
+      await send("/api/groceries", { method: "DELETE" });
     },
     async listMaintenance() {
       return maintenanceListResponseSchema.parse(await request("/api/maintenance"));

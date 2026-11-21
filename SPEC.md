@@ -165,12 +165,27 @@ This is the most sensitive module, because it is a child's information. Decided 
 - **Gift ideas and birthdays.**
 - **Unified timeline and insights:** one searchable feed of everything, plus cross-module views (for example, workouts vs. weight trend).
 
+### 6.8a Groceries
+
+A shopping list for the store (GRO-01). One list per person, no separate runs, no prices or budgets (finance is out of scope, ADR-0021) and no purchase history.
+
+| Feature | Priority |
+|---|---|
+| Add items by name, with an optional quantity and note. Tick an item to mark it found: it moves to a "Found" group, and the screen shows "found X of Y" | MVP |
+| Items are grouped by store section (Produce, Bakery, Meat and fish, Dairy and eggs, Frozen, Pantry, Drinks, Household, Other) from a built-in word list, in the order a person walks the store. Moving an item to another section is tap-and-choose | MVP |
+| Edit or remove an item. "Finish trip" (and "Clear list") deletes the whole list after a confirmation | MVP |
+| A Groceries entry in More, and a Home card with how many items are left, hidden when the list is empty | MVP |
+| Use the list in a shop with no signal, and sync when back online (GRO-02) | Next |
+| Duplicate check, units for quantities, share the list as text, your own walking order, recipes to list, drag and drop between sections | Later |
+| Share one live list with another person. Needs an ADR first, because people never share data (section 5) | Later |
+
 ### 6.9 Demo mode
 
 - Reachable without login (for example `/demo`), clearly marked "Demo, fake data".
 - Runs entirely in the browser with seeded, synthetic data. It never calls the real API.
 - Shows the full MVP UI: dashboard, mileage, giving, and health.
 - The mileage import screen works on a sample file generated in code, so visitors can see the import flow.
+- The grocery list works on made-up items, in the browser only.
 - The demo and the real client share one interface and one contract test suite (ADR-0014).
 
 ### 6.10 PWA and mobile

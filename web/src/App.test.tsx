@@ -78,6 +78,15 @@ describe("app shell navigation", () => {
     }
   });
 
+  it("[AC-GRO-01.9] More has a Groceries entry that opens the list, and the tab bar still has five tabs", async () => {
+    const nav = open(360);
+    await userEvent.click(within(nav).getByRole("link", { name: "More" }));
+    await userEvent.click(screen.getByRole("link", { name: "Groceries" }));
+    expect(screen.getByRole("heading", { name: "Groceries" })).toBeTruthy();
+    expect(labels(nav)).toEqual(["Home", "Giving", "Health", "Car", "More"]);
+    expect(within(nav).getByRole("link", { name: "More" }).getAttribute("aria-current")).toBe("page");
+  });
+
   it("[AC-FND-04.3] the More page is not used on desktop and sends you to Settings", () => {
     open(1280, "/more");
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
