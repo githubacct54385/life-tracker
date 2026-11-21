@@ -8,11 +8,18 @@ test(
     let n = 0;
     const progress = (what: string) => console.log(`[offline test ${++n}] ${what}`);
     progress("start");
+    page.on("console", (m) => console.log(`[page ${m.type()}] ${m.text().slice(0, 200)}`));
+    page.on("requestfailed", (r) => console.log(`[request failed] ${r.method()} ${new URL(r.url()).pathname} ${r.failure()?.errorText}`));
+    page.on("pageerror", (e) => console.log(`[page error] ${e.message.slice(0, 200)}`));
     await page.goto("/groceries");
+    progress("opened");
     await page.getByLabel("Add an item").fill("Spinach");
+    progress("typed");
     await page.getByRole("button", { name: "Add", exact: true }).click();
+    progress("added one");
     await page.getByLabel("Add an item").fill("Milk");
     await page.getByRole("button", { name: "Add", exact: true }).click();
+    progress("added two");
     await expect(page.getByText("Found 0 of 2")).toBeVisible();
 
     progress("items added");
