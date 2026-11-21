@@ -164,7 +164,7 @@ It checks that an unsigned request is refused, that `/api/health` and `/api/heal
 
 ## 6. Sample data (and starting over)
 
-Staging starts empty. To fill it with made-up data, so every page has something to show, run this from the repository root with the staging admin string in `DATABASE_ADMIN_URL` (the same variable as in section 1):
+Staging starts empty. **Open the staging site once first, signed in as yourself.** That creates your admin row, and every row of sample data belongs to a person, so the command stops with a message if there is no admin yet. Then, to fill it with made-up data so every page has something to show, run this from the repository root with the staging admin string in `DATABASE_ADMIN_URL` (the same variable as in section 1):
 
 ```bash
 pnpm seed:staging
