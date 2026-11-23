@@ -131,6 +131,7 @@ Notes:
 | Multiple gifts allowed for the same month. The month total is the sum. | MVP |
 | **Special contributions** as a separate type with their own name or occasion (for example, a once or twice a year offering). Listed and totaled separately from regular monthly giving, but shown together in the yearly summary. | MVP |
 | Monthly giving history (regular only), special contributions list, and year-to-date totals for each plus combined | MVP |
+| **Giving chart** (GIV-04): a bar per month for the chosen year, regular and special giving stacked (special is striped, so it does not rely on colour), a running-total line, the year total and the average per month so far, a text table, and an empty state for a year with no gifts | MVP |
 | Flag months with no regular gift recorded, so a missing entry is easy to spot | MVP (the "no gift" mark in GIV-03); a reminder is Next |
 | Payment method on each gift (check, online service with card) | MVP |
 | Yearly giving summary for tax records (totals only, not tax advice) | Next |

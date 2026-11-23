@@ -110,3 +110,40 @@ describe("Giving screen", () => {
     await waitFor(() => expect(screen.queryByText("Loading…")).toBeNull());
   });
 });
+
+describe("Giving chart (GIV-04)", () => {
+  it("[AC-GIV-04.1][AC-GIV-04.2][AC-GIV-04.3] shows the year's giving by month, with special apart, the year total and the monthly average", async () => {
+    open();
+    const chart = await screen.findByRole("region", { name: "Giving by month" });
+    expect(within(chart).getByRole("img").getAttribute("aria-label")).toContain("regular giving and special contributions stacked");
+    expect(within(chart).getAllByText("$850.00").length).toBeGreaterThan(0); // 500.00 regular + 350.00 special
+    expect(within(chart).getByText("$77.27")).toBeTruthy(); // 85,000 cents over the 11 months so far, to the cent
+    expect(within(chart).getByText(/Special \(left scale\)/)).toBeTruthy();
+  });
+
+  it("[AC-GIV-04.5] has a text table of every month with regular, special and the running total", async () => {
+    open();
+    const chart = await screen.findByRole("region", { name: "Giving by month" });
+    const table = within(chart).getByRole("table", { name: "Giving by month in 2026" });
+    expect(within(table).getAllByRole("row")).toHaveLength(13); // heading plus twelve months
+    const september = within(table).getByRole("row", { name: /September 2026/ });
+    expect(within(september).getAllByRole("cell").map((c) => c.textContent)).toEqual(["$150.00", "$250.00", "$500.00"]); // running: 100.00 in March + 150.00 + 250.00
+  });
+
+  it("[AC-GIV-04.4] switching to another year with gifts shows that year's chart", async () => {
+    const api = createDemoApi();
+    await api.logGift({ dateGiven: "2025-12-03", forMonth: "2025-12", cents: 20_000, method: "check" });
+    open(api);
+    await screen.findByRole("region", { name: "Giving by month" });
+    await userEvent.selectOptions(screen.getByLabelText("Year"), "2025");
+    expect(await screen.findByRole("table", { name: "Giving by month in 2025" })).toBeTruthy();
+  });
+
+  it("[AC-GIV-04.4] a year with no gifts says so instead of drawing an empty chart", async () => {
+    open(createDemoApi(), "2027-02-10");
+    await screen.findByRole("region", { name: "Giving by month" });
+    await userEvent.selectOptions(screen.getByLabelText("Year"), "2027");
+    expect(screen.getByText("No giving recorded for 2027.")).toBeTruthy();
+    expect(screen.queryByRole("table", { name: /Giving by month/ })).toBeNull();
+  });
+});

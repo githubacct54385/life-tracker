@@ -101,3 +101,60 @@ export function giftsForMonth(gifts: readonly RegularGift[], month: string): Reg
     })
     .sort((a, b) => (a.dateGiven < b.dateGiven ? -1 : a.dateGiven > b.dateGiven ? 1 : a.cents - b.cents));
 }
+
+export interface MonthChartRow {
+  month: string;
+  regularCents: number;
+  /** Special contributions count by the date given, as in `givingYearToDate`. */
+  specialCents: number;
+  /** Regular plus special giving in this month. */
+  totalCents: number;
+  /** Running total for the year, up to and including this month. */
+  runningCents: number;
+}
+
+export interface GivingChart {
+  rows: MonthChartRow[];
+  yearCents: number;
+  /** Months counted for the average: 12 for a past year, up to and including the current month for this year. */
+  monthsSoFar: number;
+  /** The year's total divided by `monthsSoFar`, rounded to a whole cent. */
+  averageCents: number;
+  /** True when the year has no gifts of either kind. */
+  empty: boolean;
+}
+
+/**
+ * Per-month giving for the chart (GIV-04). Regular gifts count in the month they are *for*; special contributions in the
+ * month they were given. The running total stops at the current month of the current year, so it does not run flat into
+ * the months that have not happened. Years after `today`'s year show every month.
+ */
+export function givingChart(regular: readonly RegularGift[], special: readonly SpecialContribution[], options: { year: number; today: string }): GivingChart {
+  checkDate(options.today);
+  const prefix = `${options.year}-`;
+  const regularBy = new Map<string, number>();
+  const specialBy = new Map<string, number>();
+  for (const { forMonth, dateGiven, cents } of regular) {
+    checkMonth(forMonth);
+    checkDate(dateGiven);
+    checkCents(cents);
+    if (forMonth.startsWith(prefix)) regularBy.set(forMonth, (regularBy.get(forMonth) ?? 0) + cents);
+  }
+  for (const { dateGiven, cents } of special) {
+    checkDate(dateGiven);
+    checkCents(cents);
+    if (dateGiven.startsWith(prefix)) specialBy.set(dateGiven.slice(0, 7), (specialBy.get(dateGiven.slice(0, 7)) ?? 0) + cents);
+  }
+  const thisYear = Number(options.today.slice(0, 4));
+  const monthsSoFar = options.year < thisYear ? 12 : options.year === thisYear ? Number(options.today.slice(5, 7)) : 12;
+  let running = 0;
+  const rows: MonthChartRow[] = Array.from({ length: 12 }, (_, i) => {
+    const month = `${options.year}-${String(i + 1).padStart(2, "0")}`;
+    const regularCents = regularBy.get(month) ?? 0;
+    const specialCents = specialBy.get(month) ?? 0;
+    running += regularCents + specialCents;
+    return { month, regularCents, specialCents, totalCents: regularCents + specialCents, runningCents: running };
+  });
+  const yearCents = running;
+  return { rows, yearCents, monthsSoFar, averageCents: Math.round(yearCents / monthsSoFar), empty: regularBy.size === 0 && specialBy.size === 0 };
+}

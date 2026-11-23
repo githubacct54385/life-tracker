@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { giftsForMonth, givingYearToDate, monthlyRegularGiving, type RegularGift, type SpecialContribution } from "./giving";
+import { giftsForMonth, givingChart, givingYearToDate, monthlyRegularGiving, type RegularGift, type SpecialContribution } from "./giving";
 
 // Invented amounts, in integer cents (ADR-0007).
 const gift = (dateGiven: string, forMonth: string, cents: number): RegularGift => ({ dateGiven, forMonth, cents });
@@ -76,5 +76,55 @@ describe("giftsForMonth", () => {
     expect(giftsForMonth(gifts, "2026-01").reduce((s, g) => s + g.cents, 0)).toBe(monthlyRegularGiving(gifts, { year: 2026, today: "2026-03-01" })[0]!.cents);
     expect(giftsForMonth(gifts, "2026-03")).toEqual([]);
     expect(() => giftsForMonth(gifts, "2026-1")).toThrow(/month/i);
+  });
+});
+
+describe("givingChart", () => {
+  it("[AC-GIV-04.1] puts a January gift made in February in January, not February", () => {
+    const { rows } = givingChart([gift("2026-02-03", "2026-01", 10_000), gift("2026-02-20", "2026-02", 12_000)], [], { year: 2026, today: "2026-03-10" });
+    expect(rows[0]).toMatchObject({ month: "2026-01", regularCents: 10_000 });
+    expect(rows[1]).toMatchObject({ month: "2026-02", regularCents: 12_000 });
+  });
+
+  it("[AC-GIV-04.2] keeps special contributions apart from regular giving, by the month they were given", () => {
+    const { rows } = givingChart([gift("2026-01-05", "2026-01", 10_000)], [special("2026-01-20", "Fund", 2_500), special("2026-03-02", "Drive", 7_000)], { year: 2026, today: "2026-04-01" });
+    expect(rows[0]).toMatchObject({ regularCents: 10_000, specialCents: 2_500, totalCents: 12_500 });
+    expect(rows[2]).toMatchObject({ regularCents: 0, specialCents: 7_000, totalCents: 7_000 });
+  });
+
+  it("[AC-GIV-04.3] adds up a running total, and gives the year total and the average per month so far", () => {
+    const chart = givingChart([gift("2026-01-05", "2026-01", 10_000), gift("2026-03-05", "2026-03", 10_000)], [special("2026-02-10", "Fund", 5_000)], { year: 2026, today: "2026-04-15" });
+    expect(chart.rows.slice(0, 4).map((r) => r.runningCents)).toEqual([10_000, 15_000, 25_000, 25_000]);
+    expect(chart.yearCents).toBe(25_000);
+    expect(chart.monthsSoFar).toBe(4);
+    expect(chart.averageCents).toBe(6_250);
+  });
+
+  it("[AC-GIV-04.3] averages a past year over twelve months and rounds to a whole cent", () => {
+    const chart = givingChart([gift("2025-01-05", "2025-01", 100)], [], { year: 2025, today: "2026-04-15" });
+    expect(chart.monthsSoFar).toBe(12);
+    expect(chart.averageCents).toBe(8);
+  });
+
+  it("[AC-GIV-04.4] says a year with no gifts is empty, and ignores gifts from other years", () => {
+    const chart = givingChart([gift("2025-06-05", "2025-06", 100)], [special("2025-07-01", "Fund", 50)], { year: 2026, today: "2026-04-15" });
+    expect(chart.empty).toBe(true);
+    expect(chart.yearCents).toBe(0);
+    expect(chart.averageCents).toBe(0);
+  });
+
+  it("[AC-GIV-04.1] the twelve months always add up to the same year total as the totals card", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({ day: fc.integer({ min: 1, max: 28 }), month: fc.integer({ min: 1, max: 12 }), cents: fc.integer({ min: 0, max: 1_000_000 }) }), { maxLength: 30 }),
+        (list) => {
+          const two = (n: number) => String(n).padStart(2, "0");
+          const regular = list.map((g) => gift(`2026-${two(g.month)}-${two(g.day)}`, `2026-${two(g.month)}`, g.cents));
+          const specials = list.map((g) => special(`2026-${two(g.month)}-${two(g.day)}`, "x", g.cents));
+          const chart = givingChart(regular, specials, { year: 2026, today: "2026-12-31" });
+          expect(chart.yearCents).toBe(givingYearToDate(regular, specials, { year: 2026 }).combinedCents);
+        },
+      ),
+    );
   });
 });
