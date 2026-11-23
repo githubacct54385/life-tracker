@@ -161,7 +161,7 @@ jobs:
           done
           echo "::warning::System libraries were not installed. If the end-to-end tests cannot start the browser, this is why."
           exit 0
-      # Lighthouse (OPS-10) runs on pull requests that change web/, and on every push to main.
+      # Lighthouse (OPS-10) runs on pull requests that change web/ or the check itself, and on every push to main.
       - name: Did this pull request change web/?
         id: web
         if: steps.app.outputs.present == 'true'
@@ -169,11 +169,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if [ -z "$PR_NUMBER" ] || gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' | grep -q '^web/'; then
+          if [ -z "$PR_NUMBER" ] || gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' | grep -Eq '^(web/|scripts/lighthouse|lighthouse\.config\.json|\.github/workflows/ci\.yml)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No change under web/, so Lighthouse is skipped." >> "$GITHUB_STEP_SUMMARY"
+            echo "No change under web/ or to the Lighthouse check, so Lighthouse is skipped." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Lighthouse (scores, JavaScript budget, installability)
         if: steps.app.outputs.present == 'true' && steps.web.outputs.changed == 'true'

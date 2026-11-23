@@ -67,8 +67,9 @@ describe("Lighthouse check (OPS-10)", () => {
     expect(read("scripts/lighthouse.mjs")).toMatch(/for \(let attempt = 1; attempt <= 2; attempt \+= 1\)/);
   });
 
-  it("[AC-OPS-10.6] the step runs only when a pull request changes web/, and is stopped after six minutes", () => {
-    expect(step(/Did this pull request change web/).run).toContain("grep -q '^web/'");
+  it("[AC-OPS-10.6] the step runs only when a pull request changes web/ or the check itself, and is stopped after six minutes", () => {
+    expect(step(/Did this pull request change web/).run).toContain("grep -Eq '^(web/|");
+    expect(step(/Did this pull request change web/).run).toContain("lighthouse\\.config\\.json"); // changing the check itself runs it
     expect(step(/^Lighthouse/).if).toContain("steps.web.outputs.changed == 'true'");
     expect(step(/^Lighthouse/)["timeout-minutes"]).toBe(6);
   });
