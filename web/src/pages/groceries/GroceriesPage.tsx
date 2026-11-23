@@ -163,18 +163,20 @@ export function GroceriesPage({ titleLevel = 1 }: { titleLevel?: 1 | 2 } = {}) {
   const items = view?.items ?? null;
   const offline = !online || view?.offline === true;
 
-  async function add(event: FormEvent) {
+  // The fields are emptied at once, before anything is saved, so what is typed next is never wiped by a save finishing late. Saving is a
+  // few milliseconds on the device, and the list shows the change when it is done. There is no "busy" lock: each item has its own id.
+  function add(event: FormEvent) {
     event.preventDefault();
-    if (!name.trim()) return;
-    setMessage(null);
-    if ((items?.length ?? 0) >= MAX_GROCERY_ITEMS) return setMessage(`The list is full (${MAX_GROCERY_ITEMS} items). Finish the trip or remove some items.`);
     const added = name.trim();
-    setView(await list.add({ id: newItemId(), name: added, ...(quantity.trim() ? { quantity: quantity.trim() } : {}), ...(note.trim() ? { note: note.trim() } : {}) }));
+    if (!added) return;
+    if ((items?.length ?? 0) >= MAX_GROCERY_ITEMS) return setMessage(`The list is full (${MAX_GROCERY_ITEMS} items). Finish the trip or remove some items.`);
+    const request = { id: newItemId(), name: added, ...(quantity.trim() ? { quantity: quantity.trim() } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
     setName("");
     setQuantity("");
     setNote("");
     setMessage(`Added ${added}.`);
     field.current?.focus(); // the keyboard stays open for the next item
+    void list.add(request); // the screen updates through the list's own notification
   }
 
   async function clear() {
@@ -189,13 +191,13 @@ export function GroceriesPage({ titleLevel = 1 }: { titleLevel?: 1 | 2 } = {}) {
 
   return (
     <Page title="Groceries" level={titleLevel}>
-      <form className="space-y-3 text-ink" noValidate onSubmit={(event) => void track(() => add(event))}>
+      <form className="space-y-3 text-ink" noValidate onSubmit={add}>
         <label className="block font-bold" htmlFor="grocery-name">
           Add an item
         </label>
         <div className="flex gap-2">
           <input ref={field} id="grocery-name" className={inputClass} value={name} maxLength={MAX_NAME_LENGTH} autoComplete="off" enterKeyHint="done" onChange={(e) => setName(e.target.value)} />
-          <Button type="submit" disabled={!name.trim()} busy={busy}>
+          <Button type="submit" disabled={!name.trim()}>
             Add
           </Button>
         </div>

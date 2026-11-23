@@ -7,7 +7,7 @@ import type { Api } from "../../api/types";
 import { ApiError } from "../../api/client";
 import { createDemoApi } from "../../demo/demoApi";
 import { GroceryStoreProvider } from "../../groceries/GroceryStoreContext";
-import { memoryStore } from "../../groceries/offlineStore";
+import { memoryStore, type GroceryStore } from "../../groceries/offlineStore";
 import { GroceriesPage } from "./GroceriesPage";
 
 afterEach(cleanup);
@@ -176,5 +176,29 @@ describe("Groceries screen", () => {
   it("[AC-GRO-01.1] says so when the server answers the list with an error", async () => {
     open({ ...createDemoApi(), listGroceries: () => Promise.reject(new ApiError(500)) } as Api);
     expect((await screen.findByRole("alert")).textContent).toContain("Could not load the list");
+  });
+});
+
+describe("Groceries screen, typing quickly", () => {
+  it("[AC-GRO-01.1] what is typed for the next item while the last one is still being saved is kept, and both items are added", async () => {
+    // A device that saves slowly: the first save finishes only after the next item has been typed.
+    const slow: GroceryStore = { ...memoryStore(), write: () => new Promise((resolve) => setTimeout(resolve, 150)) };
+    render(
+      <MemoryRouter>
+        <ApiProvider api={await empty()}>
+          <GroceryStoreProvider store={slow}>
+            <GroceriesPage />
+          </GroceryStoreProvider>
+        </ApiProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByText(/Your list is empty/);
+    await add("Yogurt");
+    await userEvent.type(screen.getByLabelText("Add an item"), "Rice"); // typed before the first save has finished
+    expect((screen.getByLabelText("Add an item") as HTMLInputElement).value).toBe("Rice");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Found 0 of 2")).toBeTruthy();
+    expect(within(await region("Dairy and eggs")).getByText("Yogurt")).toBeTruthy();
+    expect(within(await region("Pantry")).getByText("Rice")).toBeTruthy();
   });
 });
