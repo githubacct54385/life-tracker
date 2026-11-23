@@ -149,6 +149,10 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
   - **While working:** move it to **In Review** when the pull request is open and waiting for CI or review, if that status helps. Otherwise leave it In Progress.
   - **Before opening a pull request:** once the work is done, tick the Linear issue's acceptance-criteria checkboxes for every criterion that has a passing automated `[AC-...]` test. Leave unticked any criterion covered only by a manual check, and say so in the pull request.
   - **When complete:** after the pull request is merged and the definition of done is met, move the issue to **Done**. Never mark it Done on an open pull request.
+  - **Three gates on an issue.** Check each one before the change, and do not skip it:
+    - **Created:** a new issue (only when the owner asks for one) must have an **estimate** when it is created. If the owner did not give one, propose one and set it in the same call.
+    - **Moved to In Progress:** the issue must be **assigned** (to `me`, the owner) at the moment it moves. Assign it in the same update that changes the status.
+    - **Marked Done:** **every acceptance criterion must be ticked** first. A criterion covered by a manual check is ticked when the owner has done the check and `docs/manual-checks.md` shows the date. A retired criterion is marked `(retired): reason` instead of ticked. If any box is still empty, leave the issue In Review and say which criteria are missing, instead of marking it Done.
   - Work on one issue at a time unless the owner says otherwise.
 
 ## Standing requirements for every story
