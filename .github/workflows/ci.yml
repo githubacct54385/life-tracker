@@ -35,6 +35,8 @@ jobs:
           node-version: 22
       - name: Acceptance criteria traceability
         run: node scripts/ac-coverage.mjs
+      - name: What the automated tests check (job summary)
+        run: node scripts/tests-list.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
 
   test:
     name: test

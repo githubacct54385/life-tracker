@@ -19,6 +19,7 @@
     "pr-screenshots": "node scripts/pr-screenshots.mjs",
     "dev": "pnpm --filter web build && pnpm --filter @life-tracker/api dev",
     "dev:web": "pnpm --filter web dev",
+    "tests:list": "node scripts/tests-list.mjs",
     "check:worker-size": "node scripts/check-worker-size.mjs"
   },
   "devDependencies": {
