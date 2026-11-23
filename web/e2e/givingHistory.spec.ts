@@ -58,7 +58,7 @@ test(
       await page.setViewportSize({ width, height });
       await page.goto("/giving");
       const chart = page.getByRole("region", { name: "Giving by month" });
-      await expect(chart.getByRole("img")).toBeVisible();
+      await expect(chart.getByRole("img", { name: /^Bar chart of giving in each month/ })).toBeVisible();
       await expect(chart.locator("svg").first()).toBeVisible();
       await chart.getByText("Show the numbers as a table").click();
       await expect(chart.getByRole("table", { name: `Giving by month in ${year}` })).toBeVisible();
