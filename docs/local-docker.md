@@ -162,3 +162,13 @@ volumes:
 - **Containerise the app or write a production Dockerfile.** Not needed on Workers (see the top).
 - **Use Docker for staging or production.** They are Cloudflare and Neon, and that is the point of ADR-0021 and ADR-0025.
 - **A dev container (VS Code) or a compose file that starts everything.** These can be nice for a team. For one person on a Mac they add more to maintain than they save. Worth doing only if you want it as a portfolio piece.
+
+## One command for a filtered test run
+
+`scripts/run-tests.sh` runs only the tests you name and does the setup and tear-down for you. For the end-to-end tests it starts a throwaway Postgres on a free local port, runs Playwright, then removes the container and puts `api/.dev.vars` back as it was. You only need Docker running (unit tests need nothing).
+
+```bash
+scripts/run-tests.sh unit web src/pages/groceries/GroceriesPage.test.tsx -t "AC-GRO-01.1"
+scripts/run-tests.sh int api src/handlers/groceryApi.int.test.ts
+scripts/run-tests.sh e2e e2e/stack/groceriesOffline.spec.ts -g "AC-GRO-02"
+```
