@@ -1,0 +1,16 @@
+{
+  "_about": "Settings for the Lighthouse check (OPS-10). The budget is today's real number rounded up to the next 10 KB. Lower it when the app gets lighter. Never raise it just to pass CI: load the heavy part later instead.",
+  "pages": [
+    {
+      "name": "Demo",
+      "path": "/demo"
+    }
+  ],
+  "runs": 3,
+  "minimumScores": {
+    "accessibility": 95
+  },
+  "budgets": {
+    "firstScreenJavaScriptKB": 290
+  }
+}
