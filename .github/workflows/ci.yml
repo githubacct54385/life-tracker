@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: read # to read the coverage numbers from the latest run on main (OPS-09)
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -86,12 +87,47 @@ jobs:
       - name: Type check
         if: steps.app.outputs.present == 'true'
         run: pnpm typecheck
-      - name: Unit tests
+      # Unit tests run with coverage (OPS-09). A package under its minimum in coverage.config.json fails here.
+      - name: Unit tests (with coverage)
         if: steps.app.outputs.present == 'true'
-        run: pnpm test:unit
-      - name: Integration tests (Postgres in a container)
+        run: |
+          pnpm coverage:unit
+          pnpm exec vitest run --root scripts
+      - name: Integration tests (Postgres in a container, with coverage)
         if: steps.app.outputs.present == 'true'
-        run: pnpm test:int
+        run: pnpm coverage:int
+      - name: Coverage summary (job summary, and the change against main)
+        if: always() && steps.app.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          baseline=""
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            run_id=$(gh run list --workflow CI --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
+            if [ -n "$run_id" ]; then gh run download "$run_id" --name coverage-summary --dir coverage-baseline || true; fi
+            if [ -f coverage-baseline/summary.json ]; then baseline="--baseline coverage-baseline"; fi
+          fi
+          node scripts/coverage-summary.mjs $baseline
+          node scripts/coverage-summary.mjs $baseline --markdown >> "$GITHUB_STEP_SUMMARY"
+      - name: Save the coverage report
+        if: always() && steps.app.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            shared/coverage
+            api/coverage
+            web/coverage
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Save the coverage numbers (the next pull request compares with these)
+        if: always() && steps.app.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage/summary.json
+          if-no-files-found: ignore
+          retention-days: 90
       - name: Build
         if: steps.app.outputs.present == 'true'
         run: pnpm build
