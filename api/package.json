@@ -14,19 +14,19 @@
     "build:worker": "wrangler deploy --dry-run --outdir ../.stage/worker"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^12.2.1",
+    "@testcontainers/postgresql": "^12.2.2",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
-    "fast-check": "^4.10.2",
-    "testcontainers": "^12.2.1",
+    "fast-check": "^4.10.3",
+    "testcontainers": "^12.2.2",
     "tsx": "^4.23.15",
-    "vitest": "^5.1.0",
-    "wrangler": "^4.161.0"
+    "vitest": "^5.1.1",
+    "wrangler": "^4.165.0"
   },
   "dependencies": {
     "@life-tracker/shared": "workspace:*",
-    "hono": "^4.13.18",
-    "jose": "^6.2.17",
+    "hono": "^4.13.19",
+    "jose": "^6.2.18",
     "pg": "^8.23.1"
   }
 }

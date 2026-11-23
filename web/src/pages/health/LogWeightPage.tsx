@@ -35,7 +35,8 @@ function WeightChart({ entries, unit }: { entries: WeightEntryRecord[]; unit: Un
     <figure className="m-0">
       <div role="img" aria-label={summary} className="h-64 w-full sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          {/* No keyboard layer: recharts 3.11 makes the chart several empty Tab stops. The table below is the keyboard and screen reader view (AC-SET-02.2). */}
+          <LineChart accessibilityLayer={false} data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="var(--line)" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: "var(--muted)", fontSize: 12 }} interval="preserveStartEnd" minTickGap={16} />
             <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} width={44} domain={["auto", "auto"]} />
