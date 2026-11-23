@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router";
 import { APP_NAME } from "@life-tracker/shared";
-import { COMPACT_NAV, WIDE_NAV, isActive, type Destination, type NavKind } from "./destinations";
+import { COMPACT_NAV, GROCERIES_PATH, WIDE_NAV, isActive, type Destination, type NavKind } from "./destinations";
 import { useWaking } from "../api/wakeStatus";
 import { OfflineNotice } from "../pwa/OfflineNotice";
 import { useOnline } from "../pwa/useOnline";
@@ -58,7 +58,7 @@ export function AppShell() {
             Waking up the database. This can take a few seconds…
           </p>
         )}
-        {online ? <div key={pathname} className="lt-page"><Outlet /></div> : <OfflineNotice />}
+        {online || pathname === GROCERIES_PATH ? <div key={pathname} className="lt-page"><Outlet /></div> : <OfflineNotice />}
       </main>
     </div>
   );

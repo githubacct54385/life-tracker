@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { APP_NAME } from "@life-tracker/shared";
+import { GroceryStoreProvider } from "../groceries/GroceryStoreContext";
+import { memoryStore } from "../groceries/offlineStore";
 import { ApiProvider } from "../api/ApiContext";
 import { GroceriesPage } from "../pages/groceries/GroceriesPage";
 import { ImportMileagePage } from "../pages/car/ImportMileagePage";
@@ -19,6 +21,8 @@ export function isDemoPath(pathname: string): boolean {
 export function DemoApp() {
   const [status, setStatus] = useState<string>("checking");
   const api = useMemo(() => createDemoApi(), []);
+  // The demo never writes anything to this device.
+  const groceryStore = useMemo(() => memoryStore(), []);
   useEffect(() => {
     void api
       .health()
@@ -48,7 +52,9 @@ export function DemoApp() {
           </h2>
           <p>Add items, tick them off as you find them, move one to another section, and finish the trip. The list is made up and lives only on this page.</p>
           <ApiProvider api={api}>
-            <GroceriesPage titleLevel={2} />
+            <GroceryStoreProvider store={groceryStore}>
+              <GroceriesPage titleLevel={2} />
+            </GroceryStoreProvider>
           </ApiProvider>
         </section>
       </main>
