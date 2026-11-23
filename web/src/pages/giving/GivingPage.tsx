@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { givingYearToDate, monthlyRegularGiving, type GiftRecord, type SpecialContributionRecord } from "@life-tracker/shared";
+import { givingChart, givingYearToDate, monthlyRegularGiving, type GiftRecord, type SpecialContributionRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { HubLink } from "../../ui/HubLink";
 import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
+import { GivingChart } from "./GivingChart";
 import { dateLabel, formatCents, monthLabel, todayLocal } from "./giftFormat";
 
 const card = "rounded-2xl border border-line bg-card p-4 text-ink";
 
 /**
- * Giving home (GIV-03): year totals for regular, special and combined giving, and regular giving grouped by the month
+ * Giving home (GIV-03, GIV-04): year totals for regular, special and combined giving, and regular giving grouped by the month
  * it is for, with a clear mark on a month that has no regular gift. `today` is a prop only so tests can fix the date.
  */
 export function GivingPage({ today = todayLocal() }: { today?: string }) {
@@ -48,6 +49,8 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
     // The current year only lists months that have begun, newest first.
     return all.filter((m) => year < thisYear || m.month <= today.slice(0, 7)).reverse();
   }, [gifts, year, today, thisYear]);
+
+  const chart = useMemo(() => (gifts && special ? givingChart(gifts, special, { year, today }) : null), [gifts, special, year, today]);
 
   const loaded = gifts !== null && special !== null;
   const empty = loaded && gifts.length === 0 && special.length === 0;
@@ -90,6 +93,13 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
                 <dt className="mt-1 border-t border-line pt-2">Combined</dt>
                 <dd className="mt-1 border-t border-line pt-2 text-right font-bold tabular-nums">{formatCents(totals.combinedCents)}</dd>
               </dl>
+            </section>
+
+            <section aria-labelledby="giving-chart" className={card}>
+              <h2 id="giving-chart" className="mb-2 font-bold">
+                Giving by month
+              </h2>
+              {chart && !chart.empty ? <GivingChart chart={chart} year={year} /> : <p className="text-muted">No giving recorded for {year}.</p>}
             </section>
 
             <section aria-labelledby="giving-months" className={card}>

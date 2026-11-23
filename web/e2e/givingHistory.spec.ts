@@ -41,3 +41,29 @@ test(
     }
   },
 );
+
+test(
+  "[AC-GIV-04.6] the giving chart and its table fit at 360, 768 and 1280 px, with nothing scrolling sideways",
+  { tag: ["@AC-GIV-04.6"] },
+  async ({ page, context }) => {
+    const year = new Date().getFullYear();
+    await page.route("**/api/gifts", (route) =>
+      route.fulfill({ json: { gifts: [{ id: 1, dateGiven: `${year}-01-05`, forMonth: `${year}-01`, cents: 15_000, method: "card", description: null }] } }),
+    );
+    await page.route("**/api/gifts/special", (route) =>
+      route.fulfill({ json: { contributions: [{ id: 1, dateGiven: `${year}-01-20`, occasion: "Example fund", cents: 5_000, method: "check" }] } }),
+    );
+    await signInAs(context, OWNER);
+    for (const { width, height } of WIDTHS) {
+      await page.setViewportSize({ width, height });
+      await page.goto("/giving");
+      const chart = page.getByRole("region", { name: "Giving by month" });
+      await expect(chart.getByRole("img")).toBeVisible();
+      await expect(chart.locator("svg").first()).toBeVisible();
+      await chart.getByText("Show the numbers as a table").click();
+      await expect(chart.getByRole("table", { name: `Giving by month in ${year}` })).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
+  },
+);
