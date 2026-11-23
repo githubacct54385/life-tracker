@@ -65,3 +65,29 @@ describe("README pitch and links (OPS-06)", () => {
     expect(guide).toMatch(/-f \/tmp\/setup\/app-role\.sql/);
   });
 });
+
+describe("README accuracy and privacy (OPS-06)", () => {
+  const rootScripts = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).scripts;
+
+  it("[AC-OPS-06.6] every `pnpm <script>` the README tells you to run exists in package.json", () => {
+    // Only commands: inside backticks, or at the start of a line in a code block (not the word "pnpm" in a sentence).
+    const named = [...readme.matchAll(/(?:`|^)pnpm (?!--filter|-r|install|exec)([a-z][\w:-]*)/gm)].map((m) => m[1]);
+    expect(named.length).toBeGreaterThan(5);
+    for (const script of new Set(named)) expect(rootScripts, `pnpm ${script}`).toHaveProperty([script]);
+  });
+
+  it("[AC-OPS-06.6] the Node version it asks for is the one the repository requires", () => {
+    const engines = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).engines.node;
+    expect(engines).toBe(">=22");
+    expect(readme).toMatch(/Node 22 or newer/);
+  });
+
+  it("[AC-OPS-06.7] contains no email address, no phone number and no long token, and only local web addresses", () => {
+    expect(readme).not.toMatch(/[\w.+-]+@[\w-]+\.[a-z]{2,}/i);
+    expect(readme).not.toMatch(/\b\d{3}[-. ]\d{3}[-. ]\d{4}\b/);
+    expect(readme.replace(/\]\([^)]*\)/g, "]")).not.toMatch(/\b[A-Za-z0-9_-]{32,}\b/); // link targets (heading slugs) are long but are not secrets
+    const addresses = [...readme.matchAll(/https?:\/\/[^\s)>`"',]+/g)].map((m) => new URL(m[0]).hostname);
+    expect([...new Set(addresses)]).toEqual(["localhost"]);
+  });
+});
+

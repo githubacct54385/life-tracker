@@ -10,8 +10,9 @@ A web app (installable PWA) for health, mileage, and giving. It is used by its o
 - **Health:** log weight and see the trend, and log workouts such as push-ups.
 - **Giving:** log charitable giving by month, including special contributions, with a history.
 - **Home:** one phone-sized dashboard with the latest weight, last week's miles, workouts this week and giving so far this year, plus quick actions.
+- **Groceries:** one shopping list, grouped by store section, tick items off as you find them, and finish the trip to clear it. It keeps working with no signal in the shop and sends your changes when the signal returns.
 - **Everywhere:** installable as a PWA, works at phone, tablet and desktop widths, and has light, dark and system themes.
-- **Demo:** a mileage import walkthrough on made-up data, running entirely in the browser at `/demo`. A full demo of every screen is planned (SET-10).
+- **Demo:** a mileage import walkthrough and the grocery list, on made-up data, running entirely in the browser at `/demo`. A full demo of every screen is planned (SET-10).
 
 ## What I would point to
 
@@ -21,6 +22,7 @@ A web app (installable PWA) for health, mileage, and giving. It is used by its o
 - **A manual release with approval.** Merging never deploys. The Release workflow waits for CI and the staging smoke test on that exact commit, waits for the owner's approval, applies migrations, then deploys ([ADR-0004](DECISIONS.md#adr-0004-source-control-pull-requests-and-manual-release), [ADR-0025](DECISIONS.md#adr-0025-a-staging-environment-sits-in-front-of-production)).
 - **Private document storage.** Receipts are kept in a private Cloudflare R2 bucket, per person, with size and type limits, and are never served from a public address ([ADR-0024](DECISIONS.md#adr-0024-maintenance-documents-are-stored-privately-in-cloudflare-r2)).
 - **Migrations that are safe to release.** They add first, the code switches next, and old things are removed in a later release. CI fails on a destructive statement without an explicit marker ([docs/multi-person-plan.md](docs/multi-person-plan.md)).
+- **A deliberate, narrow privacy exception.** The app stores nothing about you on your device, except the grocery list so it works offline. It sits behind one small module, is deleted at sign-out and when the trip is finished, and a test proves nothing else is saved ([ADR-0027](DECISIONS.md#adr-0027-the-grocery-list-is-kept-on-the-device-so-it-works-with-no-signal)).
 - **A demo that can never touch real data.** The demo and the real client implement one interface and share a contract test suite ([ADR-0014](DECISIONS.md#adr-0014-demo-parity)).
 
 ## Tech stack
@@ -179,6 +181,15 @@ erDiagram
         text content_type
         int bytes
     }
+    grocery_items {
+        uuid id PK "chosen by the browser; unique per person"
+        bigint user_id FK
+        text name
+        text quantity
+        text note
+        text section "one of nine store sections"
+        boolean found
+    }
     users ||--o{ odometer_readings : has
     users ||--o{ weight_entries : has
     users ||--o{ workouts : has
@@ -187,6 +198,7 @@ erDiagram
     users ||--o{ service_places : has
     users ||--o{ maintenance_records : has
     users ||--o{ maintenance_documents : has
+    users ||--o{ grocery_items : has
     service_places ||--o{ maintenance_records : "used by"
     maintenance_records ||--o{ maintenance_documents : "has files"
 ```
