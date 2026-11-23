@@ -141,6 +141,19 @@ Cadence as the suite grows:
 - **Flaky tests.** Fix or delete within a week. A flaky required check teaches people to ignore red.
 - **Optional later.** Mutation testing (Stryker) on the parsers and the mileage code, to check that the tests would catch a real bug.
 
+## What the tests check, in plain English
+
+`pnpm tests:list` prints every automated test as a sentence, grouped by area, story and criterion, with its level and file. It is built from the test names in the code, so it cannot drift, and nothing is kept by hand. A pull request's CI run shows the same list in its job summary.
+
+```bash
+pnpm tests:list                       # everything
+pnpm tests:list GRO                   # one area (or a story such as GRO-02, or a criterion such as AC-GRO-02.4)
+pnpm tests:list GRO-02 --commands     # also the command that runs each test
+pnpm tests:list none                  # tests that name no acceptance criterion (the gaps)
+```
+
+Write test names as sentences that say what is true, because that sentence is what the list shows.
+
 ## Commands (once code exists)
 
 Step-by-step setup for a laptop, including a Mac, is in the [README](README.md#run-the-tests-locally).
