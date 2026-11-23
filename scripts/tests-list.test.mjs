@@ -96,4 +96,14 @@ describe("tests list (OPS-12)", () => {
     expect(splitName("[AC-MIL-03.2][AC-MIL-03.3] both")).toEqual({ ids: ["AC-MIL-03.2", "AC-MIL-03.3"], text: "both" });
     expect([levelOf("web/e2e/stack/x.spec.ts"), levelOf("api/src/x.int.test.ts"), levelOf("shared/src/x.test.ts")]).toEqual(["end-to-end", "integration", "unit"]);
   });
+
+  it("[AC-OPS-12.8] the plain-English page lists exactly the criteria the browser tests cover, so it cannot drift", () => {
+    const page = readFileSync(path.join(root, "docs/what-the-browser-tests-check.md"), "utf8");
+    const onPage = new Set([...page.matchAll(/<!--([^>]*)-->/g)].flatMap((m) => m[1].match(/AC-[A-Z]+-\d{2}\.\d+/g) ?? []));
+    const tested = new Set(collectTests(root).filter((t) => t.level === "end-to-end").flatMap((t) => t.ids));
+    expect([...tested].filter((id) => !onPage.has(id)).sort(), "covered by a browser test but missing from the page: add a line").toEqual([]);
+    expect([...onPage].filter((id) => !tested.has(id)).sort(), "on the page but no browser test covers it any more: remove or fix the line").toEqual([]);
+    expect(page).not.toMatch(/\bAC-[A-Z]+-\d{2}\.\d+\b(?![^<]*-->)/); // IDs stay in hidden comments, so the page reads as plain English
+    expect(page.split("\n").filter((line) => line.startsWith("- ")).length).toBeGreaterThan(30);
+  });
 });

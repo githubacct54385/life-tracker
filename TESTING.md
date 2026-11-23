@@ -154,6 +154,8 @@ pnpm tests:list none                  # tests that name no acceptance criterion 
 
 Write test names as sentences that say what is true, because that sentence is what the list shows.
 
+For a short, non-technical view of the browser tests only, read [docs/what-the-browser-tests-check.md](docs/what-the-browser-tests-check.md). It is written by hand in plain sentences, and a test fails when it and the browser tests disagree about which criteria are covered, so add a line there when a browser test covers a new criterion.
+
 ## Coverage
 
 CI measures line and branch coverage of the unit tests (`shared`, `api`, `web`) and of the API integration tests, and shows a table with the change against the latest run on `main` in the job summary of every run. The full report is saved as the `coverage-report` artifact. **End-to-end tests are not part of the coverage numbers**, because they test the built app from outside; they prove behaviour, not lines.
