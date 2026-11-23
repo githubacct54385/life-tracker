@@ -1,5 +1,7 @@
 # Life Tracker
 
+[![CI](https://github.com/githubacct54385/life-tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/githubacct54385/life-tracker/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/githubacct54385/life-tracker/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/githubacct54385/life-tracker/security/code-scanning) [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/githubacct54385/life-tracker/blob/main/LICENSE)
+
 A web app (installable PWA) for health, mileage, and giving. It is used by its owner and by a few invited people, each with their own private data. Finance is not part of this app. The code is public. Sign-in is by invitation only. A demo with fake data runs entirely in the browser.
 
 **Status:** in daily use by its owner. Running on Cloudflare Workers and Neon Postgres (ADR-0021) with a staging environment (ADR-0025) and a manual, approved release. Sign-in for invited people, with each person's data kept separate, is being built now (ADR-0026). Stories are tracked in Linear.

@@ -87,7 +87,45 @@ describe("README accuracy and privacy (OPS-06)", () => {
     expect(readme).not.toMatch(/\b\d{3}[-. ]\d{3}[-. ]\d{4}\b/);
     expect(readme.replace(/\]\([^)]*\)/g, "]")).not.toMatch(/\b[A-Za-z0-9_-]{32,}\b/); // link targets (heading slugs) are long but are not secrets
     const addresses = [...readme.matchAll(/https?:\/\/[^\s)>`"',]+/g)].map((m) => new URL(m[0]).hostname);
-    expect([...new Set(addresses)]).toEqual(["localhost"]);
+    // Badges (OPS-07) come from GitHub and shields.io; every other address must be local.
+    expect([...new Set(addresses)].filter((host) => !["github.com", "img.shields.io"].includes(host))).toEqual(["localhost"]);
   });
 });
 
+describe("README badges (OPS-07)", () => {
+  const badgeRow = readme.split("\n").find((line) => /^\[!\[/.test(line)) ?? "";
+  const lines = readme.split("\n");
+  const badgeImages = [...badgeRow.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)].map((m) => ({ alt: m[1], url: m[2] }));
+
+  it("[AC-OPS-07.1] the CI badge shows the latest CI run on main and links to the CI runs on main", () => {
+    const ci = badgeImages.find((badge) => badge.alt === "CI");
+    expect(ci?.url).toMatch(/\/actions\/workflows\/ci\.yml\/badge\.svg\?branch=main$/);
+    expect(badgeRow).toMatch(/\]\(https:\/\/github\.com\/[^)]+\/actions\/workflows\/ci\.yml\?query=branch%3Amain\)/);
+    expect(existsSync(path.join(root, ".github/workflows/ci.yml"))).toBe(true);
+  });
+
+  it("[AC-OPS-07.2] shows a CodeQL badge and a licence badge, and the licence file exists", () => {
+    expect(badgeImages.map((badge) => badge.alt)).toEqual(expect.arrayContaining(["CodeQL", "Licence: MIT"]));
+    expect(readFileSync(path.join(root, "LICENSE"), "utf8")).toMatch(/MIT License/);
+  });
+
+  it("[AC-OPS-07.3][AC-OPS-07.4] shows no coverage, Lighthouse or release badge until OPS-09, OPS-10 and OPS-11 exist", () => {
+    for (const badge of badgeImages) expect(badge.alt).not.toMatch(/coverage|lighthouse|release/i);
+  });
+
+  it("[AC-OPS-07.5] badges come only from GitHub or shields.io, and no URL carries a token or secret", () => {
+    expect(badgeImages.length).toBeGreaterThanOrEqual(3);
+    for (const badge of badgeImages) {
+      const url = new URL(badge.url);
+      expect(["github.com", "img.shields.io"]).toContain(url.hostname);
+      expect(url.search.replace("?branch=main", "")).toBe("");
+    }
+  });
+
+  it("[AC-OPS-07.6] the badges are one row directly under the title, so they wrap as inline images", () => {
+    expect(lines[0]).toBe("# Life Tracker");
+    expect(lines[1]).toBe("");
+    expect(lines[2]).toBe(badgeRow);
+    expect(badgeRow.startsWith("[![")).toBe(true);
+  });
+});
