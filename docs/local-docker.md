@@ -165,7 +165,7 @@ volumes:
 
 ## One command for a filtered test run
 
-`scripts/run-tests.sh` runs only the tests you name and does the setup and tear-down for you. For the end-to-end tests it starts a throwaway Postgres on a free local port, runs Playwright, then removes the container and puts `api/.dev.vars` back as it was. You only need Docker running (unit tests need nothing).
+`scripts/run-tests.sh` runs only the tests you name and does the setup and tear-down for you. For the end-to-end tests it starts a throwaway Postgres on a free local port, runs Playwright, then removes the container and puts `api/.dev.vars` back as it was. You only need Docker installed and running (unit tests need nothing). If you are a new developer on this app, install Docker first (see "Install" above), then this script is the only command you need.
 
 ```bash
 scripts/run-tests.sh unit web src/pages/groceries/GroceriesPage.test.tsx -t "AC-GRO-01.1"
