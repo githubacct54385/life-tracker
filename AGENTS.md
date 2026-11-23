@@ -145,6 +145,12 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
 - Phases are Linear milestones inside the Life Tracker project. Do not make an issue for a phase.
 - Only MVP work gets issues now. "Next" and "Later" items stay in SPEC.md until they are about to start.
 - Reference the story key in branch names and commit messages (see Git section).
+- **Interview the owner before a new issue, and keep them in the loop.** The owner wants to be involved in how features are shaped, in plain language, without reading code.
+  - **Before creating an issue** (only when asked), interview the owner. Ask 3 to 6 short questions in everyday words, using the question tool, each with a recommended default first. Ask only where the answer changes what is built, how long it takes, or what it costs. Do not ask about things the code or the docs already settle.
+  - Then write the issue: the story, the acceptance criteria with their IDs, and a "Decisions by the owner" section recording each answer (as GRO-01 does). Read the criteria back to the owner in plain words and fix them before any code is written. **The criteria are recorded in the Linear issue**, which stays the source of truth.
+  - **Before starting an existing issue** that was not interviewed, restate its criteria in plain words and ask about anything unclear or anything the code makes impossible as written (for example, a criterion that names a page that does not exist yet). Record the answers in the issue.
+  - **While building,** if a choice changes a criterion, its cost or what the owner will see, stop and ask. Do not pick silently.
+  - **When handing over,** say in plain steps what to open and tap to see it work, and list each criterion as checked by a test, checked by hand (and by whom), or not done yet. The standing "try it" block still applies.
 - **Issue lifecycle.** Updating the issue is part of the work, not an afterthought.
   - **Before starting:** assign the issue to the owner (`me`), set an estimate, and move it to **In Progress**. If it has no estimate, propose one and set it. Do not start code on an unassigned, unestimated issue.
   - **While working:** move it to **In Review** when the pull request is open and waiting for CI or review, if that status helps. Otherwise leave it In Progress.
