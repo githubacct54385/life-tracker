@@ -160,6 +160,10 @@ CI measures line and branch coverage of the unit tests (`shared`, `api`, `web`) 
 
 The minimum for each set is in `coverage.config.json` (today's real number, rounded down), and CI fails when a set falls below its minimum. Raise a minimum when coverage rises. Never lower one to pass CI: if a file cannot sensibly be covered, add it to `exclude` in the same file with a reason. Run it yourself with `pnpm coverage:unit` (no Docker) or `pnpm coverage:int` (Docker running), then `pnpm coverage:summary`.
 
+## Lighthouse (performance, accessibility, installability)
+
+`node scripts/lighthouse.mjs` (or `pnpm lighthouse` after `pnpm build`) serves the built app, opens the `/demo` page in Chromium on the phone profile, and takes the median of three Lighthouse runs. It fails when the Accessibility score is under 95, when the first screen loads more JavaScript than the budget in `lighthouse.config.json`, or when the app could not be installed (a manifest with icons, and a service worker with a fetch handler; Lighthouse 13 no longer has its own installability audit, so `scripts/lighthouse-lib.mjs` checks it). A failed check is retried once before it counts. CI runs it on pull requests that change `web/` and on every push to `main`, writes the table to the job summary and saves the reports as the `lighthouse-reports` artifact. Home, Car and Health are added when SET-10 gives them a public demo.
+
 ## Commands (once code exists)
 
 Step-by-step setup for a laptop, including a Mac, is in the [README](README.md#run-the-tests-locally).

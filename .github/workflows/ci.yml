@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read # to see which files a pull request changes (OPS-10)
   actions: read # to read the coverage numbers from the latest run on main (OPS-09)
 
 concurrency:
@@ -160,6 +161,32 @@ jobs:
           done
           echo "::warning::System libraries were not installed. If the end-to-end tests cannot start the browser, this is why."
           exit 0
+      # Lighthouse (OPS-10) runs on pull requests that change web/ or the check itself, and on every push to main.
+      - name: Did this pull request change web/?
+        id: web
+        if: steps.app.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -z "$PR_NUMBER" ] || gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' | grep -Eq '^(web/|scripts/lighthouse|lighthouse\.config\.json|\.github/workflows/ci\.yml)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No change under web/ or to the Lighthouse check, so Lighthouse is skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Lighthouse (scores, JavaScript budget, installability)
+        if: steps.app.outputs.present == 'true' && steps.web.outputs.changed == 'true'
+        timeout-minutes: 6
+        run: node scripts/lighthouse.mjs --markdown "$GITHUB_STEP_SUMMARY"
+      - name: Save the Lighthouse reports
+        if: always() && steps.app.outputs.present == 'true' && steps.web.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+          if-no-files-found: ignore
+          retention-days: 30
       - name: End-to-end tests (real Worker, API and Postgres; some screen checks fake the API, see TESTING.md)
         if: steps.app.outputs.present == 'true'
         env:

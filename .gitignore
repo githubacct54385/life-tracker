@@ -46,3 +46,4 @@ blob-report/
 .wrangler/
 .dev.vars
 .dev.vars.*
+lighthouse-reports/
