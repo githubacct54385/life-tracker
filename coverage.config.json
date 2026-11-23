@@ -1,0 +1,43 @@
+{
+  "_about": "Coverage settings for every package (OPS-09). The minimums are today's real numbers, rounded down. Raise them when coverage rises; never lower one to make CI pass. A file that cannot sensibly be covered is excluded below with a reason, not hidden by a lower minimum.",
+  "thresholds": {
+    "shared": {
+      "lines": 99,
+      "branches": 95
+    },
+    "api": {
+      "lines": 66,
+      "branches": 64
+    },
+    "api-int": {
+      "lines": 83,
+      "branches": 65
+    },
+    "web": {
+      "lines": 94,
+      "branches": 90
+    }
+  },
+  "exclude": [
+    {
+      "pattern": "**/*.test.{ts,tsx}",
+      "reason": "Test files are the measuring stick, not the thing measured."
+    },
+    {
+      "pattern": "**/testing/**",
+      "reason": "Test helpers (fakes, token signers) exist only to support tests."
+    },
+    {
+      "pattern": "**/*.d.ts",
+      "reason": "Type declarations have no code to run."
+    },
+    {
+      "pattern": "**/*.int.ts",
+      "reason": "Integration test set-up files, such as the Postgres container starter."
+    },
+    {
+      "pattern": "web/src/main.tsx",
+      "reason": "The browser entry point only mounts the app. The end-to-end tests cover it."
+    }
+  ]
+}

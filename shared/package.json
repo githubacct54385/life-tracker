@@ -8,7 +8,8 @@
     "typecheck": "tsc -p .",
     "test:unit": "vitest run --passWithNoTests",
     "test:int": "echo 'no integration tests in shared'",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "devDependencies": {
     "fast-check": "^4.10.3",

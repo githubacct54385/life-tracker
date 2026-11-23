@@ -11,7 +11,9 @@
     "migrate": "tsx src/db/migrate-cli.ts",
     "seed:staging": "tsx src/db/seed-staging-cli.ts",
     "dev": "wrangler dev",
-    "build:worker": "wrangler deploy --dry-run --outdir ../.stage/worker"
+    "build:worker": "wrangler deploy --dry-run --outdir ../.stage/worker",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:coverage:int": "vitest run --config vitest.int.config.ts --coverage --passWithNoTests"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.2.2",

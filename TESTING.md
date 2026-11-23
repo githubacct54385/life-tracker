@@ -154,6 +154,12 @@ pnpm tests:list none                  # tests that name no acceptance criterion 
 
 Write test names as sentences that say what is true, because that sentence is what the list shows.
 
+## Coverage
+
+CI measures line and branch coverage of the unit tests (`shared`, `api`, `web`) and of the API integration tests, and shows a table with the change against the latest run on `main` in the job summary of every run. The full report is saved as the `coverage-report` artifact. **End-to-end tests are not part of the coverage numbers**, because they test the built app from outside; they prove behaviour, not lines.
+
+The minimum for each set is in `coverage.config.json` (today's real number, rounded down), and CI fails when a set falls below its minimum. Raise a minimum when coverage rises. Never lower one to pass CI: if a file cannot sensibly be covered, add it to `exclude` in the same file with a reason. Run it yourself with `pnpm coverage:unit` (no Docker) or `pnpm coverage:int` (Docker running), then `pnpm coverage:summary`.
+
 ## Commands (once code exists)
 
 Step-by-step setup for a laptop, including a Mac, is in the [README](README.md#run-the-tests-locally).
