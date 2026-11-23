@@ -3,7 +3,8 @@ import type { GivingChart as GivingChartData } from "@life-tracker/shared";
 import { formatCents, monthLabel } from "./giftFormat";
 
 const SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const short = (month: string) => SHORT[Number(month.slice(5, 7)) - 1] ?? month;
+/** One letter on the chart axis, so twelve months fit a phone. The tooltip and the table use full names. */
+const initial = (month: string) => SHORT[Number(month.slice(5, 7)) - 1]?.charAt(0) ?? month;
 /** Axis ticks in whole dollars. The exact amounts are in the tooltip and the table. */
 const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
@@ -15,7 +16,7 @@ const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("e
 export function GivingChart({ chart, year }: { chart: GivingChartData; year: number }) {
   const average = `${formatCents(chart.averageCents)} a month`;
   const summary = `Bar chart of giving in each month of ${year}, regular giving and special contributions stacked, with a line for the running total. Year total ${formatCents(chart.yearCents)}, ${average} so far. The same numbers are in the table below.`;
-  const data = chart.rows.map((row) => ({ ...row, label: short(row.month) }));
+  const data = chart.rows.map((row) => ({ ...row, label: initial(row.month) }));
   return (
     <figure className="m-0">
       <p className="text-ink">
@@ -68,7 +69,7 @@ export function GivingChart({ chart, year }: { chart: GivingChartData; year: num
                   <th scope="row" className="py-1 pr-2 font-normal">{monthLabel(row.month)}</th>
                   <td className="py-1 pr-2 text-right tabular-nums">{formatCents(row.regularCents)}</td>
                   <td className="py-1 pr-2 text-right tabular-nums">{formatCents(row.specialCents)}</td>
-                  <td className="py-1 text-right tabular-nums">{formatCents(row.runningCents)}</td>
+                  <td className="py-1 text-right tabular-nums">{row.runningCents === undefined ? "–" : formatCents(row.runningCents)}</td>
                 </tr>
               ))}
             </tbody>
