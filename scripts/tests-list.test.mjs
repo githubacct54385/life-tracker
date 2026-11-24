@@ -105,5 +105,12 @@ describe("tests list (OPS-12)", () => {
     expect([...onPage].filter((id) => !tested.has(id)).sort(), "on the page but no browser test covers it any more: remove or fix the line").toEqual([]);
     expect(page).not.toMatch(/\bAC-[A-Z]+-\d{2}\.\d+\b(?![^<]*-->)/); // IDs stay in hidden comments, so the page reads as plain English
     expect(page.split("\n").filter((line) => line.startsWith("- ")).length).toBeGreaterThan(30);
+    // Each heading names the stories its lines come from, so they can be looked up in Linear.
+    for (const section of page.split(/^## /m).slice(1)) {
+      const [heading] = section.split("\n");
+      const named = [...heading.matchAll(/\b([A-Z]{3})-(\d{2})\b/g)].map((m) => `${m[1]}-${m[2]}`).sort();
+      const used = [...new Set([...section.matchAll(/AC-([A-Z]+-\d{2})\.\d+/g)].map((m) => m[1]).filter((story) => story !== "OPS-04"))].sort();
+      expect(named, `the stories named in the heading "${heading}"`).toEqual(used);
+    }
   });
 });
