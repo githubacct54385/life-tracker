@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import { lighthouseBadge } from "./badges-lib.mjs";
 import { checkPage, installabilityProblems, median, renderSummary, summarize } from "./lighthouse-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -72,5 +73,14 @@ describe("Lighthouse check (OPS-10)", () => {
     expect(step(/Did this pull request change web/).run).toContain("lighthouse\\.config\\.json"); // changing the check itself runs it
     expect(step(/^Lighthouse/).if).toContain("steps.web.outputs.changed == 'true'");
     expect(step(/^Lighthouse/)["timeout-minutes"]).toBe(6);
+  });
+
+  it("[AC-OPS-10.4] the Lighthouse badge shows the lowest performance and accessibility scores, and goes red when they drop", () => {
+    const pages = (performance, accessibility) => ({ pages: [{ name: "Demo", scores: { performance, accessibility } }, { name: "Other", scores: { performance: 100, accessibility: 100 } }] });
+    expect(lighthouseBadge(pages(97, 100))).toEqual({ schemaVersion: 1, label: "lighthouse", message: "performance 97, accessibility 100", color: "brightgreen" });
+    expect(lighthouseBadge(pages(70, 100)).color).toBe("yellow");
+    expect(lighthouseBadge(pages(100, 40)).color).toBe("red");
+    expect(() => lighthouseBadge({ pages: [] })).toThrow(/No Lighthouse results/);
+    expect(read("scripts/lighthouse.mjs")).toContain('"summary.json"'); // the numbers the badge job reads
   });
 });

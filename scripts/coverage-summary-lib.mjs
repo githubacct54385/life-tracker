@@ -18,7 +18,7 @@ export function readCoverage(root) {
     const file = path.join(root, dir, "coverage", name, "coverage-summary.json");
     if (!existsSync(file)) continue;
     const total = JSON.parse(readFileSync(file, "utf8")).total;
-    result[name] = { lines: total.lines.pct, branches: total.branches.pct };
+    result[name] = { lines: total.lines.pct, branches: total.branches.pct, linesCovered: total.lines.covered, linesTotal: total.lines.total };
   }
   return result;
 }

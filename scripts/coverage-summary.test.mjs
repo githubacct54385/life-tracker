@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { readCoverage, renderTable } from "./coverage-summary-lib.mjs";
 import { coverageFor } from "../coverage.config.mjs";
+import { coverageBadge } from "./badges-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => readFileSync(path.join(root, file), "utf8");
@@ -18,7 +19,7 @@ function sampleReports() {
   const dir = mkdtempSync(path.join(tmpdir(), "coverage-"));
   const put = (pkg, name, lines, branches) => {
     mkdirSync(path.join(dir, pkg, "coverage", name), { recursive: true });
-    writeFileSync(path.join(dir, pkg, "coverage", name, "coverage-summary.json"), JSON.stringify({ total: { lines: { pct: lines }, branches: { pct: branches } } }));
+    writeFileSync(path.join(dir, pkg, "coverage", name, "coverage-summary.json"), JSON.stringify({ total: { lines: { pct: lines, covered: lines, total: 100 }, branches: { pct: branches } } }));
   };
   put("shared", "shared", 99.5, 95);
   put("web", "web", 90, 80.25);
@@ -55,7 +56,7 @@ describe("coverage (OPS-09)", () => {
   it("[AC-OPS-09.2] with nothing from main to compare with the table says n/a, and a missing report is left out, not shown as 0", () => {
     const current = readCoverage(sampleReports());
     expect(Object.keys(current)).toEqual(["shared", "web"]);
-    expect(current.web).toEqual({ lines: 90, branches: 80.25 });
+    expect(current.web).toEqual({ lines: 90, branches: 80.25, linesCovered: 90, linesTotal: 100 });
     expect(renderTable(current)).toContain("| shared | 99.50% | n/a | 95.00% | n/a |");
   });
 
@@ -83,5 +84,17 @@ describe("coverage (OPS-09)", () => {
   it("[AC-OPS-09.6] end-to-end tests are left out of the numbers, and TESTING.md says so", () => {
     expect(read("TESTING.md")).toMatch(/End-to-end tests are not part of the coverage numbers/);
     expect(JSON.stringify(steps.filter((s) => /End-to-end/.test(s.name ?? "")).map((s) => s.run))).not.toContain("coverage");
+  });
+
+  it("[AC-OPS-09.5] the coverage badge is one number built from the unit-test lines, and CI publishes it to the badges release from main only", () => {
+    const sets = { shared: { linesCovered: 90, linesTotal: 100 }, api: { linesCovered: 50, linesTotal: 100 }, web: { linesCovered: 160, linesTotal: 200 }, "api-int": { linesCovered: 1, linesTotal: 1 } };
+    expect(coverageBadge(sets)).toEqual({ schemaVersion: 1, label: "coverage", message: "75%", color: "yellow" });
+    expect(coverageBadge({ shared: { linesCovered: 99, linesTotal: 100 } }).color).toBe("brightgreen");
+    expect(() => coverageBadge({})).toThrow(/No coverage numbers/);
+    const job = ci.jobs.badges;
+    expect(job.if).toContain("refs/heads/main");
+    expect(job.permissions.contents).toBe("write");
+    expect(ci.permissions.contents).toBe("read"); // every other job stays read-only
+    expect(job.steps.map((s) => s.run ?? "").join("\n")).toContain("gh release upload badges badges/coverage.json badges/lighthouse.json --clobber");
   });
 });
