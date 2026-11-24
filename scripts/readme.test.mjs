@@ -109,8 +109,17 @@ describe("README badges (OPS-07)", () => {
     expect(readFileSync(path.join(root, "LICENSE"), "utf8")).toMatch(/MIT License/);
   });
 
-  it("[AC-OPS-07.3][AC-OPS-07.4] shows no coverage, Lighthouse or release badge until OPS-09, OPS-10 and OPS-11 exist", () => {
-    for (const badge of badgeImages) expect(badge.alt).not.toMatch(/coverage|lighthouse|release/i);
+  it("[AC-OPS-07.3] shows a coverage badge and a Lighthouse badge, now that OPS-09 and OPS-10 exist, read from the badge files CI publishes", () => {
+    expect(badgeImages.map((badge) => badge.alt)).toEqual(expect.arrayContaining(["Coverage", "Lighthouse"]));
+    for (const alt of ["Coverage", "Lighthouse"]) {
+      const url = new URL(badgeImages.find((badge) => badge.alt === alt).url);
+      expect(url.pathname).toBe("/endpoint");
+      expect(decodeURIComponent(url.searchParams.get("url"))).toMatch(new RegExp(`^https://github\\.com/[^/]+/[^/]+/releases/download/badges/${alt.toLowerCase()}\\.json$`));
+    }
+  });
+
+  it("[AC-OPS-07.4] shows no release badge until OPS-11 exists", () => {
+    for (const badge of badgeImages) expect(badge.alt).not.toMatch(/release/i);
   });
 
   it("[AC-OPS-07.5] badges come only from GitHub or shields.io, and no URL carries a token or secret", () => {
@@ -118,7 +127,13 @@ describe("README badges (OPS-07)", () => {
     for (const badge of badgeImages) {
       const url = new URL(badge.url);
       expect(["github.com", "img.shields.io"]).toContain(url.hostname);
-      expect(url.search.replace("?branch=main", "")).toBe("");
+      // The only query allowed is the branch pin, or the address of a badge file in this repository's releases.
+      const query = url.search.replace("?branch=main", "");
+      if (query) {
+        expect(url.hostname).toBe("img.shields.io");
+        expect([...url.searchParams.keys()]).toEqual(["url"]);
+        expect(new URL(url.searchParams.get("url")).hostname).toBe("github.com");
+      }
     }
   });
 

@@ -90,6 +90,8 @@ const installProblems = installabilityProblems({ html, manifest, files, serviceW
 problems.push(...installProblems.map((p) => `Installability: ${p}`));
 server.close();
 
+writeFileSync(path.join(root, "lighthouse-reports", "summary.json"), `${JSON.stringify({ pages: results.map(({ name, summary }) => ({ name, scores: summary.scores, javaScriptKB: summary.javaScriptKB })) }, null, 2)}\n`);
+
 const text = renderSummary(results, config, installProblems, problems);
 console.log(text);
 if (markdownFile) appendFileSync(markdownFile, text);
