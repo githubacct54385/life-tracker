@@ -100,6 +100,13 @@ describe("givingChart", () => {
     expect(chart.averageCents).toBe(6_250);
   });
 
+  it("[AC-GIV-04.3] the running total stops at the current month, so the line does not run flat through months that have not happened", () => {
+    const chart = givingChart([gift("2026-01-05", "2026-01", 10_000)], [], { year: 2026, today: "2026-03-15" });
+    expect(chart.rows.map((r) => r.runningCents)).toEqual([10_000, 10_000, 10_000, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined]);
+    const past = givingChart([gift("2025-01-05", "2025-01", 10_000)], [], { year: 2025, today: "2026-03-15" });
+    expect(past.rows.every((r) => r.runningCents === 10_000)).toBe(true);
+  });
+
   it("[AC-GIV-04.3] averages a past year over twelve months and rounds to a whole cent", () => {
     const chart = givingChart([gift("2025-01-05", "2025-01", 100)], [], { year: 2025, today: "2026-04-15" });
     expect(chart.monthsSoFar).toBe(12);

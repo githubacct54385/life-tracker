@@ -109,8 +109,8 @@ export interface MonthChartRow {
   specialCents: number;
   /** Regular plus special giving in this month. */
   totalCents: number;
-  /** Running total for the year, up to and including this month. */
-  runningCents: number;
+  /** Running total for the year, up to and including this month. Left out for months that have not happened yet. */
+  runningCents?: number;
 }
 
 export interface GivingChart {
@@ -153,8 +153,10 @@ export function givingChart(regular: readonly RegularGift[], special: readonly S
     const regularCents = regularBy.get(month) ?? 0;
     const specialCents = specialBy.get(month) ?? 0;
     running += regularCents + specialCents;
-    return { month, regularCents, specialCents, totalCents: regularCents + specialCents, runningCents: running };
+    const row: MonthChartRow = { month, regularCents, specialCents, totalCents: regularCents + specialCents };
+    if (i < monthsSoFar) row.runningCents = running;
+    return row;
   });
-  const yearCents = running;
+  const yearCents = running; // gifts for a month that has not begun still count in the year total
   return { rows, yearCents, monthsSoFar, averageCents: Math.round(yearCents / monthsSoFar), empty: regularBy.size === 0 && specialBy.size === 0 };
 }
