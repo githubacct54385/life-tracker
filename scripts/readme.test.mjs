@@ -118,11 +118,9 @@ describe("README badges (OPS-07)", () => {
     }
   });
 
-  it("[AC-OPS-07.3] clicking the coverage or Lighthouse badge opens the plain-English Project health page, not the CI logs", () => {
-    for (const alt of ["Coverage", "Lighthouse"]) {
-      const link = new RegExp(`\\[!\\[${alt}\\]\\([^)]+\\)\\]\\((https://github\\.com/[^/]+/[^/]+/releases/tag/badges)\\)`).exec(badgeRow);
-      expect(link, `the ${alt} badge links to the badges release page`).not.toBeNull();
-    }
+  it("[AC-OPS-07.3] the coverage and Lighthouse badges share one link, to the plain-English Project health page and not the CI logs", () => {
+    const shared = /\[!\[Coverage\]\([^)]+\) !\[Lighthouse\]\([^)]+\)\]\((https:\/\/github\.com\/[^/]+\/[^/]+\/releases\/tag\/badges)\)/.exec(badgeRow);
+    expect(shared, "one link around both badges, to the badges release page").not.toBeNull();
   });
 
   it("[AC-OPS-07.4] shows no release badge until OPS-11 exists", () => {
