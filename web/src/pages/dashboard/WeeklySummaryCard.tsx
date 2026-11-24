@@ -138,7 +138,7 @@ export function WeeklySummaryCard({ today, weights, readings, workouts, giving }
         />
         <FigureItem
           id="week-giving"
-          label="Giving"
+          label="Money given"
           to="/giving"
           load={giving}
           value={() =>

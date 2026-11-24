@@ -30,7 +30,7 @@ describe("This week card (DSH-02)", () => {
     open();
     const c = await card();
     expect(within(c).getByText("Nov 6 to Nov 12 (Friday to Thursday)")).toBeTruthy();
-    for (const name of ["Miles", "Workouts", "Weight", "Giving"]) expect(within(c).getByRole("heading", { name })).toBeTruthy();
+    for (const name of ["Miles", "Workouts", "Weight", "Money given"]) expect(within(c).getByRole("heading", { name })).toBeTruthy();
     expect(await within(await figure("Miles")).findByText("212 miles")).toBeTruthy();
     expect(within(await figure("Workouts")).getByText("1 workout")).toBeTruthy();
   });
@@ -53,7 +53,7 @@ describe("This week card (DSH-02)", () => {
 
   it("[AC-DSH-02.3] a figure with nothing in the week says No data and shows no zero", async () => {
     open(); // no gift was given in the week of Nov 6 to Nov 12
-    const giving = await figure("Giving");
+    const giving = await figure("Money given");
     expect(await within(giving).findByText("No data")).toBeTruthy();
     expect(within(giving).queryByText(/\$0\.00/)).toBeNull();
     cleanup();
@@ -68,7 +68,7 @@ describe("This week card (DSH-02)", () => {
   it("[AC-DSH-02.4] each figure links to the page that holds it", async () => {
     open();
     await card();
-    for (const [name, to] of [["Miles", "/car/stats"], ["Workouts", "/health"], ["Weight", "/health/weight"], ["Giving", "/giving"]] as const) {
+    for (const [name, to] of [["Miles", "/car/stats"], ["Workouts", "/health"], ["Weight", "/health/weight"], ["Money given", "/giving"]] as const) {
       expect(within(await figure(name)).getByRole("link", { name }).getAttribute("href")).toBe(to);
     }
   });
@@ -94,7 +94,7 @@ describe("This week card (DSH-02)", () => {
     open(slow);
     const workouts = await figure("Workouts");
     expect(within(workouts).getByText("Loading…")).toBeTruthy();
-    expect(await within(await figure("Giving")).findByText("Could not load this.")).toBeTruthy();
+    expect(await within(await figure("Money given")).findByText("Could not load this.")).toBeTruthy();
     expect(await within(await figure("Miles")).findByText("212 miles")).toBeTruthy();
   });
 });

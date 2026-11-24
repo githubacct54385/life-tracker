@@ -67,7 +67,8 @@ test(
       await page.setViewportSize({ width, height });
       await page.goto("/");
       const card = page.getByRole("region", { name: "This week", exact: true });
-      for (const name of ["Miles", "Workouts", "Weight", "Giving"]) await expect(card.getByRole("heading", { name })).toBeVisible();
+      // "Money given", not "Giving": the layout test finds the Giving page by its heading name, and a second heading containing that word breaks it.
+      for (const name of ["Miles", "Workouts", "Weight", "Money given"]) await expect(card.getByRole("heading", { name })).toBeVisible();
       await expect(card.getByText("No data").first()).toBeVisible(); // there is no gift in the week
 
       const first = (await card.getByRole("heading", { name: "Miles" }).boundingBox())!;
