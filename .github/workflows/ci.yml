@@ -194,7 +194,7 @@ jobs:
         run: pnpm test:e2e
 
   # Publishes the numbers behind the coverage and Lighthouse badges (OPS-09, OPS-10) after a green run on main.
-  # Two small JSON files go to the "badges" release, and shields.io reads them. This is the only job that can write.
+  # Two small SVG images go to the "badges" release, and the README links to them. This is the only job that can write.
   badges:
     name: badges
     needs: test
@@ -216,11 +216,11 @@ jobs:
         with:
           name: lighthouse-reports
           path: lighthouse-reports
-      - name: Build the badge files
+      - name: Build the badge images
         run: node scripts/make-badges.mjs coverage-summary/summary.json lighthouse-reports/summary.json badges
       - name: Publish them to the badges release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view badges >/dev/null 2>&1 || gh release create badges --target main --latest=false --title "Badge data" --notes "Two small JSON files that the README badges read. CI replaces them on every push to main. Nothing else is stored here."
-          gh release upload badges badges/coverage.json badges/lighthouse.json --clobber
+          gh release view badges >/dev/null 2>&1 || gh release create badges --target main --latest=false --title "Badge data" --notes "Two small SVG badge images that the README shows. CI replaces them on every push to main. Nothing else is stored here."
+          gh release upload badges badges/coverage.svg badges/lighthouse.svg --clobber

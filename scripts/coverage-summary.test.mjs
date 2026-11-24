@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { readCoverage, renderTable } from "./coverage-summary-lib.mjs";
 import { coverageFor } from "../coverage.config.mjs";
-import { coverageBadge } from "./badges-lib.mjs";
+import { coverageBadge, renderBadgeSvg } from "./badges-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => readFileSync(path.join(root, file), "utf8");
@@ -91,10 +91,14 @@ describe("coverage (OPS-09)", () => {
     expect(coverageBadge(sets)).toEqual({ schemaVersion: 1, label: "coverage", message: "75%", color: "yellow" });
     expect(coverageBadge({ shared: { linesCovered: 99, linesTotal: 100 } }).color).toBe("brightgreen");
     expect(() => coverageBadge({})).toThrow(/No coverage numbers/);
+    const svg = renderBadgeSvg(coverageBadge(sets));
+    expect(svg).toContain('aria-label="coverage: 75%"');
+    expect(svg).toContain("#dfb317"); // yellow
+    expect(renderBadgeSvg({ label: "a<b", message: '"x"&', color: "red" })).toContain("a&lt;b");
     const job = ci.jobs.badges;
     expect(job.if).toContain("refs/heads/main");
     expect(job.permissions.contents).toBe("write");
     expect(ci.permissions.contents).toBe("read"); // every other job stays read-only
-    expect(job.steps.map((s) => s.run ?? "").join("\n")).toContain("gh release upload badges badges/coverage.json badges/lighthouse.json --clobber");
+    expect(job.steps.map((s) => s.run ?? "").join("\n")).toContain("gh release upload badges badges/coverage.svg badges/lighthouse.svg --clobber");
   });
 });
