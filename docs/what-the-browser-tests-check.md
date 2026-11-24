@@ -34,9 +34,10 @@ For the technical list, run `pnpm tests:list`. For what only a person can check,
 - The demo page shows its ribbon, talks to no server, and fits every screen size. <!-- AC-DEM-01.1 AC-DEM-01.2 AC-DEM-01.4 -->
 - The demo walks through importing a sample mileage sheet, also without any server. <!-- AC-DEM-02.1 AC-DEM-02.2 AC-DEM-02.3 -->
 
-## Home (DSH-01)
+## Home (DSH-01, DSH-02)
 
 - Home shows the latest weight, workouts, giving and odometer, with quick actions, in one column on a phone and a grid on wider screens. <!-- AC-DSH-01.1 AC-DSH-01.2 AC-DSH-01.3 AC-DSH-01.4 -->
+- A "This week" card on top shows miles, workouts, weight change and giving, with "No data" where there is nothing, in one column on a phone and two on wider screens. <!-- AC-DSH-02.6 -->
 
 ## Car: odometer and mileage (MIL-01, MIL-03, MIL-04)
 

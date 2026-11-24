@@ -80,6 +80,7 @@ Notes:
 ### 6.3 Dashboard (home)
 
 - One phone-sized screen with the latest weight and trend, last week's miles, workouts this week, and year-to-date giving.
+- A **This week** card on top (DSH-02): miles, workouts, weight change and giving, each compared with the week before in words, each linking to its page. Weeks run Friday to Thursday on this card (ADR-0008), and a figure with no data in the week says "No data" instead of showing a zero. The older tiles below it keep their own rules (the Workouts tile counts Monday to Sunday).
 - Quick actions: add weight, add workout, log odometer, add giving.
 
 ### 6.4 Settings and data control
