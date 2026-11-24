@@ -164,7 +164,7 @@ The minimum for each set is in `coverage.config.json` (today's real number, roun
 
 ## The coverage and Lighthouse badges
 
-After a green run on `main`, the `badges` job in `ci.yml` writes two small JSON files (`coverage.json`, `lighthouse.json`) to the `badges` release, and the README badges read them through shields.io. They hold only a percentage and a colour. It is the only CI job with write permission. Coverage is the lines covered by the unit tests of all packages together; Lighthouse shows the lowest performance and accessibility scores. A badge shows "invalid" until the first run on `main` after this was added has published its file.
+After a green run on `main`, the `badges` job in `ci.yml` draws two small SVG images (`coverage.svg`, `lighthouse.svg`) and puts them on the `badges` release, and the README links to them directly. shields.io is not used for these two, because its endpoint badge refuses to read files from github.com. It is the only CI job with write permission. Coverage is the lines covered by the unit tests of all packages together; Lighthouse shows the lowest performance and accessibility scores.
 
 ## Lighthouse (performance, accessibility, installability)
 
