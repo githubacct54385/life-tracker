@@ -45,3 +45,38 @@ test(
     }
   },
 );
+
+test(
+  "[AC-DSH-02.6] the This week card shows its four figures, one column of figures on a phone and two from tablet width, with nothing scrolling sideways",
+  { tag: ["@AC-DSH-02.6"] },
+  async ({ page, context }) => {
+    const now = new Date();
+    const day = (back: number) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    await page.route("**/api/weight", (route) => route.fulfill({ json: { entries: [{ id: 2, date: day(0), pounds: 172.4 }, { id: 1, date: day(8), pounds: 174 }] } }));
+    await page.route("**/api/odometer?all=1", (route) =>
+      route.fulfill({ json: { readings: [{ id: 3, date: day(0), miles: 48_402 }, { id: 2, date: day(7), miles: 48_190 }, { id: 1, date: day(14), miles: 47_900 }] } }),
+    );
+    await page.route("**/api/workouts", (route) => route.fulfill({ json: { workouts: [{ id: 1, date: day(0), type: "Run", minutes: 32, reps: null, note: null, source: "manual" }] } }));
+    await page.route("**/api/gifts", (route) => route.fulfill({ json: { gifts: [] } }));
+    await page.route("**/api/gifts/special", (route) => route.fulfill({ json: { contributions: [] } }));
+    await signInAs(context, OWNER);
+    for (const { width, height, columns } of WIDTHS) {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const card = page.getByRole("region", { name: "This week", exact: true });
+      for (const name of ["Miles", "Workouts", "Weight", "Giving"]) await expect(card.getByRole("heading", { name })).toBeVisible();
+      await expect(card.getByText("No data").first()).toBeVisible(); // there is no gift in the week
+
+      const first = (await card.getByRole("heading", { name: "Miles" }).boundingBox())!;
+      const second = (await card.getByRole("heading", { name: "Workouts" }).boundingBox())!;
+      if (columns === 1) expect(Math.abs(first.x - second.x)).toBeLessThan(2);
+      else expect(second.x).toBeGreaterThan(first.x + 20);
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
+  },
+);

@@ -18,3 +18,4 @@ export * from "./maintenanceHistory.js";
 export * from "./maintenanceGroups.js";
 export * from "./maintenanceDocuments.js";
 export * from "./groceries.js";
+export * from "./weeklySummary.js";

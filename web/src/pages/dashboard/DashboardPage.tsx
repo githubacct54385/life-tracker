@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
   APP_NAME,
@@ -24,28 +24,12 @@ import { formatWeight } from "../health/weightFormat";
 import { Icon } from "../../ui/Icon.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { Page } from "../Page";
+import { useLoad, type Load } from "./load";
+import { WeeklySummaryCard } from "./WeeklySummaryCard";
 
 // The whole card is the link (the title's link is stretched over it), so a tap anywhere on a tile opens its screen.
 const card = "relative rounded-2xl border border-line bg-card p-4 text-ink transition-shadow hover:border-g300 hover:shadow-sm focus-within:border-g500";
 const action = "flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 py-3 text-center font-bold text-ink hover:border-g300 hover:shadow-sm";
-
-type Load<T> = { state: "loading" } | { state: "error" } | { state: "ok"; value: T };
-
-/** Each tile loads on its own, so one failing request leaves the others showing. */
-function useLoad<T>(fetcher: () => Promise<T>): Load<T> {
-  const [result, setResult] = useState<Load<T>>({ state: "loading" });
-  useEffect(() => {
-    let current = true;
-    fetcher()
-      .then((value) => current && setResult({ state: "ok", value }))
-      .catch(() => current && setResult({ state: "error" }));
-    return () => {
-      current = false;
-    };
-    // The fetcher is rebuilt on every render; the data source (api) is what decides when to load again.
-  }, []);
-  return result;
-}
 
 function Tile<T>({ id, title, load, to, empty, children }: { id: string; title: string; load: Load<T>; to: string; empty?: (value: T) => ReactNode | undefined; children: (value: T) => ReactNode }) {
   return (
@@ -64,7 +48,7 @@ function Tile<T>({ id, title, load, to, empty, children }: { id: string; title: 
 }
 
 /**
- * Home (DSH-01): everything at a glance. The latest weight and its trend, last week's miles, workouts this week and
+ * Home (DSH-01, DSH-02): everything at a glance, with a "This week" card on top. The latest weight and its trend, last week's miles, workouts this week and
  * year-to-date giving, an "odometer due" banner when this week's reading is missing, and quick actions.
  * `today` is a prop only so tests can fix the date.
  */
@@ -99,6 +83,8 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
             </Link>
           </div>
         )}
+
+        <WeeklySummaryCard today={today} weights={weights} readings={readings} workouts={workouts} giving={giving} />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Tile
