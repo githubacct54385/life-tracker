@@ -155,11 +155,13 @@ CI fails on the second list and reports the first. When the MVP is feature-compl
   - **Before starting:** assign the issue to the owner (`me`), set an estimate, and move it to **In Progress**. If it has no estimate, propose one and set it. Do not start code on an unassigned, unestimated issue.
   - **While working:** move it to **In Review** when the pull request is open and waiting for CI or review, if that status helps. Otherwise leave it In Progress.
   - **Before opening a pull request:** once the work is done, tick the Linear issue's acceptance-criteria checkboxes for every criterion that has a passing automated `[AC-...]` test. Leave unticked any criterion covered only by a manual check, and say so in the pull request.
-  - **When complete:** after the pull request is merged and the definition of done is met, move the issue to **Done**. Never mark it Done on an open pull request.
+  - **When complete:** an issue may be marked **Done** only when all three are true: (1) the pull request is **merged to `main`**, (2) the change is **deployed to staging** (the Staging workflow succeeded on the merge commit, shown by the `staging-smoke` status), and (3) **the owner has performed manual tests** of the feature and said so. Never mark it Done on an open pull request, before staging has the change, or on the agent's own testing alone. Staging is not production: production still needs the owner's Release (see below).
+  - **Manual test steps are the agent's job.** The agent writes them, in plain steps for someone who has not read the code: where to open on staging (the address is the `STAGING_URL` variable of the `staging` environment, behind Cloudflare Access, with synthetic data only), what to tap, and what should happen. Cover the main path and one thing that should be refused or empty. **Put them in the Linear issue**, in a "Manual test steps" section with a checkbox for each step, because the issue is where Done is decided and it outlives the pull request. In the pull request, add one line that links to that section, and keep the technical "try it" block there (branch commands and the fast-feedback commands). Write the steps before opening the pull request, then **after the merge** check that staging has the change and tell the owner it is ready to test, with the steps. A change with nothing a person can see (tooling, docs, CI) still gets a short check, such as "open the README on GitHub and look for the new badge".
+  - When the owner has finished the manual tests, tick the steps and any criteria that were covered only by a manual check (adding the date to `docs/manual-checks.md`), then move the issue to Done. If a step fails, leave the issue In Review and fix it in a new pull request.
   - **Three gates on an issue.** Check each one before the change, and do not skip it:
     - **Created:** a new issue (only when the owner asks for one) must have an **estimate** when it is created. If the owner did not give one, propose one and set it in the same call.
     - **Moved to In Progress:** the issue must be **assigned** (to `me`, the owner) at the moment it moves. Assign it in the same update that changes the status.
-    - **Marked Done:** **every acceptance criterion must be ticked** first. A criterion covered by a manual check is ticked when the owner has done the check and `docs/manual-checks.md` shows the date. A retired criterion is marked `(retired): reason` instead of ticked. If any box is still empty, leave the issue In Review and say which criteria are missing, instead of marking it Done.
+    - **Marked Done:** the change must be **merged to `main` and deployed to staging, and the owner must have done the manual tests** (see "When complete"). Also **every acceptance criterion must be ticked** first. A criterion covered by a manual check is ticked when the owner has done the check and `docs/manual-checks.md` shows the date. A retired criterion is marked `(retired): reason` instead of ticked. If any box is still empty, leave the issue In Review and say which criteria are missing, instead of marking it Done.
   - Work on one issue at a time unless the owner says otherwise.
 
 ## Standing requirements for every story
@@ -175,7 +177,7 @@ These apply to all stories and are not repeated as criteria on each one:
 
 1. All acceptance criteria met, each with a passing `[AC-...]` test or a manual-check entry.
 2. Works at mobile, tablet, and desktop widths.
-3. Lint, type check, and all test levels pass in CI. The change merged through a pull request.
+3. Lint, type check, and all test levels pass in CI. The change merged through a pull request, is deployed to staging, and the owner has done the manual tests.
 4. No personal data, secrets, or banned log fields (see Hard rules).
 5. New API methods exist in both `client.ts` and `demoApi.ts`.
 6. Diagrams in ARCHITECTURE.md updated if the structure or a flow changed.
