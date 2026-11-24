@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { readCoverage, renderTable } from "./coverage-summary-lib.mjs";
 import { coverageFor } from "../coverage.config.mjs";
-import { coverageBadge, renderBadgeSvg } from "./badges-lib.mjs";
+import { coverageBadge, renderBadgeSvg, renderHealthReport } from "./badges-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => readFileSync(path.join(root, file), "utf8");
@@ -100,5 +100,22 @@ describe("coverage (OPS-09)", () => {
     expect(job.permissions.contents).toBe("write");
     expect(ci.permissions.contents).toBe("read"); // every other job stays read-only
     expect(job.steps.map((s) => s.run ?? "").join("\n")).toContain("gh release upload badges badges/coverage.svg badges/lighthouse.svg --clobber");
+  });
+
+  it("[AC-OPS-09.5] the Project health page says in plain words what coverage is, shows each part with its lowest allowed value, and CI publishes it as the release notes", () => {
+    const coverage = { shared: { lines: 99.5, branches: 95, linesCovered: 99, linesTotal: 100 }, web: { lines: 90, branches: 80, linesCovered: 90, linesTotal: 100 } };
+    const lighthouse = { pages: [{ name: "Demo", scores: { performance: 97, accessibility: 100, "best-practices": 100, seo: 82 }, javaScriptKB: 285.4 }] };
+    const page = renderHealthReport({ coverage, lighthouse, minimums: settings.thresholds, budgetKB: 290, details: { commit: "abcdef1234", date: "2026-11-24", runUrl: "https://example.test/run/1", repoUrl: "https://example.test/repo" } });
+    expect(page).toContain("## Test coverage: 95% of the code is run by the tests");
+    expect(page).toContain("Coverage is the share of the program's lines that the automated tests run");
+    expect(page).toContain("| Shared rules (used by the app and the server) | 99.5% | 95.0% | 99% / 95% |");
+    expect(page).toContain("## Lighthouse: performance 97, accessibility 100");
+    expect(page).toContain("| Demo | 97 | 100 | 100 | 82 | 285.4 KB | 290 KB |");
+    expect(page).toContain("`abcdef1`");
+    expect(page).toContain("(https://example.test/repo/blob/main/docs/what-the-browser-tests-check.md)");
+    expect(page).toContain("[the CI run](https://example.test/run/1)");
+    expect(steps.length).toBeGreaterThan(0);
+    expect(JSON.stringify(ci.jobs.badges.steps)).toContain("gh release edit badges");
+    expect(JSON.stringify(ci.jobs.badges.steps)).toContain("--notes-file badges/report.md");
   });
 });
