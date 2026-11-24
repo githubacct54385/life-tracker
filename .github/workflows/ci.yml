@@ -218,9 +218,10 @@ jobs:
           path: lighthouse-reports
       - name: Build the badge images
         run: node scripts/make-badges.mjs coverage-summary/summary.json lighthouse-reports/summary.json badges
-      - name: Publish them to the badges release
+      - name: Publish them, and the plain-English health page, to the badges release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view badges >/dev/null 2>&1 || gh release create badges --target main --latest=false --title "Badge data" --notes "Two small SVG badge images that the README shows. CI replaces them on every push to main. Nothing else is stored here."
+          gh release view badges >/dev/null 2>&1 || gh release create badges --target main --latest=false --title "Project health" --notes "Created by CI."
           gh release upload badges badges/coverage.svg badges/lighthouse.svg --clobber
+          gh release edit badges --title "Project health" --latest=false --notes-file badges/report.md
