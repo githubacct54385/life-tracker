@@ -12,7 +12,7 @@ The order of Releases for ADR-0026. Each step is built and rehearsed on staging 
 | 4 | SET-07, SET-10 | Google sign-in, sessions and the public homepage and login page. **Cloudflare Access is still in front** of the app routes, so nothing changes for the owner yet. | New homepage | Revert the pull request. Access is unchanged. |
 | 5 | SET-08 | The Admin page, invitations, remove and delete. | New page | Revert. Invites are plain rows. |
 | 6 | Cutover | Turn off the Cloudflare Access application for the **app routes** of production. The app's own sign-in is now the gate. Keep Access available to re-enable. | Sign in with Google instead of the Access page | Re-enable the Access application. The owner is signed in through the old path again. |
-| 7 | SET-05, SET-09 | Request access (public write route, Turnstile, Resend note to the owner) and "Delete my data". "Delete my data" must also call `clearGroceryDevice()` (ADR-0027, AC-GRO-02.5). | New buttons | Revert. |
+| 7 | SET-05, SET-09 | Request access (public write route, Turnstile, Resend note to the owner) and "Delete my data". "Delete my data" must also call `clearGroceryDevice()` (ADR-0027, AC-SET-09.9). | New buttons | Revert. |
 
 The smoke test identity (ADR-0023) must keep working through step 6. Decide in SET-07 whether it uses a service session or stays on Access headers for staging.
 

@@ -123,7 +123,7 @@ describe("README badges (OPS-07)", () => {
     expect(shared, "one link around both badges, to the badges release page").not.toBeNull();
   });
 
-  it("[AC-OPS-07.4] shows no release badge until OPS-11 exists", () => {
+  it("shows no release badge until OPS-11 exists", () => {
     for (const badge of badgeImages) expect(badge.alt).not.toMatch(/release/i);
   });
 
