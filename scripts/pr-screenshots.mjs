@@ -22,7 +22,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, imageFiles, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotTable } from "./pr-screenshots-lib.mjs";
+import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, imageFiles, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotBlock } from "./pr-screenshots-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], ...opts });
@@ -250,7 +250,7 @@ async function main() {
   await step("Updating the pull request description", () => {
     const body = readBody();
     const bodyFile = path.join(outDir, "body.md");
-    writeFileSync(bodyFile, replaceScreenshotTable(body, screenshotTable(results)));
+    writeFileSync(bodyFile, replaceScreenshotTable(body, screenshotBlock(results)));
     run("gh", ["api", "--method", "PATCH", `repos/${repo}/pulls/${args.pr}`, "-F", `body=@${bodyFile}`]);
   });
   console.log(`Uploaded ${files.length} images and updated the Screenshots table in pull request #${args.pr}.`);

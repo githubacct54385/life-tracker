@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetName, parseScreen, replaceScreenshotTable, screenshotTable, slugify } from "./pr-screenshots-lib.mjs";
+import { assetName, largerViews, parseScreen, replaceScreenshotTable, screenshotBlock, screenshotTable, slugify } from "./pr-screenshots-lib.mjs";
 
 describe("pr-screenshots helpers", () => {
   it("builds asset names that start with the pull request number", () => {
@@ -29,7 +29,7 @@ describe("pr-screenshots helpers", () => {
   it("marks a screen that did not exist on main", () => {
     const table = screenshotTable(results);
     expect(table).toContain("| Access denied: before | new screen, no before | new screen, no before | new screen, no before |");
-    expect(table).toContain('<img src="https://x/m.png" width="110"');
+    expect(table).toContain('<img src="https://x/m.png" width="140"');
   });
 
   const body = [
@@ -56,9 +56,31 @@ describe("pr-screenshots helpers", () => {
     expect(out).toContain("## Acceptance criteria\n- AC-X");
   });
 
-  it("is repeatable: running twice gives the same body", () => {
-    const once = replaceScreenshotTable(body, screenshotTable(results));
-    expect(replaceScreenshotTable(once, screenshotTable(results))).toBe(once);
+  it("is repeatable: running twice gives the same body, and a changed result replaces the whole block", () => {
+    const once = replaceScreenshotTable(body, screenshotBlock(results));
+    expect(replaceScreenshotTable(once, screenshotBlock(results))).toBe(once);
+    const changed = [{ ...results[0], name: "Renamed" }];
+    const twice = replaceScreenshotTable(once, screenshotBlock(changed));
+    expect(twice).toContain("Renamed: before");
+    expect(twice).not.toContain("Access denied");
+    expect(twice.match(/<!-- screenshots:start -->/g)).toHaveLength(1);
+    expect(twice).toContain("## Acceptance criteria\n- AC-X");
+  });
+
+  it("thumbnails are plain images, not links, so a click does not download the file", () => {
+    const table = screenshotTable([{ ...results[0], before: { mobile: "https://x/bm.png" } }]);
+    expect(table).not.toContain("<a ");
+    expect(table).toContain('<img src="https://x/bm.png" width="140" alt="">');
+  });
+
+  it("shows each image larger, before and after, with a Download link for every image", () => {
+    const html = largerViews([{ ...results[0], before: { mobile: "https://x/bm.png", tablet: "https://x/bt.png", desktop: "https://x/bd.png" } }]);
+    expect(html).toContain("<details>");
+    expect(html).toContain('<img src="https://x/bm.png" width="360"');
+    expect(html).toContain('<img src="https://x/t.png" width="420"');
+    expect(html).toContain('<img src="https://x/d.png" width="860"');
+    expect(html.match(/>Download<\/a>/g)).toHaveLength(6);
+    expect(largerViews(results)).toContain("New screen, no before");
   });
 
   it("adds a table when the section has none, and fails clearly when the section is missing", () => {

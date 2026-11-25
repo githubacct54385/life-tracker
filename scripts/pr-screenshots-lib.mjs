@@ -1,9 +1,9 @@
 // Pure helpers for scripts/pr-screenshots.mjs. No network, no file system, so they are unit tested.
 
 export const VIEWPORTS = [
-  { key: "mobile", label: "Mobile (360 px)", width: 360, height: 740, shown: 110 },
-  { key: "tablet", label: "Tablet (768 px)", width: 768, height: 1024, shown: 150 },
-  { key: "desktop", label: "Desktop (1280 px)", width: 1280, height: 800, shown: 220 },
+  { key: "mobile", label: "Mobile (360 px)", width: 360, height: 740, shown: 140, large: 360 },
+  { key: "tablet", label: "Tablet (768 px)", width: 768, height: 1024, shown: 200, large: 420 },
+  { key: "desktop", label: "Desktop (1280 px)", width: 1280, height: 800, shown: 280, large: 860, stacked: true },
 ];
 
 export const RELEASE_TAG = "pr-screenshots";
@@ -60,9 +60,12 @@ export function imageFiles(before, after) {
   return [before, after].flatMap((found) => Object.values(found ?? {})).flatMap((byViewport) => Object.values(byViewport));
 }
 
+// A thumbnail is a plain image, not a link. The files are release assets, which GitHub serves as downloads, so a link
+// around the image made a click download the file instead of showing it. The larger views below show the same images
+// at a readable size, and each has its own Download link.
 function cell(viewport, url) {
   if (!url) return "new screen, no before";
-  return `<a href="${url}"><img src="${url}" width="${viewport.shown}" alt=""></a>`;
+  return `<img src="${url}" width="${viewport.shown}" alt="">`;
 }
 
 /**
@@ -79,13 +82,50 @@ export function screenshotTable(results) {
   return lines.join("\n");
 }
 
-/** Replaces the first table under "## Screenshots" (or adds one under the heading). Everything else is kept. */
+export const BLOCK_START = "<!-- screenshots:start -->";
+export const BLOCK_END = "<!-- screenshots:end -->";
+
+function picture(label, url, width) {
+  return `<img src="${url}" width="${width}" alt="${label}"><br><a href="${url}">Download</a>`;
+}
+
+/** One expandable section per screen: every image at a readable size, before and after, with a Download link under each. */
+export function largerViews(results) {
+  const blocks = [];
+  for (const r of results) {
+    const lines = ["<details>", `<summary>${r.name}: see the images larger, or download them</summary>`];
+    for (const v of VIEWPORTS) {
+      const before = r.before?.[v.key];
+      const after = r.after?.[v.key];
+      lines.push(`<h4>${v.label}</h4>`);
+      const cells = [["Before", before], ["After", after]].map(([phase, url]) => [phase, url ? picture(`${r.name}, ${v.label}, ${phase.toLowerCase()}`, url, v.large) : "New screen, no before"]);
+      if (v.stacked) {
+        for (const [phase, html] of cells) lines.push(`<p><b>${phase}</b><br>${html}</p>`);
+      } else {
+        lines.push("<table><tr>" + cells.map(([phase]) => `<th>${phase}</th>`).join("") + "</tr><tr>" + cells.map(([, html]) => `<td valign="top">${html}</td>`).join("") + "</tr></table>");
+      }
+    }
+    lines.push("</details>");
+    blocks.push(lines.join("\n"));
+  }
+  return blocks.join("\n\n");
+}
+
+/** Everything that goes under "## Screenshots": the small table, then the larger views. It is wrapped in markers, so a re-run replaces it whole. */
+export function screenshotBlock(results) {
+  return [BLOCK_START, "", screenshotTable(results), "", largerViews(results), "", BLOCK_END].join("\n");
+}
+
+/** Replaces the generated block under "## Screenshots" (found by its markers), or else the first table there (or adds one under the heading). Everything else is kept. */
 export function replaceScreenshotTable(body, table) {
   const lines = body.replace(/\r\n/g, "\n").split("\n");
   const heading = lines.findIndex((l) => /^##\s+Screenshots\s*$/.test(l));
   if (heading === -1) throw new Error('The pull request body has no "## Screenshots" section.');
   const next = lines.findIndex((l, i) => i > heading && /^##\s/.test(l));
   const end = next === -1 ? lines.length : next;
+  const first = lines.findIndex((l, i) => i > heading && i < end && l.trim() === BLOCK_START);
+  const last = lines.findIndex((l, i) => i > first && i < end && l.trim() === BLOCK_END);
+  if (first !== -1 && last !== -1) return [...lines.slice(0, first), table, ...lines.slice(last + 1)].join("\n");
   let start = -1;
   let stop = -1;
   for (let i = heading + 1; i < end; i++) {
