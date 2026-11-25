@@ -77,7 +77,7 @@ export function renderHealthReport({ coverage, lighthouse, minimums, budgetKB, d
     "|---|---|---|---|"
   ];
   for (const [name, set] of Object.entries(coverage)) lines.push(`| ${PARTS[name] ?? name} | ${pct(set.lines)} | ${pct(set.branches)} | ${minimums[name] ? `${minimums[name].lines}% / ${minimums[name].branches}%` : "none"} |`);
-  lines.push("", `The tests that drive the app in a real browser are not counted here. They check behaviour: see [what the browser tests check](${details.repoUrl}/blob/main/docs/what-the-browser-tests-check.md).`, "");
+  lines.push("", `The tests that drive the app in a real browser are not counted here. They check behaviour: see [what the browser tests check](${details.repoUrl}/blob/main/docs/what-the-browser-tests-check.md), the one place where the tests are listed in plain words. The full technical list, with the command that runs each test, comes from \`pnpm tests:list\`.`, "");
   lines.push(`## Lighthouse: performance ${low("performance")}, accessibility ${low("accessibility")}`, "", "Lighthouse is Google's automatic check of a page on a phone: how fast it loads (performance), whether people with disabilities can use it (accessibility), good web practice, and search readiness. Each score is out of 100. A change that drops accessibility under 95, or loads more JavaScript than the budget, is stopped.", "");
   lines.push("| Page | Performance | Accessibility | Best practices | Search | JavaScript on first load | Budget |", "|---|---|---|---|---|---|---|");
   for (const page of lighthouse.pages) lines.push(`| ${page.name} | ${page.scores.performance} | ${page.scores.accessibility} | ${page.scores["best-practices"]} | ${page.scores.seo} | ${page.javaScriptKB} KB | ${budgetKB} KB |`);

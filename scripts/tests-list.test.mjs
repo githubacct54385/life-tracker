@@ -66,11 +66,11 @@ describe("tests list (OPS-12)", () => {
     expect(tests.filter((t) => matchesFilter(t, "none")).map((t) => t.text)).toEqual(["a helper with no criterion"]);
   });
 
-  it("[AC-OPS-12.5] can print Markdown for the CI job summary, and the CI workflow publishes it", () => {
+  it("[AC-OPS-12.5] can print Markdown, and the list is kept in one place: no CI run prints it into its own summary", () => {
     const text = render(collectTests(sampleRepo()), { markdown: true });
     expect(text).toContain("## Area GRO");
     expect(text).toContain("- adds an item _(unit, `web/src/a.test.ts`)_");
-    expect(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8")).toContain('node scripts/tests-list.mjs --markdown >> "$GITHUB_STEP_SUMMARY"');
+    expect(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8")).not.toContain("tests-list.mjs");
   });
 
   it("[AC-OPS-12.6] shows the command that runs just one test, for each level", () => {

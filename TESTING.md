@@ -143,7 +143,7 @@ Cadence as the suite grows:
 
 ## What the tests check, in plain English
 
-`pnpm tests:list` prints every automated test as a sentence, grouped by area, story and criterion, with its level and file. It is built from the test names in the code, so it cannot drift, and nothing is kept by hand. A pull request's CI run shows the same list in its job summary.
+`pnpm tests:list` prints every automated test as a sentence, grouped by area, story and criterion, with its level and file. It is built from the test names in the code, so it cannot drift, and nothing is kept by hand. It is not printed into every CI run. The plain-words list for the browser tests is [what-the-browser-tests-check.md](docs/what-the-browser-tests-check.md), and the Project health page links to it.
 
 ```bash
 pnpm tests:list                       # everything
