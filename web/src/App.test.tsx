@@ -91,4 +91,9 @@ describe("app shell navigation", () => {
     open(1280, "/more");
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
   });
+
+  it("[AC-OPS-11.9] a local test build shows the environment strip above the navigation on every page", () => {
+    open(1280);
+    expect(screen.getByRole("complementary", { name: "Environment" }).getAttribute("data-environment")).toBe("local");
+  });
 });

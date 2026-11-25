@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGroceryStore } from "../groceries/GroceryStoreContext";
 import { clearGroceryDevice } from "../groceries/offlineStore";
 import { Page } from "../pages/Page";
+import { BUILD, versionText, type BuildInfo } from "../version";
 import {
   SIGN_OUT_URL,
   applyTheme,
@@ -23,8 +24,10 @@ const card = "rounded-xl border border-line bg-card p-4";
 const heading = "mb-3 text-sm font-bold text-ink";
 const select = "min-h-11 w-full rounded-lg border border-line bg-bg p-2.5 text-ink";
 
-/** `navigate` is a prop only so a test can see where sign out goes. */
-export function SettingsPage({ navigate = (url: string) => window.location.assign(url) }: { navigate?: (url: string) => void } = {}) {
+const ENVIRONMENT_NAME = { production: "Production", staging: "Staging", local: "Local" } as const;
+
+/** `navigate` and `build` are props only so a test can see where sign out goes and try each environment. */
+export function SettingsPage({ navigate = (url: string) => window.location.assign(url), build = BUILD }: { navigate?: (url: string) => void; build?: BuildInfo } = {}) {
   const groceries = useGroceryStore();
   const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
 
@@ -97,6 +100,16 @@ export function SettingsPage({ navigate = (url: string) => window.location.assig
             className="block rounded-lg border border-line px-4 py-2.5 text-center font-bold text-ink">
             Sign out
           </a>
+        </section>
+
+        <section className={card} aria-labelledby="set-about">
+          <h2 id="set-about" className={heading}>About</h2>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted">Version</dt>
+            <dd className="text-ink">{versionText(build)}</dd>
+            <dt className="text-muted">Environment</dt>
+            <dd className="text-ink">{ENVIRONMENT_NAME[build.environment]}</dd>
+          </dl>
         </section>
 
         <section className={card} aria-labelledby="set-data">

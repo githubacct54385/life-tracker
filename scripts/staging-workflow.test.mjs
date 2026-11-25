@@ -104,4 +104,14 @@ describe("staging workflow (OPS-08, ADR-0025)", () => {
       expect(body.replace(/wrangler deploy --dry-run/g, ""), file).not.toMatch(/wrangler(-action)?\b.*\bdeploy|wrangler deploy/);
     }
   });
+
+  it("[AC-OPS-11.9] the staging build is labelled Staging and carries the latest release tag and this commit", () => {
+    const steps = staging.jobs.staging.steps;
+    const build = steps.find((step) => step.run === "pnpm build");
+    expect(build.env.VITE_APP_ENV).toBe("staging");
+    expect(build.env.VITE_RELEASE_TAG).toBe("${{ steps.version.outputs.tag }}");
+    expect(build.env.VITE_COMMIT).toBe("${{ env.TARGET_SHA }}");
+    expect(steps.find((step) => step.id === "version").run).toContain("git tag --list");
+    expect(steps.find((step) => step.uses?.startsWith("actions/checkout")).with["fetch-depth"]).toBe(0);
+  });
 });

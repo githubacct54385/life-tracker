@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPage } from "./SettingsPage";
 import { loadPreferences } from "./preferences";
+import { buildInfo } from "../version";
 
 beforeEach(() => {
   localStorage.clear();
@@ -57,5 +58,12 @@ describe("settings", () => {
     render(<SettingsPage />);
     expect((screen.getByLabelText("Weight unit") as HTMLSelectElement).value).toBe("kg");
     expect((screen.getByLabelText("Time zone") as HTMLSelectElement).value).toBe("Europe/London");
+  });
+
+  it("[AC-OPS-11.5] About shows the release tag, the commit and the environment", () => {
+    render(<SettingsPage build={buildInfo({ VITE_APP_ENV: "production", VITE_RELEASE_TAG: "v2026.11.25.1", VITE_COMMIT: "1543dbb" })} />);
+    expect(screen.getByRole("heading", { name: "About" })).toBeTruthy();
+    expect(screen.getByText("v2026.11.25.1 · 1543dbb")).toBeTruthy();
+    expect(screen.getByText("Production")).toBeTruthy();
   });
 });

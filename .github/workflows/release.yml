@@ -12,8 +12,17 @@ name: Release
 # The Worker's own runtime settings (DATABASE_URL, ACCESS_TEAM_DOMAIN, ACCESS_AUD, OWNER_EMAIL) are set once in
 # Cloudflare and are not touched by this workflow. See docs/cloudflare-access-setup.md.
 
+# Dry run (OPS-11): ticking "dry_run" runs the checks, works out the tag and the release notes, and shows them in the run
+# summary. It still waits for the approval, and then it migrates nothing, deploys nothing and creates no tag or release.
+# After a real release succeeds the last step tags the deployed commit and publishes the notes. A failed release creates neither.
+
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: show the tag and release notes, and change nothing"
+        type: boolean
+        default: false
 
 concurrency:
   group: release
@@ -28,6 +37,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: production # requires the owner's approval; limited to the main branch
+    # This job may write, and only to create the tag and release as its very last step. Checks and statuses stay read-only.
+    permissions:
+      contents: write
+      checks: read
+      statuses: read
     steps:
       - name: Releases run from main only
         run: |
@@ -37,6 +51,8 @@ jobs:
           fi
 
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags and history are needed to name the release and list what changed
 
       # Waits for CI and for the staging smoke test (OPS-08, ADR-0025) on this commit instead of failing while they are still
       # running, so a release can be started right after a merge. A failure stops at once. Nothing below this step runs
@@ -95,15 +111,36 @@ jobs:
             echo "**Commit:** \`${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # The next tag is the date plus a counter, and the notes list the merged pull requests since the previous release.
+      # Nothing is written to the repository here. A dry run stops after this step.
+      - name: Work out the tag and the release notes
+        id: notes
+        run: |
+          node scripts/release-notes.mjs --out release-notes.md
+          {
+            if [ "${{ inputs.dry_run }}" = "true" ]; then echo "**Dry run:** nothing is migrated, deployed, tagged or published."; echo; fi
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - uses: pnpm/action-setup@v6
+        if: ${{ !inputs.dry_run }}
       - uses: actions/setup-node@v7
+        if: ${{ !inputs.dry_run }}
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: ${{ !inputs.dry_run }}
+      # The app shows this tag and commit in Settings (About). Production shows no environment label (OPS-11).
       - run: pnpm build
+        if: ${{ !inputs.dry_run }}
+        env:
+          VITE_APP_ENV: production
+          VITE_RELEASE_TAG: ${{ steps.notes.outputs.tag }}
+          VITE_COMMIT: ${{ github.sha }}
 
       - name: Apply SQL migrations
+        if: ${{ !inputs.dry_run }}
         env:
           DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
         # `pnpm migrate` (api/src/db/migrate-cli.ts) appends the list of applied migrations to $GITHUB_STEP_SUMMARY (AC-FND-06.6).
@@ -112,11 +149,22 @@ jobs:
       # `wrangler` is a dev dependency of the API package. It uploads the Worker and the built site (web/dist) together.
       # --keep-vars leaves the settings and secrets already stored in Cloudflare alone.
       - name: Deploy the Worker
+        if: ${{ !inputs.dry_run }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm --filter @life-tracker/api exec wrangler deploy --keep-vars
 
-      - name: Summary
-        if: success()
-        run: echo "**Result:** Worker deployed." >> "$GITHUB_STEP_SUMMARY"
+      # The last step, so a release that fails anywhere above creates no tag and no release (AC-OPS-11.4). The tag goes on the
+      # deployed commit. The workflow never commits to main (AC-OPS-11.3). The README badge is redrawn from the new tag.
+      - name: Tag the deployed commit and publish the release notes
+        if: ${{ success() && !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.notes.outputs.tag }}
+        run: |
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file release-notes.md --latest
+          node scripts/release-badge.mjs "$TAG" release.svg
+          gh release view badges >/dev/null 2>&1 || gh release create badges --target main --latest=false --title "Project health" --notes "Created by the release workflow."
+          gh release upload badges release.svg --clobber
+          echo "**Result:** Worker deployed and tagged \`$TAG\`." >> "$GITHUB_STEP_SUMMARY"
