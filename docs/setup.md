@@ -45,6 +45,13 @@ Car-service documents (a photo or PDF a shop gave) are stored in a private R2 bu
 ## 4. First release
 GitHub, Actions, **Release**, Run workflow on `main`, then approve the `production` environment. Open the run summary to see the commit and the migrations applied. Open the site in a private window: it should ask you to sign in, and `/api/health` should answer after you do.
 
+### Tags, release notes and rolling back
+Each successful Release is tagged with the date and a counter (`v2026.11.25.1`, then `.2` for a second one the same day) and published on the repository's Releases page. The notes list the merged pull requests since the previous release, grouped by story key, and name any migration that ran. The README's release badge and Settings, About show the same tag. There is no `CHANGELOG.md` and the workflow never commits to `main` ([ADR-0028](../DECISIONS.md#adr-0028-releases-are-tagged-and-the-github-release-page-is-the-changelog)).
+
+To see what a Release would tag, without changing anything: **Run workflow**, tick **Dry run**, and approve. The run summary shows the tag and notes. Nothing is built, migrated, deployed, tagged or published.
+
+To roll back: the Release only ever deploys the head of `main`, so you roll back by releasing a fix or a revert. Open a pull request that reverts the bad change, merge it, wait for staging, and run the Release. The previous tag on the Releases page shows exactly what was live before. **A migration that already ran is not undone.** Migrations are additive, so the older code still works with the new database. If a migration itself was wrong, fix it with a new migration in the same revert pull request. Never edit a released migration.
+
 ## 5. Check it
 Work through the entries in [manual-checks.md](manual-checks.md) for MIG-04, MIG-05 and OPS-01. They record what was checked and when.
 

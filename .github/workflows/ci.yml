@@ -224,4 +224,9 @@ jobs:
         run: |
           gh release view badges >/dev/null 2>&1 || gh release create badges --target main --latest=false --title "Project health" --notes "Created by CI."
           gh release upload badges badges/coverage.svg badges/lighthouse.svg --clobber
+          # Until the first tagged release (OPS-11) the README's release badge says "none yet". The Release workflow replaces it.
+          gh release view badges --json assets --jq '.assets[].name' | grep -qx release.svg || {
+            node scripts/release-badge.mjs none badges/release.svg
+            gh release upload badges badges/release.svg
+          }
           gh release edit badges --title "Project health" --latest=false --notes-file badges/report.md

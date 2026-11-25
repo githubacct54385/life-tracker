@@ -250,6 +250,8 @@ AC-OPS-11.4
 AC-OPS-11.5
 AC-OPS-11.6
 AC-OPS-11.7
+AC-OPS-11.8
+AC-OPS-11.9
 AC-FIN-01.1 retired
 AC-FIN-01.2 retired
 AC-FIN-01.3 retired

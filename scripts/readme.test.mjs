@@ -123,8 +123,13 @@ describe("README badges (OPS-07)", () => {
     expect(shared, "one link around both badges, to the badges release page").not.toBeNull();
   });
 
-  it("shows no release badge until OPS-11 exists", () => {
-    for (const badge of badgeImages) expect(badge.alt).not.toMatch(/release/i);
+  it("[AC-OPS-11.7] shows a release badge, an image the Release workflow keeps on the badges release, linked to the latest release", () => {
+    const release = badgeImages.find((badge) => badge.alt === "Release");
+    expect(release, "a Release badge in the row").toBeDefined();
+    const url = new URL(release.url);
+    expect(url.hostname).toBe("github.com");
+    expect(url.pathname).toMatch(/^\/[^/]+\/[^/]+\/releases\/download\/badges\/release\.svg$/);
+    expect(badgeRow).toMatch(/\[!\[Release\]\([^)]+\)\]\(https:\/\/github\.com\/[^/]+\/[^/]+\/releases\/latest\)/);
   });
 
   it("[AC-OPS-07.5] badges come only from GitHub or shields.io, and no URL carries a token or secret", () => {

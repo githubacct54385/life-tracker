@@ -462,3 +462,15 @@ Nothing else is kept. No health, mileage, giving, document or account data is sa
 - Keeping any other data offline: out of scope; health, mileage, giving and documents stay online only.
 
 **Consequences.** SPEC 6.10 and the README privacy line say "no private data stored on the device, except the grocery list". `docs/privacy.md` says what the device holds and when it is cleared. A new test-only dependency, `fake-indexeddb`, lets the module be tested without a browser.
+
+## ADR-0028: Releases are tagged, and the GitHub Release page is the changelog
+
+**Decision.** The last step of a successful Release tags the deployed commit and publishes a GitHub Release (OPS-11). The tag is the date plus a counter for that day, for example `v2026.11.25.1`. The release notes list the merged pull requests since the previous release, grouped by story key, and name any migration that ran. **There is no `CHANGELOG.md`, and the workflow never commits to `main`.** The app shows its tag and short commit in Settings, About. Staging and local builds also show a "Staging" or "Local" strip on every page, and production shows none.
+
+**Why.** A tag per release makes the history easy to read and a bad release easy to find. Date tags need no decision about major or minor versions for an app with one deployment. A changelog file would need the release workflow to commit to protected `main`, which breaks the rule that nobody pushes there and the noreply-email check. Squash-merge subjects already start with the story key, so the notes need no extra writing.
+
+**How it is built.** `scripts/release-notes.mjs` works the tag and notes out from the git history, with the logic in `scripts/release-lib.mjs` and its tests. The step runs in `release.yml` before anything is changed, and a **dry run** input stops after it. Tagging is the final step, so a release that fails anywhere earlier creates no tag and no release. Only release tags (`vYYYY.MM.DD.N`) count, so the `badges` and `pr-screenshots` releases are ignored. The release job is the only one with `contents: write`.
+
+**Rolling back** is a new Release of a fix or a revert, never an automatic migration rollback (see ADR-0004 and docs/setup.md).
+
+**Not chosen.** Semantic version numbers (a decision on every release for no benefit here), a committed `CHANGELOG.md` (needs write access to `main`), and a plain-English summary written by hand for each release (it would drift from what shipped).

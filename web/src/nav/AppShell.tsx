@@ -6,6 +6,7 @@ import { OfflineNotice } from "../pwa/OfflineNotice";
 import { useOnline } from "../pwa/useOnline";
 import { useNavKind } from "./useNavKind";
 import { Icon } from "../ui/Icon";
+import { EnvironmentStrip } from "./EnvironmentStrip";
 
 const itemClass: Record<NavKind, (active: boolean) => string> = {
   tabs: (a) => `flex flex-1 flex-col items-center gap-1 py-2 text-[11px] ${a ? "font-bold text-gtext" : "text-muted"}`,
@@ -50,16 +51,19 @@ export function AppShell() {
   const online = useOnline();
   const waking = useWaking();
   return (
-    <div className={`min-h-dvh bg-bg text-ink ${kind === "tabs" ? "" : "flex"}`}>
-      <Nav kind={kind} items={kind === "sidebar" ? WIDE_NAV : COMPACT_NAV} />
-      <main className={`min-w-0 flex-1 p-5 ${kind === "tabs" ? "pb-24" : ""}`}>
-        {waking && online && (
-          <p role="status" className="mx-auto mb-4 max-w-3xl rounded-xl bg-g100 px-4 py-3 text-sm text-g900">
-            Waking up the database. This can take a few seconds…
-          </p>
-        )}
-        {online || pathname === GROCERIES_PATH ? <div key={pathname} className="lt-page"><Outlet /></div> : <OfflineNotice />}
-      </main>
-    </div>
+    <>
+      <EnvironmentStrip />
+      <div className={`min-h-dvh bg-bg text-ink ${kind === "tabs" ? "" : "flex"}`}>
+        <Nav kind={kind} items={kind === "sidebar" ? WIDE_NAV : COMPACT_NAV} />
+        <main className={`min-w-0 flex-1 p-5 ${kind === "tabs" ? "pb-24" : ""}`}>
+          {waking && online && (
+            <p role="status" className="mx-auto mb-4 max-w-3xl rounded-xl bg-g100 px-4 py-3 text-sm text-g900">
+              Waking up the database. This can take a few seconds…
+            </p>
+          )}
+          {online || pathname === GROCERIES_PATH ? <div key={pathname} className="lt-page"><Outlet /></div> : <OfflineNotice />}
+        </main>
+      </div>
+    </>
   );
 }

@@ -109,4 +109,47 @@ describe("release workflow", () => {
   it("[AC-MIG-05.5] the workflow has no Azure steps, secrets, firewall rule or login", () => {
     expect(readFileSync(path.join(workflowsDir, "release.yml"), "utf8")).not.toMatch(/azure|firewall|static-web-apps|id-token/i);
   });
+
+  // OPS-11: tags, notes and the dry run.
+  const publish = () => steps.findIndex((s) => s.run?.includes("gh release create"));
+  const runs = () => steps.map((s) => s.run ?? "").join("\n");
+
+  it("[AC-OPS-11.1] the last step tags the deployed commit and creates a GitHub Release from the notes", () => {
+    const last = steps.at(-1);
+    expect(publish()).toBe(steps.length - 1);
+    expect(last.run).toContain('gh release create "$TAG" --target "$GITHUB_SHA"');
+    expect(last.run).toContain("--notes-file release-notes.md");
+    expect(last.run).toContain("--latest");
+    expect(steps.find((s) => s.id === "notes").run).toContain("scripts/release-notes.mjs");
+    expect(publish()).toBeGreaterThan(indexOf((s) => s.run?.includes("wrangler deploy")));
+  });
+
+  it("[AC-OPS-11.4] a failed release creates no tag and no release: the step runs only after every earlier step succeeded", () => {
+    expect(steps[publish()].if).toContain("success()");
+    for (const step of steps) expect(step["continue-on-error"], step.name ?? step.uses).toBeUndefined();
+  });
+
+  it("[AC-OPS-11.3] the workflow never commits or pushes to main, and write access is limited to this job", () => {
+    expect(runs()).not.toMatch(/git (commit|push|tag)/);
+    expect(release.permissions.contents).toBe("read");
+    expect(job.permissions).toEqual({ contents: "write", checks: "read", statuses: "read" });
+    expect(Object.keys(release.jobs)).toEqual(["release"]);
+  });
+
+  it("[AC-OPS-11.8] a dry run still checks CI and works out the notes, but never builds, migrates, deploys, tags or publishes", () => {
+    expect(release.on.workflow_dispatch.inputs.dry_run).toMatchObject({ type: "boolean", default: false });
+    const before = indexOf((s) => s.id === "notes");
+    steps.slice(0, before + 1).forEach((step) => expect(step.if, step.name ?? step.uses).toBeUndefined());
+    for (const step of steps.slice(before + 1)) expect(step.if, step.name ?? step.run ?? step.uses).toContain("!inputs.dry_run");
+  });
+
+  it("[AC-OPS-11.5] the production build gets the release tag and the production environment, so Settings shows the version and no label", () => {
+    const build = steps.find((s) => s.run === "pnpm build");
+    expect(build.env).toEqual({ VITE_APP_ENV: "production", VITE_RELEASE_TAG: "${{ steps.notes.outputs.tag }}", VITE_COMMIT: "${{ github.sha }}" });
+  });
+
+  it("[AC-OPS-11.7] the release badge is redrawn from the new tag", () => {
+    expect(steps.at(-1).run).toContain('node scripts/release-badge.mjs "$TAG" release.svg');
+    expect(steps.at(-1).run).toContain("gh release upload badges release.svg --clobber");
+  });
 });

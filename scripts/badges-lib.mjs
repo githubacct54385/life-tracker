@@ -23,7 +23,14 @@ export function lighthouseBadge(summary) {
   return { schemaVersion: 1, label: "lighthouse", message: `performance ${performance}, accessibility ${accessibility}`, color: colour(Math.min(performance, accessibility), 90, 50) };
 }
 
-const COLOURS = { brightgreen: "#4c1", yellow: "#dfb317", red: "#e05d44" };
+/** The latest release tag (OPS-11), for the README badge. The Release workflow draws it after it publishes a release. */
+export function releaseBadge(tag) {
+  if (tag === null) return { schemaVersion: 1, label: "release", message: "none yet", color: "yellow" };
+  if (!/^v\d{4}\.\d{2}\.\d{2}\.\d+$/.test(tag)) throw new Error(`Not a release tag: ${tag}`);
+  return { schemaVersion: 1, label: "release", message: tag, color: "blue" };
+}
+
+const COLOURS = { brightgreen: "#4c1", yellow: "#dfb317", red: "#e05d44", blue: "#007ec6" };
 const escapeXml = (text) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]);
 const textWidth = (text) => Math.ceil(text.length * 6.6) + 10; // a close estimate for 11 px Verdana, good enough for a badge
 
