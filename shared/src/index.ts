@@ -11,6 +11,8 @@ export * from "./mileageStats.js";
 export * from "./gifts.js";
 export * from "./mileageImport.js";
 export * from "./workoutLog.js";
+export * from "./workoutGoal.js";
+export * from "./workoutChart.js";
 export * from "./weightLog.js";
 export * from "./timeZone.js";
 export * from "./maintenance.js";

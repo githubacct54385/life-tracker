@@ -10,6 +10,7 @@ export const PERSON_TABLES = [
   "odometer_readings",
   "weight_entries",
   "workouts",
+  "workout_goals",
   "regular_gifts",
   "special_contributions",
 ] as const;

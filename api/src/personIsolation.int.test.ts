@@ -34,7 +34,7 @@ const ROUTES = [
   "GET /api/odometer", "POST /api/odometer", "POST /api/odometer/import", "PUT /api/odometer/:id", "DELETE /api/odometer/:id",
   "GET /api/gifts", "POST /api/gifts", "PUT /api/gifts/:id", "DELETE /api/gifts/:id",
   "GET /api/gifts/special", "POST /api/gifts/special", "PUT /api/gifts/special/:id", "DELETE /api/gifts/special/:id",
-  "GET /api/workouts", "POST /api/workouts", "PUT /api/workouts/:id", "DELETE /api/workouts/:id",
+  "GET /api/workouts", "GET /api/workouts/goal", "PUT /api/workouts/goal", "POST /api/workouts", "PUT /api/workouts/:id", "DELETE /api/workouts/:id",
   "GET /api/weight", "POST /api/weight", "PUT /api/weight/:id", "DELETE /api/weight/:id",
   "GET /api/groceries", "POST /api/groceries", "PUT /api/groceries/:id", "DELETE /api/groceries/:id", "DELETE /api/groceries",
   "GET /api/maintenance", "POST /api/maintenance", "PUT /api/maintenance/:id", "DELETE /api/maintenance/:id",
@@ -138,6 +138,14 @@ describe.skipIf(!server)("one person cannot reach another person's data (real Po
     await sameAsMissing(b, "PUT", (n) => `/api/workouts/${n}`, saved.json.id, { type: "Hike", minutes: 90 });
     await sameAsMissing(b, "DELETE", (n) => `/api/workouts/${n}`, saved.json.id);
     expect(JSON.stringify((await a("GET", "/api/workouts")).json)).toContain("Run");
+  });
+
+  it("[AC-SET-04.2][AC-SET-04.8][AC-HLT-05.6] the weekly workout goal is private: one person's goal is never another's, and each person has their own", async () => {
+    expect((await a("GET", "/api/workouts/goal")).json).toEqual({ perWeek: null });
+    expect((await a("PUT", "/api/workouts/goal", { perWeek: 4 })).json).toEqual({ perWeek: 4 });
+    expect((await b("GET", "/api/workouts/goal")).json).toEqual({ perWeek: null });
+    expect((await b("PUT", "/api/workouts/goal", { perWeek: 2 })).json).toEqual({ perWeek: 2 });
+    expect((await a("GET", "/api/workouts/goal")).json).toEqual({ perWeek: 4 });
   });
 
   it("[AC-SET-04.2][AC-SET-04.8][AC-SET-04.10] weight is private, and each person can have an entry for the same day", async () => {

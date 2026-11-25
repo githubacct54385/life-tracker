@@ -105,9 +105,9 @@ describe("Health screen with pushups", () => {
     open(api);
     const history = await screen.findByRole("region", { name: "History" });
     expect(within(history).getByText("Pushups, 25 pushups")).toBeTruthy();
-    const tables = screen.getAllByRole("table");
-    expect(within(tables[0]!).getByRole("columnheader", { name: "Pushups" })).toBeTruthy();
-    expect(within(tables[0]!).getByText("65")).toBeTruthy();
+    const weeks = screen.getByRole("table", { name: /per week/ });
+    expect(within(weeks).getByRole("columnheader", { name: "Pushups" })).toBeTruthy();
+    expect(within(weeks).getByText("65")).toBeTruthy();
   });
 
   it("[AC-HLT-02.4] without any pushups the totals tables have no Pushups column", async () => {

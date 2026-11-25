@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "v
 import { createApp } from "./app.js";
 import { connectFreshAppDatabase, disconnectAppDatabase } from "./repositories/odometerTestDatabase.js";
 import { workoutRepository } from "./repositories/workoutRepository.js";
-import { clearWorkouts, seedWorkout } from "./repositories/workoutTestDatabase.js";
+import { clearWorkouts, seedWorkout, seedWorkoutGoal } from "./repositories/workoutTestDatabase.js";
 import { createGiftService } from "./services/giftService.js";
 import { createOdometerService } from "./services/odometerService.js";
 import { createWorkoutService } from "./services/workoutService.js";
@@ -95,6 +95,34 @@ describe.skipIf(!server)("/api/workouts (real Postgres)", () => {
 
   it("[AC-HLT-02.4] the database itself refuses a workout with neither minutes nor a count", async () => {
     await expect(seedWorkout("2026-11-06", "Other", null, "manual", null)).rejects.toThrow(/workouts_minutes_or_reps/);
+  });
+
+  it("[AC-HLT-05.6] has no goal until one is set, saves a whole number from 1 to 14, and keeps it", async () => {
+    expect(await (await call("GET", "/api/workouts/goal")).json()).toEqual({ perWeek: null });
+    const saved = await call("PUT", "/api/workouts/goal", { perWeek: 4 });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({ perWeek: 4 });
+    expect(await (await call("GET", "/api/workouts/goal")).json()).toEqual({ perWeek: 4 });
+    expect(await (await call("PUT", "/api/workouts/goal", { perWeek: 14 })).json()).toEqual({ perWeek: 14 });
+    expect(await (await call("GET", "/api/workouts/goal")).json()).toEqual({ perWeek: 14 });
+  });
+
+  it("[AC-HLT-05.6] refuses a goal that is not a whole number from 1 to 14, and keeps the old one", async () => {
+    await call("PUT", "/api/workouts/goal", { perWeek: 3 });
+    for (const bad of [{ perWeek: 0 }, { perWeek: 15 }, { perWeek: 2.5 }, { perWeek: "3" }, { perWeek: 3, extra: 1 }, {}, undefined]) {
+      expect((await call("PUT", "/api/workouts/goal", bad)).status, JSON.stringify(bad)).toBe(400);
+    }
+    expect(await (await call("GET", "/api/workouts/goal")).json()).toEqual({ perWeek: 3 });
+  });
+
+  it("[AC-HLT-05.6] the database itself refuses a goal outside 1 to 14", async () => {
+    await expect(seedWorkoutGoal(0)).rejects.toThrow(/workout_goals_per_week_check/);
+    await expect(seedWorkoutGoal(15)).rejects.toThrow(/workout_goals_per_week_check/);
+  });
+
+  it("[AC-HLT-05.6] answers 401 to the goal routes without the owner's token", async () => {
+    expect((await call("GET", "/api/workouts/goal", undefined, null)).status).toBe(401);
+    expect((await call("PUT", "/api/workouts/goal", { perWeek: 3 }, null)).status).toBe(401);
   });
 
   it("[AC-HLT-02.1] answers 401 without the owner's token", async () => {

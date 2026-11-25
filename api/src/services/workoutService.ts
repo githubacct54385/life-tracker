@@ -12,6 +12,10 @@ export interface WorkoutService {
   edit(id: number, input: SaveWorkoutRequest): Promise<StoredWorkout | undefined>;
   /** Removes a workout for good. False when it does not exist. */
   remove(id: number): Promise<boolean>;
+  /** The weekly goal (workouts per week), or null when none is set. */
+  goal(): Promise<number | null>;
+  /** Sets the weekly goal. The caller has already checked it is a whole number from 1 to 14. */
+  setGoal(perWeek: number): Promise<number>;
 }
 
 export interface WorkoutServiceOptions {
@@ -34,6 +38,10 @@ export function createWorkoutService(repo: WorkoutRepository, options: WorkoutSe
     edit: (id, { type, minutes, reps, note }) => repo.update(id, { type, minutes: minutes ?? null, reps: reps ?? null, note: noteOrNull(note) }),
 
     remove: (id) => repo.remove(id),
+
+    goal: () => repo.getGoal(),
+
+    setGoal: (perWeek) => repo.setGoal(perWeek),
   };
 }
 

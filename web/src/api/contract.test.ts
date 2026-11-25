@@ -49,6 +49,8 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
     if (input === "/api/gifts/7" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/workouts" && init?.method === "GET") return Response.json({ workouts: [WORKOUT] });
     if (input === "/api/workouts" && init?.method === "POST") return Response.json(WORKOUT, { status: 201 });
+    if (input === "/api/workouts/goal" && init?.method === "GET") return Response.json({ perWeek: null });
+    if (input === "/api/workouts/goal" && init?.method === "PUT") return Response.json(JSON.parse(init.body as string));
     if (input === "/api/workouts/7" && init?.method === "PUT") return Response.json(WORKOUT);
     if (input === "/api/workouts/7" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/odometer/9" && init?.method === "DELETE") return new Response(null, { status: 204 });
@@ -81,7 +83,7 @@ const implementations: Array<[string, () => Api]> = [
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
 const GROCERY = { id: "11111111-1111-4111-8111-111111111111", name: "Milk", quantity: "2", note: "", section: "Dairy and eggs", found: false };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "getWorkoutGoal", "saveWorkoutGoal", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -237,6 +239,27 @@ describe.each(implementations)("[AC-HLT-02.1][AC-HLT-02.2][AC-HLT-02.3] workout 
     const first = list.workouts[0]!;
     expect(await api.editWorkout(first.id, { type: "Walk", minutes: 20 })).toMatchObject({ source: expect.stringMatching(/manual|apple_watch/) });
     await expect(api.deleteWorkout(first.id)).resolves.toBeUndefined();
+  });
+});
+
+describe.each(implementations)("[AC-HLT-05.6] workout goal contract: %s", (_name, make) => {
+  it("[AC-HLT-05.6] has no goal at first, saves one and returns it in the shared shape", async () => {
+    const api = make();
+    expect(await api.getWorkoutGoal()).toEqual({ perWeek: null });
+    expect(await api.saveWorkoutGoal(4)).toEqual({ perWeek: 4 });
+  });
+});
+
+describe("demo workout goal behaviour", () => {
+  it("[AC-HLT-05.6] keeps the goal for the next read, replaces it, and refuses a number outside 1 to 14", async () => {
+    const api = createDemoApi();
+    await api.saveWorkoutGoal(4);
+    expect(await api.getWorkoutGoal()).toEqual({ perWeek: 4 });
+    await api.saveWorkoutGoal(2);
+    expect(await api.getWorkoutGoal()).toEqual({ perWeek: 2 });
+    await expect(api.saveWorkoutGoal(0)).rejects.toThrow();
+    await expect(api.saveWorkoutGoal(15)).rejects.toThrow();
+    expect(await api.getWorkoutGoal()).toEqual({ perWeek: 2 });
   });
 });
 
@@ -463,6 +486,20 @@ describe("client.ts time zone header", () => {
     await api.listReadings();
     localStorage.clear();
     expect(seen).toBe("Europe/London");
+  });
+});
+
+describe("client.ts workout goal requests", () => {
+  it("[AC-HLT-05.6] reads the goal with GET and saves it with a PUT that sends only the number, with the custom header", async () => {
+    const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
+    const api = createClient(fakeNetwork(sent));
+    await api.getWorkoutGoal();
+    await api.saveWorkoutGoal(4);
+    expect(sent.map((r) => [r.method, r.url, r.body])).toEqual([
+      ["GET", "/api/workouts/goal", undefined],
+      ["PUT", "/api/workouts/goal", '{"perWeek":4}'],
+    ]);
+    expect(sent[1]!.guard).toBeTruthy();
   });
 });
 

@@ -50,3 +50,24 @@ test("[AC-HLT-02.4][AC-OPS-04.3] the database refuses a pushups workout that has
   const status = await page.evaluate(async () => (await fetch("/api/workouts", { method: "POST", headers: { "content-type": "application/json", "x-life-tracker": "1" }, body: JSON.stringify({ type: "Pushups", reps: 10, minutes: 5 }) })).status);
   expect(status).toBe(400);
 });
+
+test("[AC-HLT-05.6][AC-OPS-04.3] a weekly workout goal is saved through the API, shown on the chart, kept after a reload, and a bad number is refused", { tag: "@AC-OPS-04.3" }, async ({ page }) => {
+  await page.goto("/health/workouts");
+  await page.getByLabel("Duration (minutes)").fill("30");
+  await page.getByRole("button", { name: "Save workout" }).click();
+  await expect(page.getByRole("status")).toContainText("Saved Run, 30 min");
+
+  await page.goto("/health");
+  const section = page.getByRole("region", { name: "Weekly workouts" });
+  await expect(section.getByText("No weekly goal yet.", { exact: false })).toBeVisible();
+  await section.getByLabel("Workouts per week").fill("0");
+  await section.getByRole("button", { name: "Set goal" }).click();
+  await expect(section.getByRole("alert")).toContainText("Enter a whole number from 1 to 14.");
+  await section.getByLabel("Workouts per week").fill("3");
+  await section.getByRole("button", { name: "Set goal" }).click();
+  await expect(section.getByText("Goal: 3 a week. This week: 1 of 3, 2 to go.")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Weekly workouts" }).getByText("Goal: 3 a week.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Weekly workouts" }).getByLabel("Workouts per week")).toHaveValue("3");
+});
