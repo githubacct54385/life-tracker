@@ -8,6 +8,32 @@ export const VIEWPORTS = [
 
 export const RELEASE_TAG = "pr-screenshots";
 
+/** The loading placeholder every page uses (web/src/ui/Skeleton.tsx). While one is on screen the page is not ready to photograph. */
+export const LOADING_SELECTOR = ".lt-skeleton";
+
+/**
+ * Waits until a page shows its real content: the network is quiet, no loading placeholder is on screen, and fonts are ready.
+ * The placeholder check runs twice, a moment apart, because a lazily loaded part can start loading just after the first look.
+ * Returns a list of problems (empty when the page settled). It never throws, so a stuck page is reported and still photographed.
+ */
+export async function waitForContent(page, { timeout = 15_000, settleMs = 250 } = {}) {
+  const problems = [];
+  const attempt = async (what, run) => {
+    try {
+      await run();
+    } catch {
+      problems.push(what);
+    }
+  };
+  await attempt("the network did not go quiet", () => page.waitForLoadState("networkidle", { timeout }));
+  for (let look = 0; look < 2; look++) {
+    await attempt("a loading placeholder was still on screen", () => page.waitForSelector(LOADING_SELECTOR, { state: "detached", timeout }));
+    await attempt("fonts were not ready", () => page.evaluate(() => document.fonts?.ready));
+    await page.waitForTimeout(settleMs);
+  }
+  return problems;
+}
+
 export function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "screen";
 }
