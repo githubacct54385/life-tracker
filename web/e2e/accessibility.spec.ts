@@ -25,7 +25,7 @@ async function mockApi(page: Page) {
       },
     }),
   );
-  await page.route("**/api/weight", (r) => r.fulfill({ json: { entries: [172.4, 172.9, 173.1, 172.2, 171.8].map((pounds, i) => ({ id: 5 - i, date: day(i), pounds })) } }));
+  await page.route("**/api/weight", (r) => r.fulfill({ json: { entries: [172.4, 172.9, 173.1, 172.2, 171.8].map((pounds, i) => ({ id: 5 - i, date: day(i * 8), pounds })) } })); // spread over five weeks, so the weight and workouts chart on Health (HLT-06) is drawn
   await page.route(/\/api\/odometer(\?.*)?$/, (r) => r.fulfill({ json: { readings: [0, 1, 2, 3, 4].map((i) => ({ id: 5 - i, date: day(i * 7), miles: 48_400 - i * 210 })) } }));
   const grocery = (n: number, name: string, section: string, found = false) => ({ id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, name, quantity: n === 1 ? "6" : "", note: n === 2 ? "the green ones" : "", section, found });
   await page.route("**/api/groceries", (r) => r.fulfill({ json: { items: [grocery(1, "Bananas", "Produce"), grocery(2, "Apples", "Produce"), grocery(3, "Milk", "Dairy and eggs"), grocery(4, "Rice", "Pantry", true)] } }));
@@ -95,7 +95,8 @@ test("[AC-SET-02.2] every control on every screen can be reached with the keyboa
     // Tab inside a date field moves between its day, month and year parts, so a control counts as ringed if it showed a ring when it first got focus.
     const ring = new Map<string, { ringed: boolean; text: string }>();
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    for (let i = 0; i < total + 6; i++) {
+    // Each Recharts chart also puts a few unlabelled drawing layers in the tab order (they are not controls and are not counted above), so allow for them.
+    for (let i = 0; i < total + 24; i++) {
       await page.keyboard.press("Tab");
       const info = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;
