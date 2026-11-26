@@ -39,6 +39,7 @@ const ROUTES = [
   "GET /api/groceries", "POST /api/groceries", "PUT /api/groceries/:id", "DELETE /api/groceries/:id", "DELETE /api/groceries",
   "GET /api/maintenance", "POST /api/maintenance", "PUT /api/maintenance/:id", "DELETE /api/maintenance/:id",
   "GET /api/maintenance/places", "PUT /api/maintenance/places/:id", "DELETE /api/maintenance/places/:id",
+  "GET /api/maintenance/intervals", "PUT /api/maintenance/intervals", "DELETE /api/maintenance/intervals/:id",
   "GET /api/maintenance/documents", "GET /api/maintenance/documents/:id", "DELETE /api/maintenance/documents/:id", "POST /api/maintenance/:id/documents",
 ];
 
@@ -200,6 +201,16 @@ describe.skipIf(!server)("one person cannot reach another person's data (real Po
     expect(store.files.size).toBe(filesBefore);
     expect((await a("GET", "/api/maintenance")).json.records).toEqual([expect.objectContaining({ id: recordId })]);
     expect((await a("GET", `/api/maintenance/documents/${documentId}`)).status).toBe(200);
+  });
+
+  it("[AC-SET-04.2][AC-SET-04.8][AC-MIL-09.7] service intervals are private: another person cannot see, replace or remove them, and each person has their own", async () => {
+    const mine = await a("PUT", "/api/maintenance/intervals", { service: "Oil change", miles: 5000 });
+    const id = mine.json.id;
+    expect((await b("GET", "/api/maintenance/intervals")).json).toEqual({ intervals: [] });
+    await sameAsMissing(b, "DELETE", (n) => `/api/maintenance/intervals/${n}`, id);
+    const theirs = await b("PUT", "/api/maintenance/intervals", { service: "Oil change", months: 6 });
+    expect(theirs.json.id).not.toBe(id);
+    expect((await a("GET", "/api/maintenance/intervals")).json.intervals).toEqual([{ id, service: "Oil change", miles: 5000, months: null }]);
   });
 
   it("[AC-SET-04.2][AC-SET-04.6] a person's documents are stored under a folder named for them", async () => {

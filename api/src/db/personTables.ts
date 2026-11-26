@@ -5,6 +5,7 @@
 export const PERSON_TABLES = [
   "grocery_items",
   "maintenance_documents",
+  "service_intervals",
   "maintenance_records",
   "service_places",
   "odometer_readings",

@@ -30,6 +30,7 @@ async function mockApi(page: Page) {
   const grocery = (n: number, name: string, section: string, found = false) => ({ id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, name, quantity: n === 1 ? "6" : "", note: n === 2 ? "the green ones" : "", section, found });
   await page.route("**/api/groceries", (r) => r.fulfill({ json: { items: [grocery(1, "Bananas", "Produce"), grocery(2, "Apples", "Produce"), grocery(3, "Milk", "Dairy and eggs"), grocery(4, "Rice", "Pantry", true)] } }));
   const place = { id: 1, name: "Joe's Garage" };
+  await page.route("**/api/maintenance/intervals", (r) => r.fulfill({ json: { intervals: [{ id: 1, service: "Oil change", miles: 5000, months: 6 }] } })); // Service due (MIL-09)
   await page.route("**/api/maintenance/places", (r) => r.fulfill({ json: { places: [place] } }));
   await page.route("**/api/maintenance", (r) =>
     r.fulfill({

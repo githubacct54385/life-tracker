@@ -8,8 +8,8 @@ import { createFreshDatabase, run } from "./testDatabase.js";
 // Skipped only when Docker is missing on a laptop (see globalSetup.int.ts). CI always runs them.
 const server = inject("postgres");
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../db/migrations");
-// The tables SET-04 covers. Later stories add tables (grocery_items, GRO-01; workout_goals, HLT-05) that these migration tests stop before.
-const SET_04_TABLES = PERSON_TABLES.filter((table) => table !== "grocery_items" && table !== "workout_goals");
+// The tables SET-04 covers. Later stories add tables (grocery_items, GRO-01; workout_goals, HLT-05; service_intervals, MIL-09) that these migration tests stop before.
+const SET_04_TABLES = PERSON_TABLES.filter((table) => table !== "grocery_items" && table !== "workout_goals" && table !== "service_intervals");
 
 const USERS_MIGRATION = "0011_create_users_and_add_user_id.sql";
 const REQUIRE_MIGRATION = "0012_require_user_id_and_drop_old_unique_rules.sql";

@@ -17,9 +17,17 @@ const RECORDS = [
   { id: 1, date: "2026-10-12", services: ["Wipers"], doneBy: "home", place: null, costCents: 1800, odometerMiles: null, note: null },
 ];
 
+// Oil change was done at 48,150 mi on 2026-11-03: due at 53,150. Wipers have no mileage kept, so only the months count. Tires were never logged.
+const INTERVALS = [
+  { id: 1, service: "Oil change", miles: 5000, months: 6 },
+  { id: 2, service: "Wipers", miles: null, months: 12 },
+  { id: 3, service: "Tires", miles: 40_000, months: null },
+];
+
 async function mock(page: Page) {
   await page.route("**/api/maintenance/places", (r) => r.fulfill({ json: { places: [joes, acme] } }));
   await page.route("**/api/maintenance/documents", (r) => r.fulfill({ json: { documents: [] } }));
+  await page.route("**/api/maintenance/intervals", (r) => r.fulfill({ json: { intervals: INTERVALS } }));
   await page.route("**/api/maintenance", (r) => r.fulfill({ json: { records: RECORDS } }));
   await page.route(/\/api\/odometer(\?.*)?$/, (r) => r.fulfill({ json: { readings: [{ id: 2, date: "2026-11-06", miles: 48_402 }] } }));
 }
@@ -43,6 +51,36 @@ test("[AC-MIL-06.7][AC-MIL-06.8] every view fits at 360, 768 and 1280 px with no
     await page.getByRole("button", { name: /^Oil change/ }).click();
     expect(await overflow(page), `${width}px by service`).toBeLessThanOrEqual(0);
   }
+});
+
+test("[AC-MIL-09.8] Service due fits at 360, 768 and 1280 px, with nothing scrolling sideways, and its form works from the keyboard", { tag: "@AC-MIL-09.8" }, async ({ page }) => {
+  for (const { width, height } of WIDTHS) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/car/maintenance");
+    const card = page.getByRole("region", { name: "Service due" });
+    await expect(card.getByRole("listitem").filter({ hasText: "Oil change" })).toBeVisible();
+    await expect(card.getByText("Never logged", { exact: true })).toBeVisible();
+    expect(await overflow(page), `${width}px`).toBeLessThanOrEqual(0);
+    await card.getByLabel("Service").scrollIntoViewIfNeeded();
+    await expect(card.getByRole("button", { name: "Save interval" })).toBeVisible();
+  }
+  // From the keyboard: the service field, then miles, then months, then the button, and Enter saves.
+  const seen: unknown[] = [];
+  await page.route("**/api/maintenance/intervals", async (route) => {
+    if (route.request().method() === "PUT") {
+      seen.push(route.request().postDataJSON());
+      return route.fulfill({ json: { id: 9, service: "Brakes", miles: 30_000, months: null } });
+    }
+    return route.fulfill({ json: { intervals: INTERVALS } });
+  });
+  await page.goto("/car/maintenance");
+  await page.getByRole("region", { name: "Service due" }).getByLabel("Service").focus();
+  await page.keyboard.type("Brakes");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("30000");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Saved the interval for Brakes.")).toBeVisible();
+  expect(seen).toEqual([{ service: "Brakes", miles: 30_000 }]);
 });
 
 test("[AC-MIL-06.9] the form is a sheet from the bottom on a phone and a panel on the right on a computer, and scrolls inside itself", { tag: "@AC-MIL-06.9" }, async ({ page }) => {

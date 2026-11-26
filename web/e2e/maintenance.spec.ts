@@ -12,8 +12,9 @@ const RECORD = { id: 1, date: "2026-11-03", services: ["Oil change", "Air filter
 
 test("[AC-MIL-05.1][AC-MIL-05.2][AC-MIL-05.3] the maintenance screen opens on the history, offers the services, the shop choice and its places in a panel, and nothing scrolls sideways at 360, 768 and 1280 px", { tag: "@AC-MIL-05.1" }, async ({ page, context }) => {
   await page.route("**/api/maintenance/places", (route) => route.fulfill({ json: { places: [RECORD.place] } }));
+  await page.route("**/api/maintenance/intervals", (route) => route.fulfill({ json: { intervals: [] } }));
   await page.route("**/api/maintenance", (route) => route.fulfill({ json: { records: [RECORD] } }));
-  await page.route("**/api/odometer", (route) => route.fulfill({ json: { readings: [{ id: 2, date: "2026-11-06", miles: 48_402 }] } }));
+  await page.route(/\/api\/odometer(\?.*)?$/, (route) => route.fulfill({ json: { readings: [{ id: 2, date: "2026-11-06", miles: 48_402 }] } }));
   await signInAs(context, OWNER);
   for (const { width, height } of WIDTHS) {
     await page.setViewportSize({ width, height });

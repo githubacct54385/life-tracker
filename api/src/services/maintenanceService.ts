@@ -3,7 +3,7 @@
 //  * A shop is found by name, ignoring letter case, or added once. A service done at home has no place.
 //  * Removing a service removes its documents too (MIL-07).
 //  * A service never touches the odometer readings: its mileage is just a number kept with it.
-import { calendarDateIn, isValidTimeZone, type SaveMaintenanceRequest, type ServicePlace } from "@life-tracker/shared";
+import { calendarDateIn, isValidTimeZone, type SaveMaintenanceRequest, type SaveServiceIntervalRequest, type ServiceInterval, type ServicePlace } from "@life-tracker/shared";
 import { maintenanceRepository, type MaintenanceFields, type MaintenanceRepository, type StoredMaintenance } from "../repositories/maintenanceRepository.js";
 import { documentService, type DocumentService } from "./documentService.js";
 import { DEFAULT_OWNER_TIME_ZONE } from "./odometerService.js";
@@ -24,6 +24,12 @@ export interface MaintenanceService {
   edit(id: number, input: SaveMaintenanceRequest, timeZone?: string): Promise<MaintenanceOutcome>;
   /** Removes a service for good. False when it does not exist. */
   remove(id: number): Promise<boolean>;
+  /** How often each type of service is due (MIL-09). */
+  intervals(): Promise<ServiceInterval[]>;
+  /** Sets the interval of one type, replacing any it had. A type with no interval is never shown as due. */
+  setInterval(input: SaveServiceIntervalRequest): Promise<ServiceInterval>;
+  /** Stops tracking a type. False when it does not exist. */
+  removeInterval(id: number): Promise<boolean>;
 }
 
 export interface MaintenanceServiceOptions {
@@ -57,6 +63,9 @@ export function createMaintenanceService(repo: MaintenanceRepository, options: M
   return {
     list: () => repo.list(),
     places: () => repo.listPlaces(),
+    intervals: () => repo.listIntervals(),
+    setInterval: (input) => repo.saveInterval(input.service.trim(), input.miles ?? null, input.months ?? null),
+    removeInterval: (id) => repo.removeInterval(id),
 
     async renamePlace(id, name) {
       const result = await repo.renamePlace(id, name.trim());

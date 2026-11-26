@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { type MaintenanceDocument, type MaintenanceRecord, type ServicePlace } from "@life-tracker/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { averageMilesPerDay, type MaintenanceDocument, type MaintenanceRecord, type OdometerReadingRecord, type ServiceInterval, type ServicePlace } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { Button } from "../../ui/Button";
 import { Presence } from "../../ui/Presence";
@@ -8,6 +8,7 @@ import { Page } from "../Page";
 import { LogServicePanel } from "./LogServicePanel";
 import { LastDoneSection, NO_FILTER, PlacesSection, type HistoryFilterState } from "./MaintenanceHistory";
 import { MaintenanceList } from "./MaintenanceList";
+import { ServiceDueSection } from "./ServiceDue";
 import { RecentDocuments } from "./RecentDocuments";
 
 /**
@@ -21,7 +22,12 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
   const [documents, setDocuments] = useState<MaintenanceDocument[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [filter, setFilter] = useState<HistoryFilterState>(NO_FILTER);
-  const [latestOdometer, setLatestOdometer] = useState<number | undefined>(undefined);
+  const [readings, setReadings] = useState<OdometerReadingRecord[]>([]);
+  const [intervals, setIntervals] = useState<ServiceInterval[] | null>(null);
+  const [intervalsFailed, setIntervalsFailed] = useState(false);
+  // The readings come newest first.
+  const latestOdometer = readings[0]?.miles;
+  const milesPerDay = useMemo(() => averageMilesPerDay(readings, today), [readings, today]);
   const [logging, setLogging] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -34,6 +40,12 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
     } catch {
       setLoadFailed(true);
     }
+    try {
+      setIntervals((await api.listServiceIntervals()).intervals);
+      setIntervalsFailed(false);
+    } catch {
+      setIntervalsFailed(true);
+    }
     // Documents are an extra: if they cannot be loaded the services still show, just without their documents.
     try {
       setDocuments((await api.listDocuments()).documents);
@@ -45,8 +57,8 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
   useEffect(() => {
     void refresh();
     api
-      .listReadings()
-      .then((r) => setLatestOdometer(r.readings[0]?.miles))
+      .listAllReadings()
+      .then((r) => setReadings(r.readings))
       .catch(() => undefined);
   }, [api, refresh]);
 
@@ -67,6 +79,7 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
         </Button>
         <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
         <RecentDocuments documents={documents} records={records} />
+        <ServiceDueSection records={records} intervals={intervals} odometer={latestOdometer} milesPerDay={milesPerDay} today={today} loadFailed={loadFailed || intervalsFailed} onChanged={refresh} onRetry={() => void refresh()} />
         <LastDoneSection records={records} loadFailed={loadFailed} onRetry={() => void refresh()} latestOdometer={latestOdometer} />
         <MaintenanceList records={records} places={places} documents={documents} today={today} loadFailed={loadFailed} filter={filter} onFilter={setFilter} onChanged={refresh} onRetry={() => void refresh()} />
         <PlacesSection places={places} records={records ?? []} onChanged={refresh} />

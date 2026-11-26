@@ -156,10 +156,40 @@ describe.skipIf(!server)("/api/maintenance (real Postgres)", () => {
     expect((await call("DELETE", "/api/maintenance/places/abc")).status).toBe(400);
   });
 
+  it("[AC-MIL-09.7] saves a service interval, replaces the one a type had (ignoring letter case), lists them and removes one", async () => {
+    expect(await (await call("GET", "/api/maintenance/intervals")).json()).toEqual({ intervals: [] });
+    const first = await call("PUT", "/api/maintenance/intervals", { service: "Oil change", miles: 5000, months: 6 });
+    expect(first.status).toBe(200);
+    const saved = await first.json();
+    expect(saved).toEqual({ id: expect.any(Number), service: "Oil change", miles: 5000, months: 6 });
+
+    const again = await (await call("PUT", "/api/maintenance/intervals", { service: "oil CHANGE", months: 3 })).json();
+    expect(again).toEqual({ id: saved.id, service: "oil CHANGE", miles: null, months: 3 });
+    await call("PUT", "/api/maintenance/intervals", { service: "Tires", miles: 40_000 });
+    expect((await (await call("GET", "/api/maintenance/intervals")).json()).intervals.map((i: { service: string }) => i.service)).toEqual(["oil CHANGE", "Tires"]);
+
+    expect((await call("DELETE", `/api/maintenance/intervals/${saved.id}`)).status).toBe(204);
+    expect((await call("DELETE", `/api/maintenance/intervals/${saved.id}`)).status).toBe(404);
+    expect((await (await call("GET", "/api/maintenance/intervals")).json()).intervals).toHaveLength(1);
+  });
+
+  it("[AC-MIL-09.7] refuses an interval with no miles or months, a zero, a decimal, an unknown field and a bad id", async () => {
+    for (const body of [{ service: "Oil change" }, { service: "Oil change", miles: 0 }, { service: "Oil change", months: 1.5 }, { service: "Oil change", miles: 5, extra: 1 }, { service: "", miles: 5 }]) {
+      expect((await call("PUT", "/api/maintenance/intervals", body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect((await call("DELETE", "/api/maintenance/intervals/abc")).status).toBe(400);
+  });
+
+  it("[AC-MIL-09.7] the database itself refuses a row with neither miles nor months", async () => {
+    await expect(asOwner.saveInterval("Oil change", null, null)).rejects.toThrow();
+  });
+
   it("[AC-MIL-05.9] answers 401 without the owner's token", async () => {
     expect((await call("GET", "/api/maintenance", undefined, null)).status).toBe(401);
     expect((await call("GET", "/api/maintenance/places", undefined, null)).status).toBe(401);
     expect((await call("PUT", "/api/maintenance/places/1", { name: "X" }, null)).status).toBe(401);
     expect((await call("DELETE", "/api/maintenance/places/1", undefined, null)).status).toBe(401);
+    expect((await call("GET", "/api/maintenance/intervals", undefined, null)).status).toBe(401);
+    expect((await call("PUT", "/api/maintenance/intervals", { service: "X", miles: 1 }, null)).status).toBe(401);
   });
 });
