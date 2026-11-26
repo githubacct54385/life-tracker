@@ -7,6 +7,7 @@ import { Button } from "../../ui/Button.js";
 import { useBusy } from "../../ui/useBusy.js";
 import { Page } from "../Page";
 import { formatMiles, shortDate } from "./readingFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const PROBLEMS: Record<string, string> = {
   missing_columns: "The file needs a Date column and a Start Miles column in a header row.",
@@ -139,7 +140,7 @@ export function ImportMileagePage({ sample, titleLevel = 1 }: { sample?: () => F
             <Button busy={saving} disabled={reading} onClick={() => void trackSave(commit)}>
               Import {preview.rows.length} readings
             </Button>
-            {failed && <p role="alert">That did not work. Try again.</p>}
+            {failed && <p role="alert"><FailureText fallback="That did not work. Try again." /></p>}
           </section>
         )}
 

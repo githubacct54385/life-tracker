@@ -5,6 +5,7 @@ import { HubLink } from "../../ui/HubLink";
 import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
 import { dateLabel, formatCents, monthLabel, todayLocal } from "./giftFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const GivingChart = lazy(() => import("./GivingChart").then((m) => ({ default: m.GivingChart })));
 
@@ -65,7 +66,7 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
           <HubLink to="/giving/special" icon="giving" title="Special contributions" description="Gifts outside the monthly pattern" />
         </div>
 
-        {failed && <p role="alert">That did not work. Try again.</p>}
+        {failed && <p role="alert"><FailureText fallback="That did not work. Try again." /></p>}
         {!failed && !loaded && <Skeleton lines={3} />}
         {empty && <p className="text-muted">No giving recorded yet. Log a gift to see your totals and your month-by-month history here.</p>}
 

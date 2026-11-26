@@ -34,6 +34,7 @@ import {
   workoutRecordSchema,
   maintenanceListResponseSchema,
   maintenanceRecordSchema,
+  availabilityResponseSchema,
   placeListResponseSchema,
   saveServiceIntervalRequestSchema,
   serviceIntervalListResponseSchema,
@@ -200,6 +201,11 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   return {
     async health() {
       return healthResponseSchema.parse({ status: "ok" });
+    },
+
+    // The demo has no server, so nothing in it can be down (OPS-14).
+    async getAvailability() {
+      return availabilityResponseSchema.parse({ database: "ok", documents: "ok", signIn: "ok" });
     },
 
     async listReadings() {

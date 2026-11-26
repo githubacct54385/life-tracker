@@ -7,6 +7,7 @@ import { useApi } from "../../api/ApiContext";
 import { shortDate } from "../car/readingFormat";
 import { Page } from "../Page";
 import { amountFromForm, describeAmount, parseMinutes, parseReps, SOURCE_LABELS } from "./workoutFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -142,7 +143,7 @@ function WorkoutRow({ workout, onChanged }: { workout: WorkoutRecord; onChanged:
           </div>
         </div>
       )}
-      {error && <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p>}
+      {error && <p role="alert" className="mt-2 text-sm"><FailureText fallback="That did not work. Try again." /></p>}
     </li>
   );
 }
@@ -197,7 +198,7 @@ export function LogWorkoutPage() {
             Save workout
           </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
-          {error && <p role="alert">That did not work. Try again.</p>}
+          {error && <p role="alert"><FailureText fallback="That did not work. Try again." /></p>}
         </form>
 
         <section aria-labelledby="recent-workouts" className="rounded-2xl border border-line bg-card p-4 text-ink">

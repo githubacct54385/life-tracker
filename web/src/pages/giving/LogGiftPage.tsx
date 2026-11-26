@@ -6,6 +6,7 @@ import { groupGiftsByMonth, MAX_DESCRIPTION_LENGTH, PAYMENT_METHODS, type GiftRe
 import { useApi } from "../../api/ApiContext";
 import { Page } from "../Page";
 import { centsToInput, dateLabel, defaultDescription, formatCents, METHOD_LABEL, monthLabel, parseDollars, todayLocal } from "./giftFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -175,7 +176,7 @@ function GiftRow({ gift, onChanged }: { gift: GiftRecord; onChanged: () => Promi
           </div>
         </div>
       )}
-      {error && <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p>}
+      {error && <p role="alert" className="mt-2 text-sm"><FailureText fallback="That did not work. Try again." /></p>}
     </li>
   );
 }
@@ -234,7 +235,7 @@ export function LogGiftPage() {
             Save gift
           </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
-          {error && <p role="alert">That did not work. Try again.</p>}
+          {error && <p role="alert"><FailureText fallback="That did not work. Try again." /></p>}
         </form>
 
         <section aria-labelledby="gift-history" className="rounded-2xl border border-line bg-card p-4 text-ink">

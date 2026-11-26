@@ -13,6 +13,7 @@ import {
 import { useApi } from "../../api/ApiContext";
 import { Page } from "../Page";
 import { centsToInput, dateLabel, formatCents, METHOD_LABEL, parseDollars, todayLocal } from "./giftFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -153,7 +154,7 @@ function Row({ contribution, onChanged }: { contribution: SpecialContributionRec
           </div>
         </div>
       )}
-      {error && <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p>}
+      {error && <p role="alert" className="mt-2 text-sm"><FailureText fallback="That did not work. Try again." /></p>}
     </li>
   );
 }
@@ -208,7 +209,7 @@ export function SpecialContributionsPage() {
             Save special contribution
           </Button>
           {message && <p role="status" className="text-gtext">{message}</p>}
-          {error && <p role="alert">That did not work. Try again.</p>}
+          {error && <p role="alert"><FailureText fallback="That did not work. Try again." /></p>}
         </form>
 
         <section aria-labelledby="special-history" className="rounded-2xl border border-line bg-card p-4 text-ink">

@@ -9,6 +9,7 @@ import {
 } from "@life-tracker/shared";
 import type { GiftService } from "../services/giftService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
+import { rethrowIfUnavailable } from "../http/unavailable.js";
 
 export interface GiftDeps {
   logger: Logger;
@@ -52,6 +53,7 @@ export function giftRoutes({ logger, gifts }: GiftDeps): Hono {
     try {
       return (await gifts.removeSpecial(id)) ? c.body(null, 204) : c.json({ error: "not_found" }, 404);
     } catch (error) {
+      rethrowIfUnavailable(error);
       logger.error("gifts.special_delete_failed", { errorType: errorTypeOf(error) });
       return c.json({ error: "internal" }, 500);
     }
@@ -83,6 +85,7 @@ export function giftRoutes({ logger, gifts }: GiftDeps): Hono {
     try {
       return (await gifts.remove(id)) ? c.body(null, 204) : c.json({ error: "not_found" }, 404);
     } catch (error) {
+      rethrowIfUnavailable(error);
       logger.error("gifts.delete_failed", { errorType: errorTypeOf(error) });
       return c.json({ error: "internal" }, 500);
     }

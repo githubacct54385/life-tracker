@@ -7,6 +7,7 @@ import { Presence } from "../../ui/Presence";
 import { useBusy } from "../../ui/useBusy";
 import { toRequest, type ServiceForm } from "./maintenanceFormat";
 import { ServiceFields } from "./ServiceFields";
+import { FailureText } from "../../ui/FailureText";
 
 export const blankForm = (today: string, odometer = ""): ServiceForm => ({ ticked: [], custom: [], doneBy: "shop", placeChoice: "", newPlace: "", cost: "", date: today, odometer, note: "" });
 
@@ -104,7 +105,7 @@ export function LogServicePanel({ places, today, latestOdometer, onSaved, onClos
             </Button>
           </div>
           <p className="text-sm text-muted">After saving, add a photo or PDF of the receipt from the service in the list.</p>
-          <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
+          <Presence>{error ? <p role="alert"><FailureText fallback="That did not work. Try again." /></p> : null}</Presence>
         </form>
       </div>
     </div>,

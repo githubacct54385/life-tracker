@@ -14,6 +14,7 @@ import { useApi } from "../../api/ApiContext";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { Page } from "../Page";
 import { formatMiles, shortDate } from "./readingFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthLabel = (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
@@ -120,7 +121,7 @@ export function MileageStatsPage() {
         <Link to="/car" className="inline-flex min-h-11 items-center text-ink underline">Back to Car</Link>
       </p>
       {failed ? (
-        <p role="alert" className={`${card} mt-4`}>The readings could not be loaded. Try again in a moment.</p>
+        <p role="alert" className={`${card} mt-4`}><FailureText fallback="The readings could not be loaded. Try again in a moment." /></p>
       ) : readings === null ? (
         <Skeleton lines={4} className="mt-4" />
       ) : stats.periods.length === 0 ? (

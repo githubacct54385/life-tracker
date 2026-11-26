@@ -1,4 +1,4 @@
-import type { AddGroceryRequest, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, SaveServiceIntervalRequest, ServiceInterval, ServiceIntervalListResponse, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutGoal, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { AddGroceryRequest, AvailabilityResponse, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, SaveServiceIntervalRequest, ServiceInterval, ServiceIntervalListResponse, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutGoal, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /** What happens to an uploaded document (MIL-07). The server decides; nothing is stored unless the status is "saved". */
 export type UploadDocumentResult = { status: "saved"; document: MaintenanceDocument } | { status: "too_large" | "unsupported_type" | "limit_reached" | "too_much" | "not_found" };
@@ -13,6 +13,8 @@ export type AddGroceryResult = { status: "added" | "already_added"; item: Grocer
  */
 export interface Api {
   health(): Promise<HealthResponse>;
+  /** One word for each part the server depends on (database, documents, sign-in check), so the app can say which is down and notice when it is back (OPS-14). */
+  getAvailability(): Promise<AvailabilityResponse>;
   /** Recent odometer readings, newest first (MIL-01). */
   listReadings(): Promise<ReadingListResponse>;
   /** Every odometer reading, newest first, for the stats screen (MIL-03). */

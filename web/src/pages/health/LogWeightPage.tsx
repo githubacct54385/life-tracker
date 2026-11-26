@@ -10,6 +10,7 @@ import { loadPreferences } from "../../settings/preferences";
 import { shortDate } from "../car/readingFormat";
 import { Page } from "../Page";
 import { formatWeight, parseWeight, UNIT_LABEL, weightToInput } from "./weightFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -157,7 +158,7 @@ function WeightRow({ entry, unit, onChanged }: { entry: WeightEntryRecord; unit:
           </div>
         </div>
       ) : null}</Presence>
-      <Presence>{error ? <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p> : null}</Presence>
+      <Presence>{error ? <p role="alert" className="mt-2 text-sm"><FailureText fallback="That did not work. Try again." /></p> : null}</Presence>
     </li>
   );
 }
@@ -223,7 +224,7 @@ export function LogWeightPage() {
             Save weight
           </Button>
           <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
-          <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
+          <Presence>{error ? <p role="alert"><FailureText fallback="That did not work. Try again." /></p> : null}</Presence>
           <Presence>{replace ? (
             <div role="alert" className="rounded-xl border border-line bg-sunk p-4">
               <p>

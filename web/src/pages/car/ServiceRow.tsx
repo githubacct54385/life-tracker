@@ -9,6 +9,7 @@ import { formFromRecord, toRequest, type ServiceForm } from "./maintenanceFormat
 import { formatMiles, shortDate } from "./readingFormat";
 import { ServiceDocuments } from "./ServiceDocuments";
 import { ServiceFields } from "./ServiceFields";
+import { FailureText } from "../../ui/FailureText";
 
 /** One saved service in the list, with edit and delete. */
 export function ServiceRow({ record, places, documents, today, onChanged }: { record: MaintenanceRecord; places: ServicePlace[]; documents: MaintenanceDocument[]; today: string; onChanged: () => Promise<void> }) {
@@ -111,7 +112,7 @@ export function ServiceRow({ record, places, documents, today, onChanged }: { re
           </div>
         ) : null}
       </Presence>
-      <Presence>{error ? <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p> : null}</Presence>
+      <Presence>{error ? <p role="alert" className="mt-2 text-sm"><FailureText fallback="That did not work. Try again." /></p> : null}</Presence>
       <ServiceDocuments recordId={record.id} label={label} documents={documents} onChanged={onChanged} />
     </li>
   );

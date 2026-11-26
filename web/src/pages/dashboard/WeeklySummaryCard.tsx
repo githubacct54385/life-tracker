@@ -7,6 +7,7 @@ import { formatCents } from "../giving/giftFormat";
 import { formatWeight } from "../health/weightFormat";
 import { Skeleton } from "../../ui/Skeleton.js";
 import type { Load } from "./load";
+import { FailureText } from "../../ui/FailureText";
 
 interface Props {
   today: string;
@@ -48,7 +49,7 @@ function FigureItem({ id, label, to, load, value }: FigureProps) {
         </Link>
       </h3>
       {load.state === "loading" && <Skeleton lines={1} className="mt-2" />}
-      {load.state === "error" && <p className="mt-1">Could not load this.</p>}
+      {load.state === "error" && <p className="mt-1"><FailureText fallback="Could not load this." /></p>}
       {load.state === "ok" &&
         (shown ? (
           <>

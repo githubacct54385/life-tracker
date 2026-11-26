@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { addGroceryRequestSchema, editGroceryRequestSchema, groceryItemSchema, groceryListResponseSchema } from "@life-tracker/shared";
 import type { GroceryService } from "../services/groceryService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
+import { rethrowIfUnavailable } from "../http/unavailable.js";
 
 export interface GroceryDeps {
   logger: Logger;
@@ -39,6 +40,7 @@ export function groceryRoutes({ logger, groceries }: GroceryDeps): Hono {
       logger.info("groceries.cleared", { rowCount: removed });
       return c.body(null, 204);
     } catch (error) {
+      rethrowIfUnavailable(error);
       logger.error("groceries.clear_failed", { errorType: errorTypeOf(error) });
       return c.json({ error: "internal" }, 500);
     }

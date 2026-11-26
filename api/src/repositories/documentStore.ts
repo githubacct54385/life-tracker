@@ -2,6 +2,7 @@
 // Worker as DOCUMENTS; there is no public URL, so a file can be read only through the API after the owner check.
 // The Worker gives each request its bucket with `withRequestDocuments`, the same way it gives each request its database.
 import { AsyncLocalStorage } from "node:async_hooks";
+import { DependencyUnavailable } from "../http/unavailable.js";
 
 /** The few R2 bucket methods used here. The real R2Bucket binding satisfies it, and tests pass a plain object. */
 export interface DocumentBucket {
@@ -41,8 +42,22 @@ function bucketForRequest(): DocumentBucket {
 /** The Workers runtime's stream with a fixed length, which R2 needs to take a stream. It does not exist in Node, where tests use a plain bucket. */
 type FixedLengthStreamConstructor = new (length: number) => { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> };
 
+/** Any failure of the bucket means documents are not available right now (OPS-14). The error itself is dropped: it can name the bucket. */
+async function viaR2<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch {
+    throw new DependencyUnavailable("documents");
+  }
+}
+
 export const r2DocumentStore: DocumentStore = {
-  async put(key, body, contentType, size) {
+  put: (key, body, contentType, size) => viaR2(() => putToR2(key, body, contentType, size)),
+  get: (key) => viaR2(() => getFromR2(key)),
+  delete: (key) => viaR2(() => deleteFromR2(key)),
+};
+
+const putToR2: DocumentStore["put"] = async (key, body, contentType, size) => {
     const bucket = bucketForRequest();
     const options = { httpMetadata: { contentType } };
     const FixedLengthStream = (globalThis as { FixedLengthStream?: FixedLengthStreamConstructor }).FixedLengthStream;
@@ -52,12 +67,13 @@ export const r2DocumentStore: DocumentStore = {
     }
     const fixed = new FixedLengthStream(size);
     await Promise.all([bucket.put(key, fixed.readable, options), body.pipeTo(fixed.writable)]);
-  },
-  async get(key) {
-    const object = await bucketForRequest().get(key);
-    return object ? { body: object.body, size: object.size } : undefined;
-  },
-  async delete(key) {
-    await bucketForRequest().delete(key);
-  },
+};
+
+const getFromR2: DocumentStore["get"] = async (key) => {
+  const object = await bucketForRequest().get(key);
+  return object ? { body: object.body, size: object.size } : undefined;
+};
+
+const deleteFromR2: DocumentStore["delete"] = async (key) => {
+  await bucketForRequest().delete(key);
 };

@@ -8,6 +8,7 @@ import { useApi } from "../../api/ApiContext";
 import { todayLocal } from "../giving/giftFormat";
 import { Page } from "../Page";
 import { describeWarning, formatMiles, parseMiles, shortDate } from "./readingFormat";
+import { FailureText } from "../../ui/FailureText";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -135,7 +136,7 @@ function ReadingRow({ reading, since, onChanged }: { reading: OdometerReadingRec
           </div>
         </div>
       ) : null}</Presence>
-      <Presence>{error ? <p role="alert" className="mt-2 text-sm">That did not work. Try again.</p> : null}</Presence>
+      <Presence>{error ? <p role="alert" className="mt-2 text-sm"><FailureText fallback="That did not work. Try again." /></p> : null}</Presence>
     </li>
   );
 }
@@ -241,7 +242,7 @@ export function LogOdometerPage({ today = todayLocal() }: { today?: string } = {
             </Button>
           )}
           <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
-          <Presence>{error ? <p role="alert">That did not work. Try again.</p> : null}</Presence>
+          <Presence>{error ? <p role="alert"><FailureText fallback="That did not work. Try again." /></p> : null}</Presence>
         </form>
 
         <section aria-labelledby="recent-readings" className="rounded-2xl border border-line bg-card p-4 text-ink">
