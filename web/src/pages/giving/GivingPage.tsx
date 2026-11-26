@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { givingChart, givingYearToDate, monthlyRegularGiving, type GiftRecord, type SpecialContributionRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { HubLink } from "../../ui/HubLink";
 import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
-import { GivingChart } from "./GivingChart";
 import { dateLabel, formatCents, monthLabel, todayLocal } from "./giftFormat";
+
+const GivingChart = lazy(() => import("./GivingChart").then((m) => ({ default: m.GivingChart })));
 
 const card = "rounded-2xl border border-line bg-card p-4 text-ink";
 
@@ -99,7 +100,7 @@ export function GivingPage({ today = todayLocal() }: { today?: string }) {
               <h2 id="giving-chart" className="mb-2 font-bold">
                 Giving by month
               </h2>
-              {chart && !chart.empty ? <GivingChart chart={chart} year={year} /> : <p className="text-muted">No giving recorded for {year}.</p>}
+              {chart && !chart.empty ? <Suspense fallback={<Skeleton lines={3} />}><GivingChart chart={chart} year={year} /></Suspense> : <p className="text-muted">No giving recorded for {year}.</p>}
             </section>
 
             <section aria-labelledby="giving-months" className={card}>

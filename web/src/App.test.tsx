@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./App";
+import { ApiProvider } from "./api/ApiContext";
+import { createDemoApi } from "./demo/demoApi";
 
 // jsdom has no layout, so a fake matchMedia stands in for the browser width.
 function setWidth(width: number) {
@@ -95,5 +97,20 @@ describe("app shell navigation", () => {
   it("[AC-OPS-11.9] a local test build shows the environment strip above the navigation on every page", () => {
     open(1280);
     expect(screen.getByRole("complementary", { name: "Environment" }).getAttribute("data-environment")).toBe("local");
+  });
+
+  it("[AC-OPS-13.2] the pages that draw a chart load their code when opened and then show the page", async () => {
+    setWidth(1280);
+    for (const [path, heading] of [["/health/weight", "Weight"], ["/car/stats", "Mileage stats"]] as const) {
+      const { unmount } = render(
+        <ApiProvider api={createDemoApi()}>
+          <MemoryRouter initialEntries={[path]}>
+            <App />
+          </MemoryRouter>
+        </ApiProvider>,
+      );
+      expect(await screen.findByRole("heading", { name: heading })).toBeTruthy();
+      unmount();
+    }
   });
 });
