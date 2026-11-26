@@ -48,7 +48,7 @@ For the technical list, run `pnpm tests:list`. For what only a person can check,
 - A mileage spreadsheet can be imported, and importing the same file again adds nothing. <!-- AC-MIL-04.1 AC-MIL-04.4 -->
 - A file with the wrong columns is refused with a clear message, and the preview marks rows that differ from the sheet. <!-- AC-MIL-04.3 -->
 
-## Car: maintenance (MIL-05, MIL-06, MIL-07, MIL-08)
+## Car: maintenance (MIL-05, MIL-06, MIL-07, MIL-08, MIL-09)
 
 - A service can be logged: type, date, place, cost. A new place is offered next time, and a service done at home needs no place. <!-- AC-MIL-05.1 AC-MIL-05.2 AC-MIL-05.3 AC-MIL-05.4 -->
 - The odometer starts at the latest reading, and a date in the future is refused. <!-- AC-MIL-05.5 AC-MIL-05.6 AC-MIL-05.9 -->
@@ -57,6 +57,7 @@ For the technical list, run `pnpm tests:list`. For what only a person can check,
 - The history can be narrowed to one type or one place, with the total of what is shown. <!-- AC-MIL-06.1 AC-MIL-06.4 -->
 - A place can be renamed, and removed only when no service uses it. <!-- AC-MIL-06.5 -->
 - Every view fits phone, tablet and desktop. The form is a sheet from the bottom on a phone and a side panel on a computer. <!-- AC-MIL-06.7 AC-MIL-06.8 AC-MIL-06.9 -->
+- "Service due" shows each tracked service with its state in words, fits phone, tablet and desktop, and the interval form can be filled in and saved from the keyboard. <!-- AC-MIL-09.8 -->
 - A photo or PDF can be attached to a service and is still there after a reload. Other file types are refused. <!-- AC-MIL-07.2 AC-MIL-07.3 AC-MIL-07.5 -->
 - Documents are private: without the owner's sign-in none can be read, added or removed. <!-- AC-MIL-07.2 -->
 - Deleting a document or a service removes the stored files. <!-- AC-MIL-07.6 -->

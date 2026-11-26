@@ -11,6 +11,8 @@ import {
   maintenanceRecordSchema,
   servicePlaceSchema,
   placeListResponseSchema,
+  serviceIntervalListResponseSchema,
+  serviceIntervalSchema,
   readingListResponseSchema,
   REQUEST_GUARD_HEADER,
   REQUEST_GUARD_VALUE,
@@ -210,6 +212,15 @@ export function createClient(
     },
     async deleteServicePlace(id) {
       return (await send(`/api/maintenance/places/${id}`, { method: "DELETE" }, [409])).status === 409 ? "in_use" : "deleted";
+    },
+    async listServiceIntervals() {
+      return serviceIntervalListResponseSchema.parse(await request("/api/maintenance/intervals"));
+    },
+    async saveServiceInterval(interval) {
+      return serviceIntervalSchema.parse(await request("/api/maintenance/intervals", jsonBody("PUT", interval)));
+    },
+    async deleteServiceInterval(id) {
+      await send(`/api/maintenance/intervals/${id}`, { method: "DELETE" });
     },
     async listDocuments() {
       return documentListResponseSchema.parse(await request("/api/maintenance/documents"));

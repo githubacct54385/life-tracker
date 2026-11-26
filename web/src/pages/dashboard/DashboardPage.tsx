@@ -25,6 +25,7 @@ import { Icon } from "../../ui/Icon.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { Page } from "../Page";
 import { useLoad, type Load } from "./load";
+import { ServiceDueTile, type ServiceDueData } from "./ServiceDueTile";
 import { WeeklySummaryCard } from "./WeeklySummaryCard";
 
 // The whole card is the link (the title's link is stretched over it), so a tap anywhere on a tile opens its screen.
@@ -63,6 +64,12 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
   const giving = useLoad<{ gifts: GiftRecord[]; special: SpecialContributionRecord[] }>(async () => {
     const [g, s] = await Promise.all([api.listGifts(), api.listSpecialContributions()]);
     return { gifts: g.gifts, special: s.contributions };
+  });
+
+  // Hidden while loading, on a failure and when nothing is overdue or due soon (AC-MIL-09.5).
+  const service = useLoad<ServiceDueData>(async () => {
+    const [list, intervals] = await Promise.all([api.listMaintenance(), api.listServiceIntervals()]);
+    return { records: list.records, intervals: intervals.intervals };
   });
 
   // Hidden while loading, on a failure and when the list is empty: it is shown only when it has something to say (AC-GRO-01.9).
@@ -149,6 +156,8 @@ export function DashboardPage({ today = todayLocal() }: { today?: string }) {
               );
             }}
           </Tile>
+
+          <ServiceDueTile today={today} data={service} readings={readings} />
 
           {groceryCount && (
             <section aria-labelledby="tile-groceries" className={card}>

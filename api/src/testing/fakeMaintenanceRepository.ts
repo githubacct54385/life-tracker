@@ -1,5 +1,5 @@
 // In-memory stand-in for the maintenance repository, for service and handler unit tests. Synthetic data only.
-import type { ServicePlace } from "@life-tracker/shared";
+import type { ServiceInterval, ServicePlace } from "@life-tracker/shared";
 import type { MaintenanceFields, MaintenanceRepository, StoredMaintenance } from "../repositories/maintenanceRepository.js";
 
 export function fakeMaintenanceRepo(): MaintenanceRepository & { rows: StoredMaintenance[]; places: ServicePlace[] } {
@@ -7,6 +7,8 @@ export function fakeMaintenanceRepo(): MaintenanceRepository & { rows: StoredMai
   let nextPlaceId = 1;
   const rows: StoredMaintenance[] = [];
   const places: ServicePlace[] = [];
+  let nextIntervalId = 1;
+  const intervals: ServiceInterval[] = [];
   const placeById = (id: number | null) => (id === null ? null : (places.find((p) => p.id === id) ?? null));
   const make = (id: number, f: MaintenanceFields): StoredMaintenance => ({
     id,
@@ -47,6 +49,24 @@ export function fakeMaintenanceRepo(): MaintenanceRepository & { rows: StoredMai
       const place = { id: nextPlaceId++, name };
       places.push(place);
       return { ...place };
+    },
+    async listIntervals() {
+      return [...intervals].sort((a, b) => a.service.toLowerCase().localeCompare(b.service.toLowerCase()));
+    },
+    async saveInterval(service, miles, months) {
+      const found = intervals.find((i) => i.service.toLowerCase() === service.toLowerCase());
+      if (found) {
+        Object.assign(found, { service, miles, months });
+        return { ...found };
+      }
+      const interval = { id: nextIntervalId++, service, miles, months };
+      intervals.push(interval);
+      return { ...interval };
+    },
+    async removeInterval(id) {
+      const index = intervals.findIndex((i) => i.id === id);
+      if (index >= 0) intervals.splice(index, 1);
+      return index >= 0;
     },
     async insert(fields) {
       const row = make(nextId++, fields);

@@ -2,6 +2,7 @@
 import { getPool } from "../db/connection.js";
 
 export async function clearMaintenance(): Promise<void> {
+  await getPool().query("DELETE FROM service_intervals");
   await getPool().query("DELETE FROM maintenance_records");
   await getPool().query("DELETE FROM service_places");
 }

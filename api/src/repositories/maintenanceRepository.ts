@@ -1,4 +1,4 @@
-import type { DoneBy, ServicePlace } from "@life-tracker/shared";
+import type { DoneBy, ServiceInterval, ServicePlace } from "@life-tracker/shared";
 import { getPool } from "../db/connection.js";
 import { currentUserId } from "../db/requestUser.js";
 
@@ -48,6 +48,14 @@ const toRecord = (row: Row): StoredMaintenance => ({
   note: row.note,
 });
 
+interface IntervalRow {
+  id: string;
+  service_name: string;
+  miles: number | null;
+  months: number | null;
+}
+const toInterval = (row: IntervalRow): ServiceInterval => ({ id: Number(row.id), service: row.service_name, miles: row.miles, months: row.months });
+
 // service_date is formatted in SQL so the driver never turns a calendar date into a time-zone-shifted Date.
 const SELECT = `SELECT r.id, to_char(r.service_date, 'YYYY-MM-DD') AS date, r.services, r.done_by, r.place_id, p.name AS place_name,
   r.cost_cents, r.odometer_miles, r.note FROM maintenance_records r LEFT JOIN service_places p ON p.id = r.place_id`;
@@ -66,6 +74,12 @@ export interface MaintenanceRepository {
   deletePlace(id: number): Promise<DeletePlaceResult>;
   /** The place with this name (ignoring letter case), added when there is none. */
   findOrCreatePlace(name: string): Promise<ServicePlace>;
+  /** Every service interval, by service name (MIL-09). */
+  listIntervals(): Promise<ServiceInterval[]>;
+  /** Sets the interval of a service type, replacing the one it had (the name is matched ignoring letter case). */
+  saveInterval(service: string, miles: number | null, months: number | null): Promise<ServiceInterval>;
+  /** True when an interval was removed. */
+  removeInterval(id: number): Promise<boolean>;
   insert(fields: MaintenanceFields): Promise<StoredMaintenance>;
   /** Replaces every field. Undefined when there is no such service. */
   update(id: number, fields: MaintenanceFields): Promise<StoredMaintenance | undefined>;
@@ -125,6 +139,26 @@ export const maintenanceRepository: MaintenanceRepository = {
     }
     const exists = await getPool().query("SELECT 1 FROM service_places WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (exists.rowCount ?? 0) > 0 ? "in_use" : "not_found";
+  },
+
+  async listIntervals() {
+    const result = await getPool().query<IntervalRow>("SELECT id, service_name, miles, months FROM service_intervals WHERE user_id = $1 ORDER BY lower(service_name)", [currentUserId()]);
+    return result.rows.map(toInterval);
+  },
+
+  async saveInterval(service, miles, months) {
+    const result = await getPool().query<IntervalRow>(
+      `INSERT INTO service_intervals (user_id, service_name, miles, months) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, (lower(service_name))) DO UPDATE SET service_name = EXCLUDED.service_name, miles = EXCLUDED.miles, months = EXCLUDED.months, updated_at = now()
+       RETURNING id, service_name, miles, months`,
+      [currentUserId(), service, miles, months],
+    );
+    return toInterval(result.rows[0]!);
+  },
+
+  async removeInterval(id) {
+    const result = await getPool().query("DELETE FROM service_intervals WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
+    return (result.rowCount ?? 0) > 0;
   },
 
   async insert({ date, services, doneBy, placeId, costCents, odometerMiles, note }) {

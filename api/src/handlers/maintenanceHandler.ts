@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { TIME_ZONE_HEADER, documentListResponseSchema, maintenanceDocumentSchema, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, renamePlaceRequestSchema, saveMaintenanceRequestSchema, servicePlaceSchema } from "@life-tracker/shared";
+import { TIME_ZONE_HEADER, documentListResponseSchema, maintenanceDocumentSchema, maintenanceListResponseSchema, maintenanceRecordSchema, placeListResponseSchema, renamePlaceRequestSchema, saveMaintenanceRequestSchema, saveServiceIntervalRequestSchema, serviceIntervalListResponseSchema, serviceIntervalSchema, servicePlaceSchema } from "@life-tracker/shared";
 import { DOCUMENT_UPLOAD, openUpload } from "../http/uploadLimits.js";
 import type { DocumentService } from "../services/documentService.js";
 import type { MaintenanceService } from "../services/maintenanceService.js";
@@ -82,6 +82,25 @@ export function maintenanceRoutes({ logger, maintenance, documents }: Maintenanc
       case "bad_length":
         return c.json({ error: "invalid_request" }, 400);
     }
+  });
+
+  // Service intervals (MIL-09). Registered before `/:id`.
+  routes.get("/intervals", async (c) => {
+    const intervals = await maintenance.intervals();
+    logger.info("maintenance.intervals", { rowCount: intervals.length });
+    return c.json(serviceIntervalListResponseSchema.parse({ intervals }));
+  });
+
+  routes.put("/intervals", async (c) => {
+    const body = saveServiceIntervalRequestSchema.safeParse(await c.req.json().catch(() => undefined));
+    if (!body.success) return c.json({ error: "invalid_request" }, 400);
+    return c.json(serviceIntervalSchema.parse(await maintenance.setInterval(body.data)));
+  });
+
+  routes.delete("/intervals/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (id === undefined) return c.json({ error: "invalid_request" }, 400);
+    return (await maintenance.removeInterval(id)) ? c.body(null, 204) : c.json({ error: "not_found" }, 404);
   });
 
   routes.get("/places", async (c) => {

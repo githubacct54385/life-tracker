@@ -119,7 +119,7 @@ Notes:
 | History, "last done" per type and miles since, filters, edit and delete, rename places | MVP |
 | The Maintenance page opens on the history (MIL-06, 2026-11-19): services as cards under month headings with count and cost, a switch for By date, By place or By service, search and filters, and "Last done" as a strip that opens. "Log a service" opens the form as a panel (a sheet on a phone, a side panel on a computer), so the form is not on the page until it is wanted. | MVP |
 | Attach documents to a service (photo, screenshot or PDF), kept in private Cloudflare R2 (ADR-0024, an exception to the no-stored-files rule) | MVP |
-| Reminders and "next due": not built. The owner uses Apple Calendar. An "add to calendar" (.ics) button is a possible later extra. | Later |
+| "Next due" for services (MIL-09): built. Set an interval in miles, months or both per service type on Car > Maintenance; each shows OK, Due soon (within 500 miles or 30 days) or Overdue, with an estimated date from the last 90 days of driving, the most urgent on Home, and an "add to calendar" (.ics) file with only the name and date. Push reminders: not built, the owner uses Apple Calendar. | Done |
 | Fuel fill-ups and miles per gallon | Not planned: the owner's finance app already has fuel spending, and the owner does not want to enter it twice |
 | Registration, insurance and inspection dates | Not planned for now |
 

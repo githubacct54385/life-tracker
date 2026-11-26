@@ -11,6 +11,7 @@ const GIFT = { id: 7, dateGiven: "2026-02-03", forMonth: "2026-01", cents: 10_00
 const WARNING = { status: "needs_confirmation", warnings: [{ kind: "lower_than_previous", previous: { date: "2026-11-06", miles: 48_550 } }] };
 
 const SERVICE = { id: 4, date: "2026-11-10", services: ["Oil change"], doneBy: "shop", place: { id: 1, name: "Joe's Garage" }, costCents: 8999, odometerMiles: 48_300, note: null };
+const INTERVAL = { id: 1, service: "Oil change", miles: 5000, months: 6 };
 const DOCUMENT = { id: 9, recordId: 4, contentType: "image/png", bytes: 11, createdAt: "2026-11-13T12:00:00Z" };
 const WORKOUT = { id: 7, date: "2026-11-13", type: "Run", minutes: 30, reps: null, note: null, source: "manual" };
 
@@ -63,6 +64,9 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
       const [status, error] = answers[Number(refusal[1]) as keyof typeof answers];
       return Response.json({ error }, { status });
     }
+    if (input === "/api/maintenance/intervals" && init?.method === "GET") return Response.json({ intervals: [INTERVAL] });
+    if (input === "/api/maintenance/intervals" && init?.method === "PUT") return Response.json({ id: 2, miles: null, months: null, ...JSON.parse(init.body as string) });
+    if (input === "/api/maintenance/intervals/1" && init?.method === "DELETE") return new Response(null, { status: 204 });
     if (input === "/api/maintenance/places" && init?.method === "GET") return Response.json({ places: [SERVICE.place] });
     if (input === "/api/maintenance" && init?.method === "GET") return Response.json({ records: [SERVICE] });
     if (input === "/api/maintenance" && init?.method === "POST") return Response.json(SERVICE, { status: 201 });
@@ -83,7 +87,7 @@ const implementations: Array<[string, () => Api]> = [
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
 const GROCERY = { id: "11111111-1111-4111-8111-111111111111", name: "Milk", quantity: "2", note: "", section: "Dairy and eggs", found: false };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "getWorkoutGoal", "saveWorkoutGoal", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "getWorkoutGoal", "saveWorkoutGoal", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listServiceIntervals", "saveServiceInterval", "deleteServiceInterval", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {
@@ -422,6 +426,32 @@ describe("demo maintenance behaviour", () => {
   });
 });
 
+describe.each(implementations)("[AC-MIL-09.7] service interval contract: %s", (_name, make) => {
+  it("lists intervals with the shared shape, saves one and removes one", async () => {
+    const api = make();
+    const { intervals } = await api.listServiceIntervals();
+    expect(intervals.length).toBeGreaterThan(0);
+    expect(intervals[0]).toMatchObject({ id: expect.any(Number), service: expect.any(String) });
+    expect(await api.saveServiceInterval({ service: "Brakes", miles: 30_000 })).toMatchObject({ service: "Brakes", miles: 30_000, months: null });
+    await expect(api.deleteServiceInterval(intervals[0]!.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("demo service intervals", () => {
+  it("[AC-MIL-09.7] has sample intervals that live only in memory, replaces a type's interval ignoring letter case, and refuses bad input", async () => {
+    const api = createDemoApi();
+    const before = (await api.listServiceIntervals()).intervals;
+    const replaced = await api.saveServiceInterval({ service: before[0]!.service.toUpperCase(), months: 3 });
+    expect(replaced).toMatchObject({ id: before[0]!.id, months: 3, miles: null });
+    expect((await api.listServiceIntervals()).intervals).toHaveLength(before.length);
+    await expect(api.saveServiceInterval({ service: "X" })).rejects.toThrow();
+    await expect(api.saveServiceInterval({ service: "X", miles: 0 })).rejects.toThrow();
+    await expect(api.deleteServiceInterval(9999)).rejects.toThrow();
+    // A second demo starts from the sample intervals again: nothing was kept.
+    expect((await createDemoApi().listServiceIntervals()).intervals).toEqual(before);
+  });
+});
+
 describe("client.ts maintenance requests", () => {
   it("[AC-MIL-05.9] sends the service as JSON with the custom header on writes, to the paths the API serves", async () => {
     const sent: { method?: string; body?: string; guard?: string | null; url: string }[] = [];
@@ -432,12 +462,18 @@ describe("client.ts maintenance requests", () => {
     await api.logMaintenance(request);
     await api.editMaintenance(4, request);
     await api.deleteMaintenance(4);
+    await api.listServiceIntervals();
+    await api.saveServiceInterval({ service: "Oil change", miles: 5000 });
+    await api.deleteServiceInterval(1);
     expect(sent.map((r) => [r.method ?? "GET", r.url, r.body])).toEqual([
       ["GET", "/api/maintenance", undefined],
       ["GET", "/api/maintenance/places", undefined],
       ["POST", "/api/maintenance", JSON.stringify(request)],
       ["PUT", "/api/maintenance/4", JSON.stringify(request)],
       ["DELETE", "/api/maintenance/4", undefined],
+      ["GET", "/api/maintenance/intervals", undefined],
+      ["PUT", "/api/maintenance/intervals", JSON.stringify({ service: "Oil change", miles: 5000 })],
+      ["DELETE", "/api/maintenance/intervals/1", undefined],
     ]);
     expect(sent.filter((r) => r.method !== "GET").every((r) => r.guard === "1")).toBe(true);
   });

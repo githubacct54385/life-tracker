@@ -1,4 +1,4 @@
-import type { AddGroceryRequest, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutGoal, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { AddGroceryRequest, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, SaveServiceIntervalRequest, ServiceInterval, ServiceIntervalListResponse, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutGoal, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /** What happens to an uploaded document (MIL-07). The server decides; nothing is stored unless the status is "saved". */
 export type UploadDocumentResult = { status: "saved"; document: MaintenanceDocument } | { status: "too_large" | "unsupported_type" | "limit_reached" | "too_much" | "not_found" };
@@ -85,6 +85,12 @@ export interface Api {
   renameServicePlace(id: number, name: string): Promise<{ status: "saved"; place: ServicePlace } | { status: "name_taken" }>;
   /** Deletes a place only when no service uses it (MIL-06). */
   deleteServicePlace(id: number): Promise<"deleted" | "in_use">;
+  /** How often each type of service is due (MIL-09). A type with no interval is never shown as due. */
+  listServiceIntervals(): Promise<ServiceIntervalListResponse>;
+  /** Sets the interval of one type (miles, months or both), replacing any it had. The name is matched ignoring letter case. */
+  saveServiceInterval(interval: SaveServiceIntervalRequest): Promise<ServiceInterval>;
+  /** Stops tracking a type. */
+  deleteServiceInterval(id: number): Promise<void>;
   /** Every document attached to a service, oldest first (MIL-07). There are no file names: they are never kept. */
   listDocuments(): Promise<DocumentListResponse>;
   /** Attaches a photo or PDF to a service. The server checks the type from the file's own bytes, the 100 MB limit, the 10 per service and the 250 MB total per service. */

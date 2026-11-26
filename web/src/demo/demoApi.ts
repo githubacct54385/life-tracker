@@ -35,6 +35,10 @@ import {
   maintenanceListResponseSchema,
   maintenanceRecordSchema,
   placeListResponseSchema,
+  saveServiceIntervalRequestSchema,
+  serviceIntervalListResponseSchema,
+  serviceIntervalSchema,
+  type ServiceInterval,
   renamePlaceRequestSchema,
   saveMaintenanceRequestSchema,
   type MaintenanceRecord,
@@ -166,6 +170,13 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
     { id: 1, date: "2026-10-12", services: ["Wipers"], doneBy: "home", place: null, costCents: 1800, odometerMiles: 47_700, note: "Front pair" },
   ];
   let nextServiceId = 3;
+  // Sample intervals (AC-MIL-09.7). They live only in this page's memory: nothing is stored or sent anywhere.
+  let intervals: ServiceInterval[] = [
+    { id: 1, service: "Oil change", miles: 5000, months: 6 },
+    { id: 2, service: "Wipers", miles: null, months: 12 },
+    { id: 3, service: "Tires", miles: 40_000, months: null },
+  ];
+  let nextIntervalId = 4;
   // Demo documents stay in this page's memory (AC-MIL-07.8). Nothing is stored or sent anywhere.
   let documents: MaintenanceDocument[] = [];
   let nextDocumentId = 1;
@@ -423,6 +434,23 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
       if (services.some((s) => s.place?.id === id)) return "in_use";
       places = places.filter((p) => p.id !== id);
       return "deleted";
+    },
+
+    async listServiceIntervals() {
+      return serviceIntervalListResponseSchema.parse({ intervals: [...intervals].sort((a, b) => a.service.toLowerCase().localeCompare(b.service.toLowerCase())) });
+    },
+
+    async saveServiceInterval(request) {
+      const input = saveServiceIntervalRequestSchema.parse(request);
+      const found = intervals.find((i) => i.service.toLowerCase() === input.service.toLowerCase());
+      const interval = serviceIntervalSchema.parse({ id: found?.id ?? nextIntervalId++, service: input.service, miles: input.miles ?? null, months: input.months ?? null });
+      intervals = found ? intervals.map((i) => (i.id === found.id ? interval : i)) : [...intervals, interval];
+      return interval;
+    },
+
+    async deleteServiceInterval(id) {
+      if (!intervals.some((i) => i.id === id)) throw new Error("Interval not found");
+      intervals = intervals.filter((i) => i.id !== id);
     },
 
     async listDocuments() {
