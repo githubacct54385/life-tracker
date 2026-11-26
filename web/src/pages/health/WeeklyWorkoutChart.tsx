@@ -5,6 +5,7 @@ import { Button } from "../../ui/Button";
 import { useBusy } from "../../ui/useBusy";
 import { shortDate } from "../car/readingFormat";
 import { formatMinutes } from "./workoutFormat";
+import { keepOutOfTabOrder } from "../../ui/chartTabStops";
 
 type View = "count" | "minutes";
 
@@ -87,7 +88,7 @@ export function WeeklyWorkoutChart({ workouts, today, goal, onSaveGoal }: { work
         <p className="mt-3 text-muted">No workouts in the last 12 weeks. Log a workout to fill the chart.</p>
       ) : (
         <>
-          <div role="img" aria-label={summary} className="mt-3 h-64 w-full sm:h-80">
+          <div ref={keepOutOfTabOrder} role="img" aria-label={summary} className="mt-3 h-64 w-full sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart accessibilityLayer={false} data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="var(--line)" vertical={false} />

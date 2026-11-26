@@ -11,6 +11,7 @@ import { shortDate } from "../car/readingFormat";
 import { Page } from "../Page";
 import { formatWeight, parseWeight, UNIT_LABEL, weightToInput } from "./weightFormat";
 import { FailureText } from "../../ui/FailureText";
+import { keepOutOfTabOrder } from "../../ui/chartTabStops";
 
 const inputClass = "w-full rounded-xl border border-line bg-card px-3 py-3 text-lg text-ink";
 
@@ -34,7 +35,7 @@ function WeightChart({ entries, unit }: { entries: WeightEntryRecord[]; unit: Un
   const summary = `Line chart of ${rows.length} daily weights with a 7-day moving average. The latest weight is ${last.weight.toFixed(1)} ${UNIT_LABEL[unit]} on ${shortDate(last.date)}, and the trend is ${last.trend.toFixed(1)} ${UNIT_LABEL[unit]}, from ${first.trend.toFixed(1)} ${UNIT_LABEL[unit]} on ${shortDate(first.date)}. The same numbers are in the table below.`;
   return (
     <figure className="m-0">
-      <div role="img" aria-label={summary} className="h-64 w-full sm:h-80">
+      <div ref={keepOutOfTabOrder} role="img" aria-label={summary} className="h-64 w-full sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           {/* No keyboard layer: recharts 3.11 makes the chart several empty Tab stops. The table below is the keyboard and screen reader view (AC-SET-02.2). */}
           <LineChart accessibilityLayer={false} data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

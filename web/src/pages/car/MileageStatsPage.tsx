@@ -15,6 +15,7 @@ import { Skeleton } from "../../ui/Skeleton.js";
 import { Page } from "../Page";
 import { formatMiles, shortDate } from "./readingFormat";
 import { FailureText } from "../../ui/FailureText";
+import { keepOutOfTabOrder } from "../../ui/chartTabStops";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthLabel = (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
@@ -36,7 +37,7 @@ function WeeklyChart({ rows }: { rows: Row[] }) {
   const summary = `Bar chart of miles driven in each of the last ${rows.length} periods between weekly readings, with the rolling 8-week average as a line. The same numbers are in the table below.`;
   return (
     <figure className="m-0">
-      <div role="img" aria-label={summary} className="h-64 w-full sm:h-80">
+      <div ref={keepOutOfTabOrder} role="img" aria-label={summary} className="h-64 w-full sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           {/* No keyboard layer: recharts 3.11 makes the chart several empty Tab stops. The table below is the keyboard and screen reader view (AC-SET-02.2). */}
           <ComposedChart accessibilityLayer={false} data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

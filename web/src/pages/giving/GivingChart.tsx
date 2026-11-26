@@ -1,6 +1,7 @@
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { GivingChart as GivingChartData } from "@life-tracker/shared";
 import { formatCents, monthLabel } from "./giftFormat";
+import { keepOutOfTabOrder } from "../../ui/chartTabStops";
 
 const SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** One letter on the chart axis, so twelve months fit a phone. The tooltip and the table use full names. */
@@ -22,7 +23,7 @@ export function GivingChart({ chart, year }: { chart: GivingChartData; year: num
       <p className="text-ink">
         <span className="font-bold tabular-nums">{formatCents(chart.yearCents)}</span> in {year}, about <span className="font-bold tabular-nums">{formatCents(chart.averageCents)}</span> a month so far
       </p>
-      <div role="img" aria-label={summary} className="mt-2 h-64 w-full sm:h-80">
+      <div ref={keepOutOfTabOrder} role="img" aria-label={summary} className="mt-2 h-64 w-full sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart accessibilityLayer={false} data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
             <defs>

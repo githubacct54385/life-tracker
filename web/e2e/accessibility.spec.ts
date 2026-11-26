@@ -95,8 +95,7 @@ test("[AC-SET-02.2] every control on every screen can be reached with the keyboa
     // Tab inside a date field moves between its day, month and year parts, so a control counts as ringed if it showed a ring when it first got focus.
     const ring = new Map<string, { ringed: boolean; text: string }>();
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    // Each Recharts chart also puts a few unlabelled drawing layers in the tab order (they are not controls and are not counted above), so allow for them.
-    for (let i = 0; i < total + 24; i++) {
+    for (let i = 0; i < total + 6; i++) {
       await page.keyboard.press("Tab");
       const info = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;
