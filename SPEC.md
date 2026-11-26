@@ -67,7 +67,8 @@ Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking, accounts, catego
 | Log workouts manually (type, duration, notes; dated when saved, with no date to enter). Pushups are counted, not timed: enter how many | MVP |
 | Import workouts from an Apple Health export (the ZIP is opened in the browser) | MVP |
 | Workout history, weekly and monthly totals, consistency streaks | MVP |
-| Goals: target weight, workouts per week | Next |
+| Weekly workout chart for the last 12 weeks (Friday to Thursday weeks), split by workout type, with a weekly goal of 1 to 14 workouts, a goal line, workouts left this week, and the streak of weeks that met the goal (HLT-05) | MVP |
+| Goal: target weight | Next |
 | Import weight from the Apple Health export too | Next |
 | Optional daily check-in: mood (1 to 5) and hours slept | Next |
 | Correlation view (for example, workouts vs. mood vs. miles driven) | Later |

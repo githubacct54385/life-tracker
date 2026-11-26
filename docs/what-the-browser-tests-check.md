@@ -64,11 +64,13 @@ For the technical list, run `pnpm tests:list`. For what only a person can check,
 - A photo opens full screen, and Download saves it under a made-up name. <!-- AC-MIL-07.12 AC-MIL-07.13 -->
 - Several files can be chosen at once, and the list fits a phone. <!-- AC-MIL-07.14 AC-MIL-07.17 AC-MIL-07.18 AC-MIL-07.19 AC-MIL-08.9 -->
 
-## Health (HLT-01, HLT-02, HLT-04)
+## Health (HLT-01, HLT-02, HLT-04, HLT-05)
 
 - Weight: a weight is saved, a second one on the same day asks before replacing, and it can be deleted. The chart has a text version. <!-- AC-HLT-01.1 AC-HLT-01.2 AC-HLT-01.3 -->
 - Workouts: a timed workout and a push-up count can be saved, listed, edited and counted. Push-ups ask how many, not how long. <!-- AC-HLT-02.1 AC-HLT-02.3 AC-HLT-02.4 -->
 - Health shows the history, weekly and monthly totals and the streak. <!-- AC-HLT-04.1 AC-HLT-04.2 AC-HLT-04.3 -->
+- A weekly goal of workouts can be set on Health. A bad number is refused, and the goal is still there after a reload. <!-- AC-HLT-05.6 -->
+- The weekly workout chart is drawn for the last 12 weeks, has a table of the same numbers, and fits every screen size. <!-- AC-HLT-05.7 -->
 
 ## Giving (GIV-01, GIV-02, GIV-03, GIV-04)
 

@@ -28,6 +28,8 @@ import {
   weightEntrySchema,
   weightListResponseSchema,
   type WeightEntryRecord,
+  saveWorkoutGoalRequestSchema,
+  workoutGoalSchema,
   workoutListResponseSchema,
   workoutRecordSchema,
   maintenanceListResponseSchema,
@@ -156,6 +158,7 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
   let groceries = seedGroceries();
   let workouts = seedWorkouts();
   let nextWorkoutId = 4;
+  let workoutGoal: number | null = null;
   let places: ServicePlace[] = [{ id: 1, name: "Joe's Garage" }];
   let nextPlaceId = 2;
   let services: MaintenanceRecord[] = [
@@ -345,6 +348,14 @@ export function createDemoApi(options: { now?: () => Date } = {}): Api {
 
     async deleteWorkout(id) {
       workouts = workouts.filter((w) => w.id !== id);
+    },
+
+    async getWorkoutGoal() {
+      return workoutGoalSchema.parse({ perWeek: workoutGoal });
+    },
+    async saveWorkoutGoal(perWeek) {
+      workoutGoal = saveWorkoutGoalRequestSchema.parse({ perWeek }).perWeek;
+      return workoutGoalSchema.parse({ perWeek: workoutGoal });
     },
 
     async listMaintenance() {

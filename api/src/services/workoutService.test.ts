@@ -67,3 +67,14 @@ describe("pushups (counted, not timed)", () => {
     expect(result.reps).toBeNull();
   });
 });
+
+describe("weekly goal", () => {
+  it("[AC-HLT-05.6] has no goal until one is set, then returns it, and a new goal replaces the old one", async () => {
+    const service = createWorkoutService(fakeWorkoutRepo(), { now: FRIDAY_NOON });
+    expect(await service.goal()).toBeNull();
+    expect(await service.setGoal(4)).toBe(4);
+    expect(await service.goal()).toBe(4);
+    expect(await service.setGoal(2)).toBe(2);
+    expect(await service.goal()).toBe(2);
+  });
+});

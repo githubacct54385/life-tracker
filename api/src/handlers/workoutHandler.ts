@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { TIME_ZONE_HEADER, saveWorkoutRequestSchema, workoutListResponseSchema, workoutRecordSchema } from "@life-tracker/shared";
+import { TIME_ZONE_HEADER, saveWorkoutGoalRequestSchema, saveWorkoutRequestSchema, workoutGoalSchema, workoutListResponseSchema, workoutRecordSchema } from "@life-tracker/shared";
 import type { WorkoutService } from "../services/workoutService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
 
@@ -18,6 +18,15 @@ export function workoutRoutes({ logger, workouts }: WorkoutDeps): Hono {
     const list = await workouts.list();
     logger.info("workouts.list", { rowCount: list.length });
     return c.json(workoutListResponseSchema.parse({ workouts: list }));
+  });
+
+  // The goal routes come before "/:id", so "goal" is never read as a workout id.
+  routes.get("/goal", async (c) => c.json(workoutGoalSchema.parse({ perWeek: await workouts.goal() })));
+
+  routes.put("/goal", async (c) => {
+    const body = saveWorkoutGoalRequestSchema.safeParse(await c.req.json().catch(() => undefined));
+    if (!body.success) return c.json({ error: "invalid_request" }, 400);
+    return c.json(workoutGoalSchema.parse({ perWeek: await workouts.setGoal(body.data.perWeek) }));
   });
 
   routes.post("/", async (c) => {

@@ -38,6 +38,10 @@ export interface WorkoutRepository {
   update(id: number, fields: { type: string; minutes: number | null; reps: number | null; note: string | null }): Promise<StoredWorkout | undefined>;
   /** True when a workout was removed. */
   remove(id: number): Promise<boolean>;
+  /** The person's weekly goal, or null when none is set (HLT-05). */
+  getGoal(): Promise<number | null>;
+  /** Sets the person's weekly goal, replacing any earlier one. */
+  setGoal(perWeek: number): Promise<number>;
 }
 
 export const workoutRepository: WorkoutRepository = {
@@ -65,5 +69,18 @@ export const workoutRepository: WorkoutRepository = {
   async remove(id) {
     const result = await getPool().query("DELETE FROM workouts WHERE id = $1 AND user_id = $2", [id, currentUserId()]);
     return (result.rowCount ?? 0) > 0;
+  },
+
+  async getGoal() {
+    const result = await getPool().query<{ per_week: number }>("SELECT per_week FROM workout_goals WHERE user_id = $1", [currentUserId()]);
+    return result.rows[0]?.per_week ?? null;
+  },
+
+  async setGoal(perWeek) {
+    const result = await getPool().query<{ per_week: number }>(
+      "INSERT INTO workout_goals (user_id, per_week) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET per_week = EXCLUDED.per_week, updated_at = now() RETURNING per_week",
+      [currentUserId(), perWeek],
+    );
+    return result.rows[0]!.per_week;
   },
 };

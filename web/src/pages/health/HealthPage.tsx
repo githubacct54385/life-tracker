@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_WEEKLY_WORKOUT_TARGET, paceStreakDays, workoutTotals, type WorkoutRecord } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { monthLabel, todayLocal } from "../giving/giftFormat";
@@ -7,6 +7,9 @@ import { HubLink } from "../../ui/HubLink";
 import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
 import { describeAmount, formatMinutes, SOURCE_LABELS } from "./workoutFormat";
+
+// The chart and goal load only when Health opens, so Recharts and this code stay out of the first screen's JavaScript (OPS-10).
+const WeeklyWorkoutChart = lazy(() => import("./WeeklyWorkoutChart").then((m) => ({ default: m.WeeklyWorkoutChart })));
 
 const card = "rounded-2xl border border-line bg-card p-4 text-ink";
 
@@ -50,6 +53,8 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
   const api = useApi();
   const [workouts, setWorkouts] = useState<WorkoutRecord[] | null>(null);
   const [failed, setFailed] = useState(false);
+  /** The weekly goal: undefined while it loads, null when none is set. */
+  const [goal, setGoal] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
@@ -61,6 +66,19 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
       current = false;
     };
   }, [api]);
+
+  useEffect(() => {
+    let current = true;
+    api
+      .getWorkoutGoal()
+      .then((r) => current && setGoal(r.perWeek))
+      .catch(() => current && setFailed(true));
+    return () => {
+      current = false;
+    };
+  }, [api]);
+
+  const saveGoal = useCallback(async (perWeek: number) => setGoal((await api.saveWorkoutGoal(perWeek)).perWeek), [api]);
 
   const summary = useMemo(() => {
     if (!workouts) return null;
@@ -83,6 +101,11 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
 
         {failed && <p role="alert">That did not work. Try again.</p>}
         {!failed && !summary && <Skeleton lines={3} />}
+        {summary && goal !== undefined && (
+          <Suspense fallback={<Skeleton lines={3} />}>
+            <WeeklyWorkoutChart workouts={workouts!} today={today} goal={goal} onSaveGoal={saveGoal} />
+          </Suspense>
+        )}
         {summary && workouts!.length === 0 && <p className="text-muted">No workouts yet. Log a workout to see your streak, weekly and monthly totals, and your history here.</p>}
 
         {summary && workouts!.length > 0 && (

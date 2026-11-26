@@ -22,6 +22,7 @@ import {
   weightEntrySchema,
   weightListResponseSchema,
   workoutListResponseSchema,
+  workoutGoalSchema,
   workoutRecordSchema,
 } from "@life-tracker/shared";
 import { loadPreferences } from "../settings/preferences";
@@ -162,6 +163,13 @@ export function createClient(
     },
     async deleteWorkout(id) {
       await send(`/api/workouts/${id}`, { method: "DELETE" });
+    },
+
+    async getWorkoutGoal() {
+      return workoutGoalSchema.parse(await request("/api/workouts/goal"));
+    },
+    async saveWorkoutGoal(perWeek) {
+      return workoutGoalSchema.parse(await request("/api/workouts/goal", jsonBody("PUT", { perWeek })));
     },
     async listGroceries() {
       return groceryListResponseSchema.parse(await request("/api/groceries"));

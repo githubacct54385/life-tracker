@@ -44,6 +44,7 @@ async function mockApi(page: Page) {
   await page.route("**/api/workouts", (r) =>
     r.fulfill({ json: { workouts: [{ id: 2, date: day(0), type: "Run", minutes: 32, reps: null, note: "Easy pace", source: "manual" }, { id: 1, date: day(2), type: "Yoga", minutes: 40, reps: null, note: null, source: "apple_watch" }] } }),
   );
+  await page.route("**/api/workouts/goal", (r) => r.fulfill({ json: { perWeek: 3 } })); // the weekly workout chart on Health (HLT-05)
 }
 
 test.beforeEach(async ({ page, context }) => {

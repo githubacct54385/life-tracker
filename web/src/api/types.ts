@@ -1,4 +1,4 @@
-import type { AddGroceryRequest, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
+import type { AddGroceryRequest, DocumentListResponse, EditGroceryRequest, GroceryItem, GroceryListResponse, MaintenanceDocument, MaintenanceListResponse, MaintenanceRecord, PlaceListResponse, SaveMaintenanceRequest, ServicePlace, GiftListResponse, GiftRecord, HealthResponse, ImportMileageResult, ImportRow, ReadingListResponse, SaveGiftRequest, SaveReadingResult, SaveSpecialContributionRequest, SaveWorkoutRequest, SpecialContributionListResponse, SpecialContributionRecord, SaveWeightResult, WeightEntryRecord, WeightListResponse, WorkoutGoal, WorkoutListResponse, WorkoutRecord } from "@life-tracker/shared";
 
 /** What happens to an uploaded document (MIL-07). The server decides; nothing is stored unless the status is "saved". */
 export type UploadDocumentResult = { status: "saved"; document: MaintenanceDocument } | { status: "too_large" | "unsupported_type" | "limit_reached" | "too_much" | "not_found" };
@@ -57,6 +57,10 @@ export interface Api {
   editWorkout(id: number, workout: SaveWorkoutRequest): Promise<WorkoutRecord>;
   /** Removes a workout for good. */
   deleteWorkout(id: number): Promise<void>;
+  /** The weekly workout goal, or `perWeek: null` before one is set (HLT-05). */
+  getWorkoutGoal(): Promise<WorkoutGoal>;
+  /** Sets the weekly workout goal, a whole number from 1 to 14. */
+  saveWorkoutGoal(perWeek: number): Promise<WorkoutGoal>;
   /** The person's grocery list, in the order it was written (GRO-01). */
   listGroceries(): Promise<GroceryListResponse>;
   /** Adds an item. The caller chooses its id (a UUID), so sending the same request twice makes one item. Without a section the server guesses one from the name. */

@@ -3,6 +3,7 @@ import type { StoredWorkout, WorkoutRepository } from "../repositories/workoutRe
 
 export function fakeWorkoutRepo(seed: Array<Omit<StoredWorkout, "id">> = []): WorkoutRepository & { rows: StoredWorkout[] } {
   let nextId = 1;
+  let goal: number | null = null;
   const rows: StoredWorkout[] = seed.map((w) => ({ id: nextId++, ...w }));
   const newestFirst = () => [...rows].sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
   return {
@@ -24,6 +25,13 @@ export function fakeWorkoutRepo(seed: Array<Omit<StoredWorkout, "id">> = []): Wo
       const index = rows.findIndex((r) => r.id === id);
       if (index >= 0) rows.splice(index, 1);
       return index >= 0;
+    },
+    async getGoal() {
+      return goal;
+    },
+    async setGoal(perWeek) {
+      goal = perWeek;
+      return goal;
     },
   };
 }
