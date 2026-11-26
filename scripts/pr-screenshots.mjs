@@ -22,7 +22,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, imageFiles, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotBlock } from "./pr-screenshots-lib.mjs";
+import { RELEASE_TAG, VIEWPORTS, assetName, assetUrl, imageFiles, parseScreen, parseScreensLine, replaceScreenshotTable, screenshotBlock, waitForContent } from "./pr-screenshots-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], ...opts });
@@ -141,6 +141,9 @@ async function shoot(chromium, baseUrl, token, screens, outDir, pr, phase) {
         // A missing page or a refusal means the screen is not there in this build.
         const missing = !response || response.status() >= 400;
         if (!missing) {
+          // Photograph the real page, not its loading placeholders (AC-OPS-05.6).
+          const problems = await waitForContent(page);
+          if (problems.length) console.warn(`Warning: ${screen.name} (${vp.key}, ${phase}) may not be fully loaded: ${[...new Set(problems)].join("; ")}.`);
           const file = assetName(pr, screen.name, vp.key, phase);
           await page.screenshot({ path: path.join(outDir, file) });
           found[screen.name][vp.key] = file;

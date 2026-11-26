@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetName, largerViews, parseScreen, replaceScreenshotTable, screenshotBlock, screenshotTable, slugify } from "./pr-screenshots-lib.mjs";
+import { LOADING_SELECTOR, assetName, waitForContent, largerViews, parseScreen, replaceScreenshotTable, screenshotBlock, screenshotTable, slugify } from "./pr-screenshots-lib.mjs";
 
 describe("pr-screenshots helpers", () => {
   it("builds asset names that start with the pull request number", () => {
@@ -137,5 +137,50 @@ describe("imageFiles", () => {
     const { imageFiles } = await import("./pr-screenshots-lib.mjs");
     expect(imageFiles({}, { New: { mobile: "a.png" } })).toEqual(["a.png"]);
     expect(imageFiles(undefined, { New: { mobile: "a.png" } })).toEqual(["a.png"]);
+  });
+
+  describe("waiting for the real content", () => {
+    const fakePage = (failing = []) => {
+      const calls = [];
+      const run = (name) => async () => {
+        calls.push(name);
+        if (failing.includes(name)) throw new Error("timeout");
+      };
+      return {
+        calls,
+        waitForLoadState: run("network"),
+        waitForSelector: async (selector, options) => {
+          calls.push(`selector:${selector}:${options.state}`);
+          if (failing.includes("placeholder")) throw new Error("timeout");
+        },
+        evaluate: run("fonts"),
+        waitForTimeout: run("settle"),
+      };
+    };
+
+    it("[AC-OPS-05.6] waits for the network, for every loading placeholder to go, and for fonts, before the photo", async () => {
+      const page = fakePage();
+      expect(await waitForContent(page, { settleMs: 0 })).toEqual([]);
+      expect(page.calls[0]).toBe("network");
+      expect(page.calls).toContain(`selector:${LOADING_SELECTOR}:detached`);
+      expect(page.calls).toContain("fonts");
+    });
+
+    it("[AC-OPS-05.6] looks for a placeholder twice, because a lazily loaded part can start loading just after the first look", async () => {
+      const page = fakePage();
+      await waitForContent(page, { settleMs: 0 });
+      expect(page.calls.filter((c) => c.startsWith("selector:"))).toHaveLength(2);
+    });
+
+    it("[AC-OPS-05.6] a page that never settles is reported, not thrown, so the screenshot is still taken", async () => {
+      const problems = await waitForContent(fakePage(["placeholder", "network"]), { settleMs: 0 });
+      expect(problems).toContain("a loading placeholder was still on screen");
+      expect(problems).toContain("the network did not go quiet");
+    });
+
+    it("[AC-OPS-05.6] the placeholder selector matches the app's real loading placeholder", async () => {
+      const { readFileSync } = await import("node:fs");
+      expect(readFileSync("web/src/ui/Skeleton.tsx", "utf8")).toContain(LOADING_SELECTOR.replace(".", ""));
+    });
   });
 });
