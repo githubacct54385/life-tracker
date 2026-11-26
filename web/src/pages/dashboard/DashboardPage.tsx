@@ -27,6 +27,7 @@ import { Page } from "../Page";
 import { useLoad, type Load } from "./load";
 import { ServiceDueTile, type ServiceDueData } from "./ServiceDueTile";
 import { WeeklySummaryCard } from "./WeeklySummaryCard";
+import { FailureText } from "../../ui/FailureText";
 
 // The whole card is the link (the title's link is stretched over it), so a tap anywhere on a tile opens its screen.
 const card = "relative rounded-2xl border border-line bg-card p-4 text-ink transition-shadow hover:border-g300 hover:shadow-sm focus-within:border-g500";
@@ -42,7 +43,7 @@ function Tile<T>({ id, title, load, to, empty, children }: { id: string; title: 
         </Link>
       </h2>
       {load.state === "loading" && <Skeleton lines={2} className="mt-3" />}
-      {load.state === "error" && <p className="mt-2">Could not load this. Try again later.</p>}
+      {load.state === "error" && <p className="mt-2"><FailureText fallback="Could not load this. Try again later." /></p>}
       {load.state === "ok" && (empty?.(load.value) ?? children(load.value))}
     </section>
   );

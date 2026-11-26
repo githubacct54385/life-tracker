@@ -7,10 +7,20 @@ import { issuerFor, type AccessConfig } from "./accessConfig.js";
 
 /** `readOnly` is set only for the smoke-test service token (ADR-0023). The app then allows GET and HEAD and nothing else. */
 /** `email` is the person the request is for, lower-case. The smoke-test token has no email of its own, so it reads as the owner. */
-export type GuardResult = { ok: true; email: string; readOnly?: true } | { ok: false; status: 401 | 403 };
+/** 503 means the check could not be made because Access's public keys could not be fetched (OPS-14). Nobody is let in on a 503. */
+export type GuardResult = { ok: true; email: string; readOnly?: true } | { ok: false; status: 401 | 403 | 503 };
 
 const deny401: GuardResult = { ok: false, status: 401 };
 const deny403: GuardResult = { ok: false, status: 403 };
+const unavailable503: GuardResult = { ok: false, status: 503 };
+
+/** True when jose could not get the keys (a timeout, an error answer from Access, or no network), as opposed to a token that is simply wrong. */
+export function isKeyFetchFailure(error: unknown): boolean {
+  if (error instanceof TypeError) return true; // fetch itself failed
+  const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
+  if (code === "ERR_JWKS_TIMEOUT") return true;
+  return code === "ERR_JOSE_GENERIC" && error instanceof Error && /JSON Web Key Set/i.test(error.message);
+}
 
 function sameText(a: string, b: string): boolean {
   const digest = (s: string) => createHash("sha256").update(s).digest();
@@ -44,8 +54,8 @@ export async function ownerGuard(
     });
     email = payload["email"];
     commonName = payload["common_name"];
-  } catch {
-    return deny401;
+  } catch (error) {
+    return isKeyFetchFailure(error) ? unavailable503 : deny401;
   }
 
   // Service tokens carry no email. Only the one configured smoke-test token is let in, and only to read.

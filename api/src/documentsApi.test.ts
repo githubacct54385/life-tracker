@@ -192,7 +192,10 @@ describe("uploading a document", () => {
   it("[AC-MIL-07.2] fails closed when the bucket is not bound: an error, and nothing stored", async () => {
     const { upload, addService, documentRepo } = setup({ bucket: false });
     const id = await addService();
-    expect((await upload(id, bytes(PNG))).status).toBe(500);
+    // Documents are not available (OPS-14): a 503 that names the part, where it used to be a bare 500.
+    const response = await upload(id, bytes(PNG));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable", part: "documents" });
     expect(documentRepo.rows).toHaveLength(0);
   });
 });
@@ -292,7 +295,9 @@ describe("deleting", () => {
     bucket.delete = async () => {
       throw new Error("storage unavailable");
     };
-    expect((await call("DELETE", `/api/maintenance/${id}`)).status).toBe(500);
+    const refused = await call("DELETE", `/api/maintenance/${id}`);
+    expect(refused.status).toBe(503); // documents are not available (OPS-14), and the service is kept
+    expect(await refused.json()).toEqual({ error: "unavailable", part: "documents" });
     expect(maintenanceRepo.rows).toHaveLength(1);
     expect(documentRepo.rows).toHaveLength(1);
     bucket.delete = realDelete;

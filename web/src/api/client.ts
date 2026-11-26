@@ -1,4 +1,5 @@
 import {
+  availabilityResponseSchema,
   documentListResponseSchema,
   giftListResponseSchema,
   groceryItemSchema,
@@ -21,6 +22,7 @@ import {
   specialContributionListResponseSchema,
   specialContributionSchema,
   TIME_ZONE_HEADER,
+  unavailableResponseSchema,
   weightEntrySchema,
   weightListResponseSchema,
   workoutListResponseSchema,
@@ -29,6 +31,7 @@ import {
 } from "@life-tracker/shared";
 import { loadPreferences } from "../settings/preferences";
 import type { Api } from "./types";
+import { reportUnavailable } from "./availabilityStatus";
 import { setWaking } from "./wakeStatus";
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -79,8 +82,19 @@ export function createClient(
         onWaking(false);
       }
     }
+    if (response.status === WAKE_STATUS) await noteUnavailable(response);
     if (!response.ok && !accepted.includes(response.status)) throw new ApiError(response.status);
     return response;
+  }
+
+  /** A 503 that names a part (OPS-14) tells the banner which one is down. Any other 503 body is ignored. */
+  async function noteUnavailable(response: Response): Promise<void> {
+    try {
+      const body = unavailableResponseSchema.safeParse(await response.clone().json());
+      if (body.success) reportUnavailable(body.data.part);
+    } catch {
+      // Not JSON: nothing to report.
+    }
   }
 
   async function request(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -97,6 +111,9 @@ export function createClient(
   return {
     async health() {
       return healthResponseSchema.parse(await request("/api/health"));
+    },
+    async getAvailability() {
+      return availabilityResponseSchema.parse(await request("/api/health/parts"));
     },
     async listReadings() {
       return readingListResponseSchema.parse(await request("/api/odometer"));

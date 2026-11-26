@@ -19,6 +19,7 @@ function fakeNetwork(sent: { method?: string; body?: string; guard?: string | nu
   return (async (input: string, init?: RequestInit) => {
     sent.push({ url: input, method: init?.method, body: init?.body as string | undefined, guard: new Headers(init?.headers).get("x-life-tracker") });
     if (input === "/api/health") return Response.json({ status: "ok" });
+    if (input === "/api/health/parts") return Response.json({ database: "ok", documents: "ok", signIn: "ok" });
     if (input === "/api/odometer" && init?.method === "GET") return Response.json({ readings: [SAVED.reading] });
     if (input === "/api/odometer?all=1" && init?.method === "GET") return Response.json({ readings: [SAVED.reading] });
     if (input === "/api/odometer" && init?.method === "POST") {
@@ -87,7 +88,7 @@ const implementations: Array<[string, () => Api]> = [
 const SPECIAL = { id: 3, dateGiven: "2026-03-29", occasion: "Spring offering", cents: 10_000, method: "card" };
 const GROCERY = { id: "11111111-1111-4111-8111-111111111111", name: "Milk", quantity: "2", note: "", section: "Dairy and eggs", found: false };
 const WEIGHT = { id: 5, date: "2026-11-18", pounds: 172.4 };
-const METHODS = ["health", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "getWorkoutGoal", "saveWorkoutGoal", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listServiceIntervals", "saveServiceInterval", "deleteServiceInterval", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
+const METHODS = ["health", "getAvailability", "listReadings", "listAllReadings", "logReading", "editReading", "deleteReading", "listGifts", "logGift", "editGift", "deleteGift", "listWeights", "logWeight", "editWeight", "deleteWeight", "listSpecialContributions", "logSpecialContribution", "editSpecialContribution", "deleteSpecialContribution", "importReadings", "listGroceries", "addGrocery", "editGrocery", "deleteGrocery", "clearGroceries", "listWorkouts", "logWorkout", "editWorkout", "deleteWorkout", "getWorkoutGoal", "saveWorkoutGoal", "listMaintenance", "listServicePlaces", "logMaintenance", "editMaintenance", "deleteMaintenance", "renameServicePlace", "deleteServicePlace", "listServiceIntervals", "saveServiceInterval", "deleteServiceInterval", "listDocuments", "uploadDocument", "deleteDocument", "documentUrl", "documentDownloadUrl"] as const satisfies ReadonlyArray<keyof Api>;
 
 describe.each(implementations)("[AC-DEM-01.5] API contract: %s", (_name, make) => {
   it("[AC-DEM-01.5] has every method of the shared interface", () => {

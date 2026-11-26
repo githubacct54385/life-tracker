@@ -8,7 +8,7 @@ This page is for reading, not for running. Each line is one thing the app is che
 
 For the technical list, run `pnpm tests:list`. For what only a person can check, see [manual-checks.md](manual-checks.md).
 
-## The whole app (FND-01, FND-04, FND-05, MIG-04, SET-01)
+## The whole app (FND-01, FND-04, FND-05, MIG-04, SET-01, OPS-14)
 
 - The site loads, and a visitor who is not signed in gets nothing from the data. <!-- AC-FND-01.2 AC-MIG-04.2 AC-MIG-04.3 AC-MIG-04.6 -->
 - A signed-in person who is not the owner is refused everywhere. An expired or tampered sign-in is refused. <!-- AC-MIG-04.2 AC-MIG-04.3 AC-MIG-04.6 -->
@@ -17,6 +17,7 @@ For the technical list, run `pnpm tests:list`. For what only a person can check,
 - The app can be installed on a phone, and the opening screen still loads with no signal, with a message. Private data is never kept for offline use, except the grocery list. <!-- AC-FND-05.2 AC-FND-05.3 -->
 - Saving a reading uses the time zone chosen in Settings. <!-- AC-SET-01.5 -->
 - Most of the tests below run against the real server and a real database, not pretend ones. <!-- AC-OPS-04.3 -->
+- When the database, document storage or the sign-in check is not available, a banner on every page says which one in plain words, fits phone, tablet and desktop, passes the contrast scan in light and dark, and goes away by itself when the part is back. <!-- AC-OPS-14.3 AC-OPS-14.6 -->
 
 ## Easy to use for everyone (SET-02)
 

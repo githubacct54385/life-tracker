@@ -7,6 +7,7 @@ import { useOnline } from "../pwa/useOnline";
 import { useNavKind } from "./useNavKind";
 import { Icon } from "../ui/Icon";
 import { EnvironmentStrip } from "./EnvironmentStrip";
+import { AvailabilityBanner } from "./AvailabilityBanner";
 
 const itemClass: Record<NavKind, (active: boolean) => string> = {
   tabs: (a) => `flex flex-1 flex-col items-center gap-1 py-2 text-[11px] ${a ? "font-bold text-gtext" : "text-muted"}`,
@@ -61,6 +62,7 @@ export function AppShell() {
               Waking up the database. This can take a few seconds…
             </p>
           )}
+          {online && <AvailabilityBanner />}
           {online || pathname === GROCERIES_PATH ? <div key={pathname} className="lt-page"><Outlet /></div> : <OfflineNotice />}
         </main>
       </div>

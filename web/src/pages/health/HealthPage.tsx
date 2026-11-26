@@ -7,6 +7,7 @@ import { HubLink } from "../../ui/HubLink";
 import { Skeleton } from "../../ui/Skeleton";
 import { Page } from "../Page";
 import { describeAmount, formatMinutes, SOURCE_LABELS } from "./workoutFormat";
+import { FailureText } from "../../ui/FailureText";
 
 // The chart and goal load only when Health opens, so Recharts and this code stay out of the first screen's JavaScript (OPS-10).
 const WeeklyWorkoutChart = lazy(() => import("./WeeklyWorkoutChart").then((m) => ({ default: m.WeeklyWorkoutChart })));
@@ -113,7 +114,7 @@ export function HealthPage({ today = todayLocal() }: { today?: string }) {
           <HubLink to="/health/workouts" icon="dumbbell" title="Workouts" description="Log a workout, or count pushups" />
         </div>
 
-        {failed && <p role="alert">That did not work. Try again.</p>}
+        {failed && <p role="alert"><FailureText fallback="That did not work. Try again." /></p>}
         {!failed && !summary && <Skeleton lines={3} />}
         {summary && goal !== undefined && (
           <Suspense fallback={<Skeleton lines={3} />}>

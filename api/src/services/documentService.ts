@@ -24,12 +24,17 @@ export interface DocumentService {
   remove(id: number): Promise<boolean>;
   /** Deletes every stored file of a service, before the service is removed. A failure is thrown so the service is kept and the delete can be retried. */
   removeAllFor(recordId: number): Promise<void>;
+  /** True when the document store answers (OPS-14). It asks for a key that is never used, so no file is read and nothing is written. */
+  reachable(): Promise<boolean>;
 }
 
 /** The browser-facing shape: no storage key. */
 const toPublic = (document: StoredDocument): MaintenanceDocument => ({ id: document.id, recordId: document.recordId, contentType: document.contentType, bytes: document.bytes, createdAt: document.createdAt });
 
 const SNIFF_BYTES = 1024;
+
+/** A key no document ever has: person keys start with a number and a slash. */
+const HEALTH_PROBE_KEY = "health-probe";
 
 /** Reads just enough from the start of a stream to tell its type, and gives back a stream that still starts at the beginning. */
 async function peek(body: ReadableStream<Uint8Array>, wanted: number): Promise<{ head: Uint8Array; rest: ReadableStream<Uint8Array> }> {
@@ -141,6 +146,15 @@ export function createDocumentService(repo: DocumentRepository, store: DocumentS
       await store.delete(document.objectKey);
       await repo.remove(id);
       return true;
+    },
+
+    async reachable() {
+      try {
+        await store.get(HEALTH_PROBE_KEY);
+        return true;
+      } catch {
+        return false;
+      }
     },
 
     async removeAllFor(recordId) {

@@ -4,6 +4,7 @@ import { DOCUMENT_UPLOAD, openUpload } from "../http/uploadLimits.js";
 import type { DocumentService } from "../services/documentService.js";
 import type { MaintenanceService } from "../services/maintenanceService.js";
 import { errorTypeOf, type Logger } from "../telemetry/logger.js";
+import { rethrowIfUnavailable } from "../http/unavailable.js";
 
 export interface MaintenanceDeps {
   logger: Logger;
@@ -55,6 +56,7 @@ export function maintenanceRoutes({ logger, maintenance, documents }: Maintenanc
     try {
       return (await documents.remove(id)) ? c.body(null, 204) : c.json({ error: "not_found" }, 404);
     } catch (error) {
+      rethrowIfUnavailable(error);
       logger.error("maintenance.document_delete_failed", { errorType: errorTypeOf(error) });
       return c.json({ error: "internal" }, 500);
     }
@@ -158,6 +160,7 @@ export function maintenanceRoutes({ logger, maintenance, documents }: Maintenanc
     try {
       return (await maintenance.remove(id)) ? c.body(null, 204) : c.json({ error: "not_found" }, 404);
     } catch (error) {
+      rethrowIfUnavailable(error);
       logger.error("maintenance.delete_failed", { errorType: errorTypeOf(error) });
       return c.json({ error: "internal" }, 500);
     }

@@ -13,6 +13,8 @@ const allowedFields = {
   errorType: (v: unknown) => typeof v === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(v),
   // Postgres SQLSTATE (for example 42501) or a Node error code (for example ECONNREFUSED). A code, never a message.
   errorCode: (v: unknown) => typeof v === "string" && /^[A-Z0-9_]{2,32}$/.test(v),
+  // Which part the Worker depends on was not available (OPS-14): one of three fixed words, never a host or a message.
+  part: (v: unknown) => v === "database" || v === "documents" || v === "signIn",
 } as const satisfies Record<string, (v: unknown) => boolean>;
 
 export type LogField = keyof typeof allowedFields;

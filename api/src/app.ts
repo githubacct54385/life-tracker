@@ -19,6 +19,7 @@ import type { MaintenanceService } from "./services/maintenanceService.js";
 import type { GroceryService } from "./services/groceryService.js";
 import type { WeightService } from "./services/weightService.js";
 import type { WorkoutService } from "./services/workoutService.js";
+import { unavailablePartOf } from "./http/unavailable.js";
 import { errorCodeOf, errorTypeOf, type Logger } from "./telemetry/logger.js";
 
 export interface AppDeps {
@@ -65,7 +66,14 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
   // An unknown path gets the same 401 as a known one, so a caller who is not the owner learns nothing.
   app.use("*", async (c, next) => {
     const result = await authenticate(c.req.raw.headers, c.env ?? {}, deps.keys ?? remoteKeys);
-    if (!result.ok) return c.json({ error: result.status === 401 ? "unauthorized" : "forbidden" }, result.status);
+    if (!result.ok) {
+      // Access's public keys could not be fetched, so nobody can be checked. Nobody is let in, and the person is told why (OPS-14).
+      if (result.status === 503) {
+        deps.logger.warn("api.dependency_unavailable", { part: "signIn" });
+        return c.json({ error: "unavailable", part: "signIn" }, 503);
+      }
+      return c.json({ error: result.status === 401 ? "unauthorized" : "forbidden" }, result.status);
+    }
     // The smoke-test identity (ADR-0023) can look but never change anything.
     if (result.readOnly && c.req.method !== "GET" && c.req.method !== "HEAD") return c.json({ error: "forbidden" }, 403);
     // SET-04: from here on the request is for one person, and every query sees only that person's rows. A person who is
@@ -94,6 +102,12 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: AccessSettings }> {
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {
+    // A part the Worker depends on is down: say which, in the one fixed shape, and log only which (OPS-14).
+    const part = unavailablePartOf(error);
+    if (part) {
+      deps.logger.warn("api.dependency_unavailable", { part, errorType: errorTypeOf(error), errorCode: errorCodeOf(error) });
+      return c.json({ error: "unavailable", part }, 503);
+    }
     deps.logger.error("api.unhandled_error", { errorType: errorTypeOf(error), errorCode: errorCodeOf(error) });
     return c.json({ error: "internal" }, 500);
   });

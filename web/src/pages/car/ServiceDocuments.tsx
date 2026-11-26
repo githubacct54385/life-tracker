@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_BYTES_PER_RECORD, MAX_DOCUMENTS_PER_RECORD, type MaintenanceDocument } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
+import { refreshAvailability } from "../../api/availabilityStatus";
 import { Button } from "../../ui/Button";
 import { Presence } from "../../ui/Presence";
 import { useBusy } from "../../ui/useBusy";
@@ -235,7 +236,11 @@ export function ServiceDocuments({ recordId, label, documents, onChanged, shrink
                   ) : (
                     <>
                       <button type="button" aria-label={`View ${name}`} onClick={() => setViewing(doc)}>
-                        <img src={url} alt="" loading="lazy" className="size-20 rounded-lg border border-line object-cover" onError={() => setBroken((b) => new Set(b).add(doc.id))} />
+                        <img src={url} alt="" loading="lazy" className="size-20 rounded-lg border border-line object-cover" onError={() => {
+                          setBroken((b) => new Set(b).add(doc.id));
+                          // A photo that will not load may mean document storage is down: ask, so the banner can say so (OPS-14).
+                          void refreshAvailability(api);
+                        }} />
                       </button>
                       <span className="text-sm">
                         {name} &middot; {formatSize(doc.bytes)}

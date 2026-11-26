@@ -37,6 +37,7 @@ The spec says: *no health, mileage, or giving data in logs or telemetry.* Worker
 | Signal | Where | Why |
 |---|---|---|
 | `api.unhandled_error` events | Workers Logs, search the event name | A bug. The `errorType` field says which kind, and `errorCode` holds the Postgres or Node code when there is one (for example `42501` permission denied, `28P01` wrong password, `42P01` missing table, `ECONNREFUSED`). |
+| `api.dependency_unavailable` and `health.part_unavailable` events | Workers Logs, search the event name | A part the Worker depends on was down (OPS-14). The `part` field is one of `database`, `documents` or `signIn`, and `errorType` and `errorCode` say how it failed (for example `ECONNREFUSED`). People see a banner saying which part is not available; these events are how you find out afterwards. The status is 503, not 500. |
 | Requests with `statusCode` 500 and up | Workers Logs | Same |
 | Slow requests (`durationMs`) | Workers Logs | Cold database or a slow query |
 | Denied sign-ins | Zero Trust, **Logs**, **Access** | Someone other than the owner trying to get in. Non-owners are stopped by Access before they reach the Worker, so the Worker's own logs rarely show them. |
