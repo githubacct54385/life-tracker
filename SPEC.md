@@ -71,7 +71,7 @@ Out of scope as of 2026-11-10 (ADR-0021). Transaction tracking, accounts, catego
 | Goal: target weight | Next |
 | Import weight from the Apple Health export too | Next |
 | Optional daily check-in: mood (1 to 5) and hours slept | Next |
-| Correlation view (for example, workouts vs. mood vs. miles driven) | Later |
+| Correlation view (for example, workouts vs. mood vs. miles driven). Weight and workout minutes together is built (HLT-06); mood, sleep and miles are not | Later |
 
 Notes:
 - Apple Health export: Health app, profile picture, Export All Health Data. This produces a ZIP with an XML file. The app opens it **in the browser** (in a background worker), reads only the workouts, and sends only those rows to the API. The ZIP itself never leaves the device (ADR-0009). Importing is a manual step. Fully automatic sync would need a native app or a third-party shortcut, and is out of scope.

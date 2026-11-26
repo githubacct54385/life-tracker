@@ -22,3 +22,4 @@ export * from "./maintenanceDocuments.js";
 export * from "./groceries.js";
 export * from "./weeklySummary.js";
 export * from "./serviceIntervals.js";
+export * from "./weightWorkoutChart.js";
