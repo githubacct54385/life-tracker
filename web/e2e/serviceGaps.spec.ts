@@ -30,7 +30,7 @@ test("[AC-MIL-11.6] the gaps chart is drawn with its interval line and a text ta
   for (const { width, height } of WIDTHS) {
     await page.setViewportSize({ width, height });
     await page.goto("/car/maintenance");
-    const section = page.getByRole("region", { name: "Time between services" });
+    const section = page.getByRole("region", { name: "Gaps between visits" });
     const chart = section.getByRole("img", { name: /miles between each visit for Oil change/ });
     await expect(chart).toBeVisible();
     await expect(chart.locator(".recharts-bar-rectangle").first()).toBeVisible();
@@ -57,7 +57,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.setViewportSize({ width: 360, height: 740 });
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
     await page.goto("/car/maintenance");
-    await expect(page.getByRole("region", { name: "Time between services" }).locator(".recharts-bar-rectangle").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Gaps between visits" }).locator(".recharts-bar-rectangle").first()).toBeVisible();
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(result.violations.map((v) => `${scheme}: ${v.id}: ${v.nodes[0]?.html.slice(0, 90)}`)).toEqual([]);
   });

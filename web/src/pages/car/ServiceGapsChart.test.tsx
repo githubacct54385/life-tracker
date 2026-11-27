@@ -13,7 +13,7 @@ const INTERVALS: ServiceInterval[] = [{ id: 1, service: "Oil change", miles: 500
 
 function show(records: MaintenanceRecord[], intervals: ServiceInterval[] = INTERVALS) {
   render(<ServiceGapsChart records={records} intervals={intervals} />);
-  return within(screen.getByRole("region", { name: "Time between services" }));
+  return within(screen.getByRole("region", { name: "Gaps between visits" }));
 }
 
 describe("service gaps chart", () => {

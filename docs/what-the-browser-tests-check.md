@@ -59,7 +59,7 @@ For the technical list, run `pnpm tests:list`. For what only a person can check,
 - A place can be renamed, and removed only when no service uses it. <!-- AC-MIL-06.5 -->
 - Every view fits phone, tablet and desktop. The form is a sheet from the bottom on a phone and a side panel on a computer. <!-- AC-MIL-06.7 AC-MIL-06.8 AC-MIL-06.9 -->
 - "Service due" shows each tracked service with its state in words, fits phone, tablet and desktop, and the interval form can be filled in and saved from the keyboard. <!-- AC-MIL-09.8 -->
-- The "Time between services" chart is drawn with its interval line and a table of the same numbers, fits phone, tablet and desktop, and passes the contrast scan in light and dark. <!-- AC-MIL-11.6 -->
+- The "Gaps between visits" chart is drawn with its interval line and a table of the same numbers, fits phone, tablet and desktop, and passes the contrast scan in light and dark. <!-- AC-MIL-11.6 -->
 - A photo or PDF can be attached to a service and is still there after a reload. Other file types are refused. <!-- AC-MIL-07.2 AC-MIL-07.3 AC-MIL-07.5 -->
 - Documents are private: without the owner's sign-in none can be read, added or removed. <!-- AC-MIL-07.2 -->
 - Deleting a document or a service removes the stored files. <!-- AC-MIL-07.6 -->

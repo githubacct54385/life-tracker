@@ -31,7 +31,7 @@ export function ServiceGapsChart({ records, intervals }: { records: MaintenanceR
   return (
     <section aria-labelledby="service-gaps-heading" className="rounded-2xl border border-line bg-card p-4 text-ink">
       <h2 id="service-gaps-heading" className="font-bold">
-        Time between services
+        Gaps between visits
       </h2>
 
       {services.length === 0 || result === undefined || service === undefined ? (
