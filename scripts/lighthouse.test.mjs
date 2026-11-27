@@ -48,6 +48,10 @@ describe("Lighthouse check (OPS-10)", () => {
     expect(checkPage("Demo", { scores: scores(100), javaScriptKB: 290 }, { ...config, budgets: { firstScreenJavaScriptKB: 290 } })).toEqual([]);
   });
 
+  it("[AC-OPS-10.3] the budget is 180 KB (the app is about 170 KB), so a heavy change fails instead of using up slack. Raising it means editing this test on purpose", () => {
+    expect(config.budgets.firstScreenJavaScriptKB).toBeLessThanOrEqual(180);
+  });
+
   it("[AC-OPS-10.4] writes the scores, the budget and the result as Markdown for the job summary", () => {
     const summary = summarize([{ scores: scores(100), javaScriptKB: 285.4 }]);
     const text = renderSummary([{ name: "Demo", summary }], config, [], []);

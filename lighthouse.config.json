@@ -11,6 +11,6 @@
     "accessibility": 95
   },
   "budgets": {
-    "firstScreenJavaScriptKB": 290
+    "firstScreenJavaScriptKB": 180
   }
 }

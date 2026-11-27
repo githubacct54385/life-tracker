@@ -4,6 +4,7 @@ import { DEFAULT_WEIGHT_WORKOUT_RANGE, MIN_WEIGHT_WEEKS, WEIGHT_WORKOUT_RANGES, 
 import { loadPreferences } from "../../settings/preferences";
 import { shortDate } from "../car/readingFormat";
 import { UNIT_LABEL } from "./weightFormat";
+import { keepOutOfTabOrder } from "../../ui/chartTabStops";
 
 const RANGE_LABELS: Record<WeightWorkoutRange, string> = { 3: "3 months", 6: "6 months", 12: "1 year" };
 const round = (value: number) => Math.round(value * 10) / 10;
@@ -51,7 +52,7 @@ export function WeightWorkoutChart({ weights, workouts, today }: { weights: Weig
         </p>
       ) : (
         <>
-          <div role="img" aria-label={summary} className="mt-3 h-72 w-full sm:h-80">
+          <div ref={keepOutOfTabOrder} role="img" aria-label={summary} className="mt-3 h-72 w-full sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart accessibilityLayer={false} data={data} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="var(--line)" vertical={false} />
