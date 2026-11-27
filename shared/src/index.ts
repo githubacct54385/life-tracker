@@ -25,3 +25,4 @@ export * from "./serviceIntervals.js";
 export * from "./weightWorkoutChart.js";
 export * from "./availability.js";
 export * from "./serviceGaps.js";
+export * from "./maintenanceCosts.js";

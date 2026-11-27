@@ -12,6 +12,7 @@ import { ServiceDueSection } from "./ServiceDue";
 import { Skeleton } from "../../ui/Skeleton";
 
 // The chart loads only when this page opens, so Recharts stays out of the first screen (OPS-13).
+const MaintenanceCosts = lazy(() => import("./MaintenanceCosts").then((m) => ({ default: m.MaintenanceCosts })));
 const ServiceGapsChart = lazy(() => import("./ServiceGapsChart").then((m) => ({ default: m.ServiceGapsChart })));
 import { RecentDocuments } from "./RecentDocuments";
 
@@ -87,6 +88,11 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
         {records && intervals && (
           <Suspense fallback={<Skeleton lines={3} />}>
             <ServiceGapsChart records={records} intervals={intervals} />
+          </Suspense>
+        )}
+        {records && (
+          <Suspense fallback={<Skeleton lines={3} />}>
+            <MaintenanceCosts records={records} readings={readings} today={today} />
           </Suspense>
         )}
         <LastDoneSection records={records} loadFailed={loadFailed} onRetry={() => void refresh()} latestOdometer={latestOdometer} />
