@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { averageMilesPerDay, type MaintenanceDocument, type MaintenanceRecord, type OdometerReadingRecord, type ServiceInterval, type ServicePlace } from "@life-tracker/shared";
 import { useApi } from "../../api/ApiContext";
 import { Button } from "../../ui/Button";
@@ -9,6 +9,10 @@ import { LogServicePanel } from "./LogServicePanel";
 import { LastDoneSection, NO_FILTER, PlacesSection, type HistoryFilterState } from "./MaintenanceHistory";
 import { MaintenanceList } from "./MaintenanceList";
 import { ServiceDueSection } from "./ServiceDue";
+import { Skeleton } from "../../ui/Skeleton";
+
+// The chart loads only when this page opens, so Recharts stays out of the first screen (OPS-13).
+const ServiceGapsChart = lazy(() => import("./ServiceGapsChart").then((m) => ({ default: m.ServiceGapsChart })));
 import { RecentDocuments } from "./RecentDocuments";
 
 /**
@@ -80,6 +84,11 @@ export function MaintenancePage({ today = todayLocal() }: { today?: string } = {
         <Presence>{message ? <p role="status" className="text-gtext">{message}</p> : null}</Presence>
         <RecentDocuments documents={documents} records={records} />
         <ServiceDueSection records={records} intervals={intervals} odometer={latestOdometer} milesPerDay={milesPerDay} today={today} loadFailed={loadFailed || intervalsFailed} onChanged={refresh} onRetry={() => void refresh()} />
+        {records && intervals && (
+          <Suspense fallback={<Skeleton lines={3} />}>
+            <ServiceGapsChart records={records} intervals={intervals} />
+          </Suspense>
+        )}
         <LastDoneSection records={records} loadFailed={loadFailed} onRetry={() => void refresh()} latestOdometer={latestOdometer} />
         <MaintenanceList records={records} places={places} documents={documents} today={today} loadFailed={loadFailed} filter={filter} onFilter={setFilter} onChanged={refresh} onRetry={() => void refresh()} />
         <PlacesSection places={places} records={records ?? []} onChanged={refresh} />

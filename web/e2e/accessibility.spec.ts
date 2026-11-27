@@ -38,6 +38,7 @@ async function mockApi(page: Page) {
         records: [
           { id: 2, date: day(10), services: ["Oil change", "Air filter"], doneBy: "shop", place, costCents: 8999, odometerMiles: 48_150, note: "Synthetic oil" },
           { id: 1, date: day(40), services: ["Wipers"], doneBy: "home", place: null, costCents: 1800, odometerMiles: null, note: null },
+          { id: 3, date: day(130), services: ["Oil change"], doneBy: "home", place: null, costCents: 4500, odometerMiles: 43_000, note: null }, // a second oil change, so the gaps chart (MIL-11) is drawn
         ],
       },
     }),

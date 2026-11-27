@@ -24,3 +24,4 @@ export * from "./weeklySummary.js";
 export * from "./serviceIntervals.js";
 export * from "./weightWorkoutChart.js";
 export * from "./availability.js";
+export * from "./serviceGaps.js";
